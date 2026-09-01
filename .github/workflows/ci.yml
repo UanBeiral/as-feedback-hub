@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  api:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Instalar dependências
+        run: pip install -e "apps/api[dev]"
+
+      - name: Lint
+        run: ruff check apps/api
+
+      - name: Testes
+        # Inclui os guards de isolamento multi-tenant (AD-10 / R-09) e de
+        # autorização deny-by-default (AD-02 / R-04). Não são testes opcionais:
+        # são a razão de o RLS ter sido descartado com segurança.
+        run: cd apps/api && pytest -q
+        env:
+          JWT_SECRET: chave-de-ci-com-mais-de-32-caracteres-ok
+
+      - name: Migrations aplicam do zero
+        run: alembic upgrade head
+        env:
+          JWT_SECRET: chave-de-ci-com-mais-de-32-caracteres-ok
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/asfeedback
+
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: asfeedback
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5

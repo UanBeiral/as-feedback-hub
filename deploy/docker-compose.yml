@@ -1,0 +1,100 @@
+# Deploy único da VPS (AD-01). Um Compose, quatro processos e dois armazenamentos.
+# Nada aqui é gerenciado por terceiro: foi essa a restrição do brief que motivou a
+# saída do Supabase.
+#
+# ESTADO ATUAL: só `postgres`, `redis` e `api` sobem hoje. Os serviços `worker`, `web`
+# e `nginx` estão comentados porque o código deles ainda não existe (fase Fundação
+# entregou a API). Descomente cada um junto com o contexto correspondente:
+#   worker → contexto `engagement` (outbox + scheduler, AD-04/AD-05)
+#   web    → app Next.js em apps/web
+#   nginx  → depois que `web` existir, senão o upstream não resolve no boot
+
+services:
+  postgres:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-asfeedback}
+    ports:
+      # Exposto só em localhost, para rodar Alembic e psql da máquina de dev.
+      # Em produção, remova esta seção: o banco não precisa de porta publicada.
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ..
+      dockerfile: deploy/api.Dockerfile
+    restart: unless-stopped
+    env_file: ../.env
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    ports:
+      - "127.0.0.1:8000:8000"
+
+  # worker:
+  #   build:
+  #     context: ..
+  #     dockerfile: deploy/worker.Dockerfile
+  #   restart: unless-stopped
+  #   env_file: ../.env
+  #   depends_on:
+  #     postgres: { condition: service_healthy }
+  #     redis: { condition: service_healthy }
+  #   # O worker é o único processo que roda o scheduler. Escalar réplicas exige
+  #   # antes resolver a eleição de líder, senão o fechamento de ciclo roda em
+  #   # duplicata (AD-05).
+  #   deploy:
+  #     replicas: 1
+
+  # web:
+  #   build:
+  #     context: ..
+  #     dockerfile: deploy/web.Dockerfile
+  #   restart: unless-stopped
+  #   env_file: ../.env
+  #   depends_on:
+  #     - api
+  #   expose:
+  #     - "3000"
+
+  # nginx:
+  #   image: nginx:1.27-alpine
+  #   restart: unless-stopped
+  #   ports:
+  #     - "80:80"
+  #     - "443:443"
+  #   volumes:
+  #     - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+  #     - ./nginx/proxy_headers.conf:/etc/nginx/conf.d/proxy_headers.conf:ro
+  #     - ./nginx/certs:/etc/nginx/certs:ro
+  #   depends_on:
+  #     - api
+  #     - web
+
+volumes:
+  postgres_data:
+  redis_data:

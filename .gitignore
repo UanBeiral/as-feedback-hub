@@ -1,0 +1,31 @@
+# Ambiente
+.env
+.env.local
+*.local
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+htmlcov/
+.coverage
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+dist/
+*.tsbuildinfo
+
+# Dados sensíveis da migração (nunca versionar)
+deploy/migrate/reference/*.sql
+deploy/migrate/reference/*.csv
+!deploy/migrate/reference/.gitkeep
+
+# Sistema
+.DS_Store
+Thumbs.db

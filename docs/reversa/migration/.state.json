@@ -1,0 +1,107 @@
+{
+  "schemaVersion": 2,
+  "startedAt": "2026-08-28T00:00:00Z",
+  "lastCheckpoint": "2026-08-28T02:45:00Z",
+  "completedAgents": ["paradigm_advisor", "curator", "strategist", "designer", "screen_translator", "inspector"],
+  "pendingAgents": [],
+  "currentAgent": {
+    "agent": null,
+    "phase": null,
+    "status": null,
+    "topologyApproved": true,
+    "screenModeApproved": true
+  },
+  "pendingDecisions": [],
+  "artifacts": {
+    "migration_brief.md": {
+      "hash": "sha256:f295006aabde7702c1e6b0410ac51f5a8beeef4fc6b9f5a12309971a83a177ec",
+      "producedBy": "orchestrator",
+      "generatedAt": "2026-08-28T00:00:00Z"
+    },
+    "paradigm_decision.md": {
+      "hash": "sha256:d760e42463e01ca781bbb0d185144685e5d7a8d665efdc2c9639f063c6370b0b",
+      "producedBy": "paradigm_advisor",
+      "generatedAt": "2026-08-28T00:10:00Z"
+    },
+    "target_business_rules.md": {
+      "hash": "sha256:29038327b17b3e9db7abdac6a7b02bb1d3af7caf41e72f71b6cd0c5fc42d521a",
+      "producedBy": "curator",
+      "generatedAt": "2026-08-28T00:30:00Z"
+    },
+    "discard_log.md": {
+      "hash": "sha256:68d6bf7ff2213064a9786bf2251160989e9795f590f2f04c342532e769499072",
+      "producedBy": "curator",
+      "generatedAt": "2026-08-28T00:30:00Z"
+    },
+    "migration_strategy.md": {
+      "hash": "sha256:f85f666973d2c867c2d987cb9b18aede91386d9e783debb99cfdd8e0eeadbd2c",
+      "producedBy": "strategist",
+      "generatedAt": "2026-08-28T00:45:00Z"
+    },
+    "risk_register.md": {
+      "hash": "sha256:a3a84345e60b860966a1b955611a40ce18641ccf34c10a66672eab0d05eec424",
+      "producedBy": "strategist",
+      "generatedAt": "2026-08-28T00:45:00Z"
+    },
+    "cutover_plan.md": {
+      "hash": "sha256:d5c4cb7015d5362fd7fd4cac15d7a933a7e57d5fecbc25caff38cbe546bd49f7",
+      "producedBy": "strategist",
+      "generatedAt": "2026-08-28T00:45:00Z"
+    },
+    "topology_decision.md": {
+      "hash": "sha256:3facdd7eb14595247cab16de46297e8f5d70643906ff64291232560972f4630e",
+      "producedBy": "designer",
+      "generatedAt": "2026-08-28T01:00:00Z"
+    },
+    "target_architecture.md": {
+      "hash": "sha256:2b0474807b6cc2de226f8a2c0ce542b353c29ff86b3a60f8881c656508025e98",
+      "producedBy": "designer",
+      "generatedAt": "2026-08-28T01:15:00Z"
+    },
+    "target_domain_model.md": {
+      "hash": "sha256:1ed33344c443c5e4f8cc480c53ce055e60d904fae237beb7427a1e210693f234",
+      "producedBy": "designer",
+      "generatedAt": "2026-08-28T01:15:00Z"
+    },
+    "target_data_model.md": {
+      "hash": "sha256:682b6354efbad2f82ff592f8e51931227eac34d9772a2a44f13282cbf89cd258",
+      "producedBy": "designer",
+      "generatedAt": "2026-08-28T01:15:00Z"
+    },
+    "data_migration_plan.md": {
+      "hash": "sha256:091014b9224467fb8d7fc0ac0b1a3e8ed71c998ab4be822013dcdb03c8db49e6",
+      "producedBy": "designer",
+      "generatedAt": "2026-08-28T01:15:00Z"
+    },
+    "screen_modernization_decision.md": {
+      "hash": "sha256:483f948c36342bfc96650d7f93acd5b639386cc8c47e12ea00060b849cad66ce",
+      "producedBy": "screen-translator",
+      "generatedAt": "2026-08-28T02:00:00Z"
+    },
+    "target_screens.md": {
+      "hash": "sha256:7f94cc99ea2f2580914b3ab24c4545a38b9d813026665a16c9fbaeb3b8400a1d",
+      "producedBy": "screen-translator",
+      "generatedAt": "2026-08-28T02:10:00Z"
+    },
+    "screen_deviation_log.md": {
+      "hash": "sha256:7427f84fa463cb52e06969d7b3a6082716a44956f52e0c3415791735caa3ae4d",
+      "producedBy": "screen-translator",
+      "generatedAt": "2026-08-28T02:10:00Z"
+    },
+    "parity_specs.md": {
+      "hash": "sha256:0221ed08538adececebd92fa7579e47bf79595eb0d260bbaaa33ca65e3a7b014",
+      "producedBy": "inspector",
+      "generatedAt": "2026-08-28T02:30:00Z"
+    },
+    "handoff.md": {
+      "hash": "sha256:dc1585ea447fa9d7e4d05bdbfd913f38eab89ea824363b5bf1f1e90260cec699",
+      "producedBy": "orchestrator",
+      "generatedAt": "2026-08-28T02:45:00Z"
+    }
+  },
+  "auto": false,
+  "engine": "claude-code",
+  "reversaVersion": "1.2.60",
+  "briefPath": "_reversa_sdd/migration/migration_brief.md",
+  "expectedLegacyArtifacts": "references/expected_legacy_artifacts.yaml"
+}

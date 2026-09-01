@@ -1,0 +1,59 @@
+# Golden Files Manifest — Screen Translator
+# Gerado em 2026-08-28. Modo híbrido: o subset literal usa como golden os screenshots
+# capturados pelo Visor (sistema em produção, 28/08/2026). Nenhum golden é capturado
+# automaticamente em v1; para o sistema NOVO, o comando sugerido usa Playwright.
+
+schemaVersion: 1
+producedBy: screen-translator
+oracle:
+  kind: screenshots-visor
+  source: "_reversa_sdd/<unit>/screenshots/ (originais); índice em _reversa_sdd/<unit>/screens.md"
+  capturedAt: "2026-08-28 (sessões 10:11–10:28 e 10:45–10:58)"
+  note: >
+    Os 83 screenshots do Visor são o oráculo do subset literal (35 telas).
+    O subset modernizado (8 telas) não tem golden; paridade é semântica (parity_specs.md).
+
+capture_suggestion:
+  tool: "playwright"
+  command_template: "npx playwright screenshot --viewport-size=1440,900 --wait-for-timeout=2000 '{url}' golden/{screen_id}.png"
+  determinism:
+    - "dados seed fixos no tenant de staging"
+    - "relógio congelado (mock de Date) para datas exibidas"
+    - "tema claro como padrão de captura"
+
+screens:
+  - { id: SCR-0001, golden: golden/auth-login, oracle_ref: "auth/screenshots (Login)" }
+  - { id: SCR-0002, golden: golden/auth-perfil, oracle_ref: "auth/screenshots (Meu Perfil)" }
+  - { id: SCR-0003, golden: golden/admin-dashboard, oracle_ref: "admin/screenshots (Painel, 4 capturas)" }
+  - { id: SCR-0004, golden: golden/admin-anotacoes-realizadas, oracle_ref: "admin/screenshots (2)" }
+  - { id: SCR-0005, golden: golden/admin-equipe, oracle_ref: "admin/screenshots (2)" }
+  - { id: SCR-0006, golden: golden/admin-historico-equipe, oracle_ref: "admin/screenshots (2)" }
+  - { id: SCR-0007, golden: golden/admin-usuarios, oracle_ref: "admin/screenshots (2)" }
+  - { id: SCR-0008, golden: golden/admin-departamentos, oracle_ref: "admin/screenshots (2)" }
+  - { id: SCR-0009, golden: golden/admin-ciclos, oracle_ref: "admin/screenshots (5)" }
+  - { id: SCR-0010, golden: golden/admin-permissoes, oracle_ref: "admin/screenshots (2)" }
+  - { id: SCR-0011, golden: golden/admin-diagnostico, oracle_ref: "admin/screenshots (4)" }
+  - { id: SCR-0012, golden: golden/admin-auditoria, oracle_ref: "admin/screenshots (3)" }
+  - { id: SCR-0013, golden: golden/admin-faleconosco, oracle_ref: "admin/screenshots (1)" }
+  - { id: SCR-0014, golden: golden/admin-agenda, oracle_ref: "admin/screenshots (1, estado não conectado)" }
+  - { id: SCR-0015, golden: golden/admin-atualizacoes, oracle_ref: "admin/screenshots (1)" }
+  - { id: SCR-0016, golden: golden/reports-dados-filtros, oracle_ref: "reports/screenshots (2)" }
+  - { id: SCR-0017, golden: golden/reports-emitir, oracle_ref: "reports/screenshots (1)" }
+  - { id: SCR-0018, golden: golden/feedback-formularios, oracle_ref: "feedback/screenshots (2)" }
+  - { id: SCR-0019, golden: golden/feedback-minhas-anotacoes, oracle_ref: "feedback/screenshots (1)" }
+  - { id: SCR-0020, golden: golden/feedback-meus-feedbacks, oracle_ref: "feedback/screenshots (3, por papel)" }
+  - { id: SCR-0021, golden: golden/feedback-meu-historico, oracle_ref: "feedback/screenshots (3, por papel)" }
+  - { id: SCR-0022, golden: golden/feedback-caderno-ciclo, oracle_ref: "feedback/screenshots (2)" }
+  - { id: SCR-0023, golden: golden/feedback-livre-modal, oracle_ref: "feedback/screenshots (2)" }
+  - { id: SCR-0024, golden: golden/company-settings, oracle_ref: "company-settings/screenshots (1)" }
+  - { id: SCR-0025, golden: golden/coordenador-inicio, oracle_ref: "coordenador/screenshots (1)" }
+  - { id: SCR-0026, golden: golden/coordenador-equipe, oracle_ref: "coordenador/screenshots (1)" }
+  - { id: SCR-0027, golden: golden/coordenador-pendentes, oracle_ref: "coordenador/screenshots (1)" }
+  - { id: SCR-0028, golden: golden/coordenador-historico, oracle_ref: "coordenador/screenshots (1)" }
+  - { id: SCR-0029, golden: golden/gestor-inicio, oracle_ref: "gestor/screenshots (2)" }
+  - { id: SCR-0030, golden: golden/gestor-equipe, oracle_ref: "gestor/screenshots (1)" }
+  - { id: SCR-0031, golden: golden/gestor-pendentes, oracle_ref: "gestor/screenshots (1)" }
+  - { id: SCR-0032, golden: golden/gestor-historico, oracle_ref: "gestor/screenshots (2)" }
+  - { id: SCR-0033, golden: golden/colaborador-dashboard, oracle_ref: "colaborador/screenshots (3)" }
+  - { id: SCR-0034, golden: golden/colaborador-avaliacoes-clientes, oracle_ref: "colaborador/screenshots (3)" }
+  - { id: SCR-0035, golden: golden/public-fluxo, oracle_ref: "public/screenshots (16 etapas)" }

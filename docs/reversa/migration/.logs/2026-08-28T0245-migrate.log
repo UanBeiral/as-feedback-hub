@@ -1,0 +1,19 @@
+2026-08-28T00:00Z [orchestrator] /reversa-migrate iniciado. Pré-condições OK (7 artefatos obrigatórios presentes em _reversa_sdd/). Primeiro run (.state.json ausente). Engine: claude-code. Reversa 1.2.60.
+2026-08-28T00:00Z [orchestrator] Entrevista do brief concluída (7 respostas do usuário). migration_brief.md gerado. Lacunas: prazo, orçamento, operacional, observabilidade.
+2026-08-28T00:00Z [orchestrator] .state.json inicializado. Fila: paradigm_advisor → curator → strategist → designer → screen_translator → inspector.
+2026-08-28T00:10Z [paradigm_advisor] Legado: procedural client-centric (🟢). Alvo: OO com DI + workers. Gap: alto (4 implicações concretas). Usuário escolheu opção 1. Apetite: transformational. paradigm_decision.md gerado.
+2026-08-28T00:30Z [curator] 44 regras inventariadas: 30 MIGRAR, 7 DESCARTAR (4 vinculadas a paradigma), 7 DECISÃO HUMANA. target_business_rules.md + discard_log.md + ambiguity_log.md gerados.
+2026-08-28T00:35Z [orchestrator] Pausa humana: usuário aceitou as 7 recomendações do Curator (AMB-001..007 resolvidas).
+2026-08-28T00:45Z [strategist] Estratégias avaliadas: Big Bang, Parallel Run (Strangler Fig e Branch by Abstraction descartadas no filtro). Recomendada: Big Bang + Parallel Run limitado à homologação. 11 riscos (6 críticos). migration_strategy.md + risk_register.md + cutover_plan.md gerados.
+2026-08-28T00:50Z [orchestrator] Pausa humana: usuário escolheu opção 1 (recomendada). Estratégia confirmada.
+2026-08-28T01:00Z [designer/topology] Legado: monolito SPA package-by-type por papel (🟢, problemática). Proposta: monorepo web/api/worker + DDD leve (5 bounded contexts). topology_decision.md gerado. Pausa: awaiting_user_approval.
+2026-08-28T01:05Z [orchestrator] Usuário aprovou opção 2 (moderna). topologyApproved=true.
+2026-08-28T01:15Z [designer/architecture] Fase 2: target_architecture.md (AD-01..10), target_domain_model.md (16 aggregates, mapa BR→código), target_data_model.md (29 tabelas), data_migration_plan.md (4 lacunas 🔴 → AMB-010..013). Pausa: aprovação da arquitetura.
+2026-08-28T01:30Z [orchestrator] Usuário aprovou a arquitetura. Designer → completed.
+2026-08-28T01:45Z [screen_translator/mode] Origem: react-spa (🟢). Alvo: web-nextjs. Inventário: 45 telas (divergência 0%). Modos avaliados; recomendado híbrido (35 literal com oráculo + 8 modernizado). Pausa: awaiting_user_approval.
+2026-08-28T02:00Z [orchestrator] Usuário escolheu híbrido (opção 3). screenModeApproved=true.
+2026-08-28T02:10Z [screen_translator/generation] target_screens.md (43 telas, 2 layouts compartilhados), screen_deviation_log.md (8 deviations pendentes), tokens-derived.md (4 tokens), golden/manifest.yaml (35 referências aos screenshots do Visor). Pausa: aprovação das deviations.
+2026-08-28T02:15Z [orchestrator] Usuário aprovou as 8 deviations. Screen Translator → completed.
+2026-08-28T02:30Z [inspector] parity_specs.md (characterization + contract + data parity + golden; shadow mode inviável). Critério: 100% @critico + zero divergência na homologação. 10 arquivos .feature (8 fluxos + 2 de telas). Cobertura adaptada: invariantes em aggregates, idempotência/outbox, guards deny-by-default, isolamento de tenant.
+2026-08-28T02:45Z [orchestrator] ambiguity_log consolidado: 0 PENDENTES, 7 RESOLVIDOS COM DECISÃO HUMANA, 6 REFERIDOS À CODIFICAÇÃO (AMB-008..013). handoff.md gerado. Pipeline concluído.
+tokens/custo: não expostos pela engine nesta sessão.
