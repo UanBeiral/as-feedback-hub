@@ -6993,6 +6993,37 @@
         ]
       }
     },
+    "/api/v1/requests/received": {
+      "get": {
+        "description": "Feedbacks que a pessoa recebeu. `read_at` nulo é o que o sino conta.",
+        "operationId": "received_requests_api_v1_requests_received_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/RequestOut"
+                  },
+                  "title": "Response Received Requests Api V1 Requests Received Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Received Requests",
+        "tags": [
+          "feedback"
+        ]
+      }
+    },
     "/api/v1/requests/{request_id}": {
       "get": {
         "description": "Traz perguntas e respostas juntas — é o que o formulário precisa para retomar.",
@@ -7154,6 +7185,47 @@
           }
         ],
         "summary": "Save Draft",
+        "tags": [
+          "feedback"
+        ]
+      }
+    },
+    "/api/v1/requests/{request_id}/read": {
+      "post": {
+        "operationId": "mark_request_read_api_v1_requests__request_id__read_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "request_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Request Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Mark Request Read",
         "tags": [
           "feedback"
         ]

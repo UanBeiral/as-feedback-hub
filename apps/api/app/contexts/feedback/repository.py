@@ -218,6 +218,75 @@ class RequestRepository(TenantScopedRepository[FeedbackRequest]):
         stmt = self._scoped().where(FeedbackRequest.cycle_id == cycle_id)
         return list((await self._session.execute(stmt)).scalars().all())
 
+    async def ids_de_avaliadores_do_ciclo(self, cycle_id: UUID) -> list[UUID]:
+        """Quem tem pedido neste ciclo — os destinatários do aviso de abertura.
+
+        Só quem ainda deve resposta: avisar de um ciclo novo quem já teve o pedido
+        cancelado ou abdicado é notificação que a pessoa não sabe o que fazer com.
+        """
+        stmt = (
+            self._scoped()
+            .where(
+                FeedbackRequest.cycle_id == cycle_id,
+                FeedbackRequest.status.in_(STATUS_EM_ABERTO),
+            )
+            .with_only_columns(FeedbackRequest.giver_id)
+            .distinct()
+        )
+        return list((await self._session.execute(stmt)).scalars().all())
+
+    async def ids_de_participantes_do_ciclo(self, cycle_id: UUID) -> list[UUID]:
+        """Todo mundo que participou — avaliadores e avaliados.
+
+        Usado na publicação: o resultado interessa aos dois lados, e quem só recebeu
+        feedback não aparece na lista de avaliadores.
+        """
+        avaliadores = self._scoped().where(
+            FeedbackRequest.cycle_id == cycle_id
+        ).with_only_columns(FeedbackRequest.giver_id)
+        avaliados = self._scoped().where(
+            FeedbackRequest.cycle_id == cycle_id
+        ).with_only_columns(FeedbackRequest.receiver_id)
+
+        ids = set((await self._session.execute(avaliadores)).scalars().all())
+        ids |= set((await self._session.execute(avaliados)).scalars().all())
+        return sorted(ids)
+
+    async def marcar_lido(self, request_id: UUID, leitor_id: UUID) -> int:
+        """Registra que o avaliado leu o feedback recebido (BR-MIGRAR-023 no request).
+
+        O filtro por `receiver_id` está no próprio UPDATE: ninguém marca como lido o
+        feedback de outra pessoa, e o escopo é do banco, não da memória de quem escreve
+        o service.
+        """
+        from sqlalchemy import update
+
+        resultado = await self._session.execute(
+            update(FeedbackRequest)
+            .where(
+                FeedbackRequest.tenant_id == self.tenant_id,
+                FeedbackRequest.id == request_id,
+                FeedbackRequest.receiver_id == leitor_id,
+                FeedbackRequest.status == "submitted",
+                FeedbackRequest.read_at.is_(None),
+            )
+            .values(read_at=datetime.now(UTC), read_by=leitor_id)
+        )
+        return int(resultado.rowcount or 0)
+
+    async def list_recebidos(self, receiver_id: UUID, *, limit: int = 100) -> list[FeedbackRequest]:
+        """Feedbacks que a pessoa recebeu e já foram enviados."""
+        stmt = (
+            self._scoped()
+            .where(
+                FeedbackRequest.receiver_id == receiver_id,
+                FeedbackRequest.status == "submitted",
+            )
+            .order_by(FeedbackRequest.submitted_at.desc())
+            .limit(limit)
+        )
+        return list((await self._session.execute(stmt)).scalars().all())
+
     async def list_para_avaliador(
         self, giver_id: UUID, *, status: tuple[str, ...] = STATUS_EM_ABERTO
     ) -> list[FeedbackRequest]:

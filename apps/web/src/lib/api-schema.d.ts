@@ -1233,6 +1233,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/requests/received": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Received Requests
+         * @description Feedbacks que a pessoa recebeu. `read_at` nulo é o que o sino conta.
+         */
+        get: operations["received_requests_api_v1_requests_received_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/requests/{request_id}": {
         parameters: {
             query?: never;
@@ -1284,6 +1304,23 @@ export interface paths {
         /** Save Draft */
         put: operations["save_draft_api_v1_requests__request_id__draft_put"];
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/requests/{request_id}/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mark Request Read */
+        post: operations["mark_request_read_api_v1_requests__request_id__read_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -5075,6 +5112,26 @@ export interface operations {
             };
         };
     };
+    received_requests_api_v1_requests_received_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RequestOut"][];
+                };
+            };
+        };
+    };
     request_detail_api_v1_requests__request_id__get: {
         parameters: {
             query?: never;
@@ -5164,6 +5221,35 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["RequestOut"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    mark_request_read_api_v1_requests__request_id__read_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                request_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

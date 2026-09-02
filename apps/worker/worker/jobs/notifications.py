@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.contexts.engagement.models import Notification, OutboxMessage, PlatformUpdate
 from app.contexts.identity.models import Profile, User
 from worker.handlers import RegistroDeHandlers
+from worker.jobs.avisos import registra_avisos
 from worker.jobs.email import EmailAdapter
 
 logger = logging.getLogger(__name__)
@@ -65,6 +66,9 @@ def registra_handlers(email: EmailAdapter) -> RegistroDeHandlers:
     o teste rodar sem provedor nenhum.
     """
     registro_local = RegistroDeHandlers()
+    # Eventos de ciclo e de avaliação de cliente viram aviso em `jobs/avisos.py`, que é
+    # onde mora a decisão de quem recebe o quê.
+    registra_avisos(registro_local)
 
     @registro_local.registra("platform_update.published")
     async def notificar_comunicado(session: AsyncSession, mensagem: OutboxMessage) -> None:

@@ -141,6 +141,15 @@ class ProfileRepository(TenantScopedRepository[Profile]):
         )
         return set(result.scalars().all())
 
+    async def list_ids_por_papel(self, *papeis: str) -> list[UUID]:
+        """Perfis ativos de determinados papéis — quem a gestão precisa avisar."""
+        stmt = (
+            self._scoped()
+            .where(Profile.role.in_(papeis), Profile.status == "active")
+            .with_only_columns(Profile.id)
+        )
+        return list((await self._session.execute(stmt)).scalars().all())
+
     async def contar_admins_ativos(self) -> int:
         """Usado antes de remover alguém: o tenant não pode ficar sem administrador."""
         stmt = (

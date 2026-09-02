@@ -344,6 +344,20 @@ async def request_detail(
     )
 
 
+@router.get("/requests/received", response_model=list[RequestOut])
+async def received_requests(tenant: TenantDep, session: SessionDep) -> list[RequestOut]:
+    """Feedbacks que a pessoa recebeu. `read_at` nulo é o que o sino conta."""
+    repo = RequestRepository(session, tenant)
+    return [RequestOut.model_validate(r) for r in await repo.list_recebidos(tenant.user_id)]
+
+
+@router.post("/requests/{request_id}/read", status_code=status.HTTP_204_NO_CONTENT)
+async def mark_request_read(
+    request_id: UUID, tenant: TenantDep, service: RequestServiceDep
+) -> None:
+    await service.mark_read(tenant, request_id)
+
+
 @router.put("/requests/{request_id}/draft", response_model=RequestOut)
 async def save_draft(
     request_id: UUID, payload: AnswersIn, tenant: TenantDep, service: RequestServiceDep

@@ -537,6 +537,20 @@ class RequestService:
                 answer_score=nota,
             )
 
+    async def mark_read(self, tenant: TenantContext, request_id: UUID) -> None:
+        """Registra que o avaliado leu o feedback recebido.
+
+        Idempotente: reler não reescreve o carimbo, porque o UPDATE só encontra linha
+        com `read_at` nulo. Quem não é o destinatário recebe 404 — não precisa saber
+        que o feedback existe.
+        """
+        if await self._requests.marcar_lido(request_id, tenant.user_id):
+            return
+
+        request = await self._requests.get(request_id)
+        if request is None or request.receiver_id != tenant.user_id:
+            raise NotFoundError("Feedback não encontrado")
+
     async def waive(self, tenant: TenantContext, request_id: UUID) -> FeedbackRequest:
         """Abdicar: sai do denominador do progresso (BR-MIGRAR-009)."""
         request = await self._exige_do_avaliador(tenant, request_id)
