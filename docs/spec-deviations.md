@@ -106,7 +106,7 @@
 Corrigidas nesta rodada: B1 (revogação desfeita pelo rollback), B2 (PAR-08 `@critico`),
 B3 (repositório fora do isolamento passava no CI), C1 (`/auth/my-team` truncava em 500).
 
-Ainda abertas (o contexto `engagement` já foi implementado por cima desta base):
+Ainda abertas (`engagement` e `feedback` já foram implementados por cima desta base):
 
 - `identity` cobre só a fatia de sessão. Faltam os comandos de `Profile` e `TeamScope`
   do `target_domain_model.md`: `register`, `reset_password`, `update_profile`,
@@ -118,9 +118,12 @@ Ainda abertas (o contexto `engagement` já foi implementado por cima desta base)
 - Nenhum passo de codegen do cliente OpenAPI no CI (AD-08).
 - Os testes de service usam dublês; falta a camada de integração contra Postgres que
   exercite os `.feature` de PAR-05, PAR-07 e PAR-08 ponta a ponta.
-- O scheduler existe, mas **sem nenhum job registrado**: os dois previstos (fechamento
-  de ciclo com carência de 3 dias e expiração de tokens) pertencem a `feedback` e
-  `client_eval`. Além disso, o inventário do `pg_cron` de produção (AMB-008) continua
-  aberto — é ele que diz o que mais precisa existir aqui.
+- O scheduler tem dois jobs (fechamento de ciclo e expiração de requests). A expiração
+  de tokens públicos entra com `client_eval`, e o inventário do `pg_cron` de produção
+  (AMB-008) continua aberto — é ele que diz o que mais precisa existir ali.
+- Faltam os contextos `client_eval` (avaliação pública por token, PAR-03) e `reporting`
+  (relatórios e exportações, BR-MIGRAR-028/029/030 e o cenário de engajamento de PAR-04).
+- `feedback` não tem leitura pelo destinatário (`read_at`/`read_by` em `feedback_requests`
+  existem no schema, sem endpoint), nem as telas de histórico de equipe.
 - Provedor de email: só `console`. Resend e SMTP levantam erro explícito, e a mensagem
   vai para a DLQ com o motivo — entram junto com o envio de relatórios (BR-MIGRAR-029/030).

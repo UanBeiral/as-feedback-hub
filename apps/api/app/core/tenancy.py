@@ -127,3 +127,17 @@ class TenantScopedRepository[TModel: Base]:
         entity.tenant_id = self._tenant.tenant_id
         self._session.add(entity)
         return entity
+
+    async def remove(self, entity: TModel) -> None:
+        """Remoção física, para o que não tem histórico a preservar.
+
+        Soft-delete é a regra para gente (`profiles.status`, BR-MIGRAR-018); isto serve
+        ao que é descartável de verdade — uma anotação pessoal, um rascunho. Se a
+        entidade participa de histórico, não é este o método. A checagem de tenant é
+        redundante com o `_scoped()` de quem buscou a entidade, e existe porque remoção
+        é irreversível: custa uma comparação e fecha o caminho de quem passar um objeto
+        vindo de outra consulta.
+        """
+        if entity.tenant_id != self._tenant.tenant_id:
+            raise ValueError("tentativa de remover entidade de outro tenant")
+        await self._session.delete(entity)

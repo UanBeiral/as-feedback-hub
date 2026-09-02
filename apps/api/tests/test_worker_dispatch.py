@@ -306,15 +306,17 @@ async def test_job_que_falha_nao_para_os_outros() -> None:
     assert rodou == ["saudavel"]
 
 
-async def test_scheduler_comeca_vazio() -> None:
-    """Nenhum job agendado ainda: os dois previstos dependem de feedback/client_eval.
+async def test_agenda_do_sistema_esta_declarada() -> None:
+    """A lista do que roda sozinho fica aqui, e muda conscientemente.
 
-    O teste existe para o dia em que alguém registrar o primeiro — e for obrigado a
-    olhar aqui e atualizar a expectativa conscientemente.
+    No legado essa resposta só existia dentro do banco de produção (AMB-008). Se um job
+    novo entrar sem passar por este teste, voltamos a ter agendamento que ninguém sabe
+    que existe.
     """
+    import worker.jobs.schedule  # noqa: F401 — registra os jobs por efeito colateral
     from worker.scheduler import scheduler as global_
 
-    assert global_.jobs == []
+    assert sorted(global_.jobs) == ["expirar-requests-vencidos", "fechar-ciclos-vencidos"]
 
 
 # --------------------------------------------------------------- email

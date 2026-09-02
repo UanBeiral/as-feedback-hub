@@ -5,14 +5,13 @@ existia só dentro do banco, não estava em migration nenhuma, e ninguém no rep
 sabia o que rodava nem quando (é o AMB-008, ainda aberto contra a produção). Aqui todo
 job agendado é código versionado, com nome e intervalo visíveis em `JOBS`.
 
-**Nenhum job está registrado ainda, e isso é proposital.** Os dois que a migração prevê
-— fechamento de ciclo com carência de 3 dias e expiração de tokens de avaliação —
-pertencem a `feedback` e `client_eval`, contextos que ainda não existem. Registrar um
-esqueleto que não faz nada seria pior que a ausência: daria a impressão, no dia do
-cutover, de que o fechamento automático está coberto.
+Quem registra os jobs é `worker/jobs/schedule.py` — a agenda inteira do sistema em um
+arquivo só. Hoje há dois, ambos de `feedback`: fechamento de ciclo com carência
+(BR-MIGRAR-005) e expiração de requests vencidos (BR-MIGRAR-003/007). A expiração de
+tokens públicos entra com `client_eval`.
 
 O `pg_cron` de produção precisa ser inventariado (AMB-008) antes de considerarmos esta
-lista completa: o que roda hoje lá dentro é a especificação do que precisa existir aqui.
+lista completa: o que roda hoje lá dentro é a especificação do que ainda falta aqui.
 """
 
 from __future__ import annotations

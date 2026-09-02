@@ -23,7 +23,9 @@ from app.core.db import dispose_engine, get_session_factory
 from worker.consumers.outbox import despachar_lote
 from worker.jobs.email import build_email_adapter
 from worker.jobs.notifications import registra_handlers
-from worker.scheduler import scheduler
+
+# Import por efeito colateral: registra os jobs agendados no scheduler global.
+from worker.jobs.schedule import scheduler
 
 logger = logging.getLogger("worker")
 
