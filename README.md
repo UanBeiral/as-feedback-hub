@@ -59,6 +59,14 @@ PYTHONPATH=apps/api python deploy/seed_tenant.py     --slug as --nome "A&S" --em
 cd apps/api && uvicorn app.main:app --reload
 ```
 
+E o front, em outro terminal:
+
+```bash
+cd apps/web && npm install
+npm run gen:api      # regenera o client tipado a partir de openapi.json (AD-08)
+npm run dev          # http://localhost:3000, com /api indo para a API local
+```
+
 O Redis ainda não é necessário: a fila do outbox é o próprio Postgres (polling por
 `status='pending'`), como descreve `target_data_model.md`. Suba `redis` quando o worker
 existir.

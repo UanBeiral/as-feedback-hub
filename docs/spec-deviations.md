@@ -141,8 +141,15 @@ Ainda abertas (`engagement` e `feedback` já foram implementados por cima desta 
 - O scheduler tem três jobs (fechamento de ciclo, expiração de requests e expiração de
   tokens públicos). O inventário do `pg_cron` de produção (AMB-008) continua aberto — é
   ele que diz o que mais precisa existir ali.
-- `apps/web` continua vazio: as 43 telas de `target_screens.md` (35 literais com
-  oráculo de screenshot + 8 modernizadas) e o codegen do cliente OpenAPI (AD-08).
+- `apps/web` tem a fundação e 14 rotas (login, início, meus feedbacks + formulário,
+  minha equipe, notificações, avaliações de clientes, relatórios, admin de
+  usuários/ciclos/configurações, fale conosco e a página pública por token). Das 43
+  telas de `target_screens.md`, faltam as secundárias — histórico de equipe, caderno
+  do ciclo, feedback livre, formulários e permissões de admin, auditoria, comunicados,
+  triagem de contatos e o detalhe de avaliação de cliente.
+- **A comparação com o oráculo não foi feita.** As 35 telas do subset literal precisam
+  ser conferidas contra os screenshots de `docs/reversa/screens/golden/` — é a validação
+  que `parity_specs.md` exige e que depende de olho humano ou de um runner visual.
 - `feedback` não tem leitura pelo destinatário (`read_at`/`read_by` em `feedback_requests`
   existem no schema, sem endpoint), nem as telas de histórico de equipe.
 - Provedor de email: só `console`. Resend e SMTP levantam erro explícito, e a mensagem
