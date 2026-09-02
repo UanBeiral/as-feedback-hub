@@ -46,12 +46,22 @@ docs/reversa/               specs (fonte da verdade)
 ## Rodando local
 
 ```bash
-cp .env.example .env          # preencha JWT_SECRET
-docker compose -f deploy/docker-compose.yml up -d postgres redis
-cd apps/api && pip install -e ".[dev]"
-alembic upgrade head
-uvicorn app.main:app --reload
+cp .env.example .env                    # preencha JWT_SECRET (32+ caracteres)
+pip install -e "apps/api[dev]"
+
+# --env-file .env não é opcional: o compose procura o .env ao lado do arquivo dele
+# (deploy/), não na raiz, e sem POSTGRES_PASSWORD ele falha antes de subir nada.
+docker compose --env-file .env -f deploy/docker-compose.yml up -d postgres
+
+alembic upgrade head                    # da raiz: é onde vive o alembic.ini
+PYTHONPATH=apps/api python deploy/seed_tenant.py     --slug as --nome "A&S" --email admin@exemplo.com --senha "..."
+
+cd apps/api && uvicorn app.main:app --reload
 ```
+
+O Redis ainda não é necessário: a fila do outbox é o próprio Postgres (polling por
+`status='pending'`), como descreve `target_data_model.md`. Suba `redis` quando o worker
+existir.
 
 ## Invariantes que o CI protege
 
