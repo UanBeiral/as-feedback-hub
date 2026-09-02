@@ -17,6 +17,7 @@ from datetime import timedelta
 from app.core.db import get_session_factory
 from worker.jobs.cycles import (
     expirar_requests_vencidos,
+    expirar_tokens_publicos,
     fechar_ciclos_vencidos,
     listar_tenants_ativos,
 )
@@ -35,3 +36,14 @@ async def _expirar_requests() -> None:
     """Expiração de pendências além do prazo + carência (BR-MIGRAR-003/007)."""
     async with get_session_factory()() as session:
         await expirar_requests_vencidos(session, await listar_tenants_ativos(session))
+
+
+@scheduler.registra("expirar-tokens-publicos", timedelta(hours=1))
+async def _expirar_tokens() -> None:
+    """Links de avaliação de cliente vencidos (PAR-06 § expiração de tokens).
+
+    De hora em hora, e não uma vez por dia: um link expirado que ainda abre o formulário
+    é o cliente respondendo algo que ninguém vai considerar válido.
+    """
+    async with get_session_factory()() as session:
+        await expirar_tokens_publicos(session)

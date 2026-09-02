@@ -101,6 +101,31 @@
   importando `app.*` como biblioteca, que é o ponto que a spec queria garantir.
 - **Ação na spec**: corrigir a árvore para `apps/worker/worker/`.
 
+## DEV-A09 — o catálogo de settings tem 11 chaves, não 8
+
+- **Spec**: BR-MIGRAR-027 fixa "catálogo de 8 chaves".
+- **Código**: as 8 do legado mais `client_eval_spontaneous_enabled`,
+  `client_eval_negative_keywords` e `client_eval_negative_rating_max`.
+- **Motivo**: as oito são o inventário do que existia, não um limite do sistema novo.
+  AMB-002 exige o fluxo espontâneo atrás de flag **por tenant**, e BR-MIGRAR-021 pede
+  palavras negativas **configuráveis por tenant** — sem chave, as duas viravam constante
+  no código e o cliente dependeria de deploy para ajustar. Todas nascem no default
+  conservador: fluxo desligado, lista de palavras vazia.
+- **Ação na spec**: registrar em BR-MIGRAR-027 que o catálogo cresce com o sistema, e
+  incluir as três chaves.
+
+## DEV-A10 — a submissão pública aceita `in_progress`, não só `pending`
+
+- **Spec**: `target_data_model.md` § Concorrência descreve o guard como
+  `UPDATE ... WHERE status='pending' AND token=... AND token_expires_at > now()`.
+- **Código**: o mesmo UPDATE condicional, com `status IN ('pending','in_progress')`.
+- **Motivo**: a máquina de estados da própria spec (`pending → in_progress → submitted`)
+  passa por `in_progress` quando o cliente **abre** o formulário. Com o guard literal,
+  todo cliente que abrisse a página antes de enviar seria recusado no envio — o guard
+  recusaria exatamente o caminho normal. A intenção do guard é "ainda não respondida e
+  dentro da validade", e é isso que o código implementa.
+- **Ação na spec**: corrigir o SQL de exemplo.
+
 ## Pendências abertas do gate R-06
 
 Corrigidas nesta rodada: B1 (revogação desfeita pelo rollback), B2 (PAR-08 `@critico`),
@@ -118,11 +143,11 @@ Ainda abertas (`engagement` e `feedback` já foram implementados por cima desta 
 - Nenhum passo de codegen do cliente OpenAPI no CI (AD-08).
 - Os testes de service usam dublês; falta a camada de integração contra Postgres que
   exercite os `.feature` de PAR-05, PAR-07 e PAR-08 ponta a ponta.
-- O scheduler tem dois jobs (fechamento de ciclo e expiração de requests). A expiração
-  de tokens públicos entra com `client_eval`, e o inventário do `pg_cron` de produção
-  (AMB-008) continua aberto — é ele que diz o que mais precisa existir ali.
-- Faltam os contextos `client_eval` (avaliação pública por token, PAR-03) e `reporting`
-  (relatórios e exportações, BR-MIGRAR-028/029/030 e o cenário de engajamento de PAR-04).
+- O scheduler tem três jobs (fechamento de ciclo, expiração de requests e expiração de
+  tokens públicos). O inventário do `pg_cron` de produção (AMB-008) continua aberto — é
+  ele que diz o que mais precisa existir ali.
+- Falta o contexto `reporting` (relatórios e exportações, BR-MIGRAR-028/029/030 e o
+  cenário de engajamento de PAR-04), incluindo o `ExportJob` assíncrono de AD-07.
 - `feedback` não tem leitura pelo destinatário (`read_at`/`read_by` em `feedback_requests`
   existem no schema, sem endpoint), nem as telas de histórico de equipe.
 - Provedor de email: só `console`. Resend e SMTP levantam erro explícito, e a mensagem

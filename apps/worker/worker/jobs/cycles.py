@@ -24,6 +24,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.contexts.client_eval.repository import ExpiredTokenRepository
 from app.contexts.engagement.repository import OutboxRepository
 from app.contexts.engagement.service import OutboxService
 from app.contexts.feedback.repository import CycleDueRepository, RequestRepository
@@ -99,6 +100,20 @@ async def expirar_requests_vencidos(
 
     await session.commit()
     return total
+
+
+async def expirar_tokens_publicos(session: AsyncSession, agora: datetime | None = None) -> int:
+    """Expira avaliações de cliente cujo link venceu sem resposta (PAR-06).
+
+    Um UPDATE só, atravessando tenants: o job não precisa dos objetos, precisa do
+    efeito. Idempotente porque o filtro exclui o que já saiu de `pending`/`in_progress`
+    — rodar duas vezes no mesmo minuto muda zero linhas na segunda.
+    """
+    expiradas = await ExpiredTokenRepository(session).expirar(agora)
+    if expiradas:
+        logger.info("scheduler: %s avaliações de cliente expiradas", expiradas)
+    await session.commit()
+    return expiradas
 
 
 async def listar_tenants_ativos(session: AsyncSession) -> list[UUID]:

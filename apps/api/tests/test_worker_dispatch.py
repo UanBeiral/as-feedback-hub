@@ -316,7 +316,11 @@ async def test_agenda_do_sistema_esta_declarada() -> None:
     import worker.jobs.schedule  # noqa: F401 — registra os jobs por efeito colateral
     from worker.scheduler import scheduler as global_
 
-    assert sorted(global_.jobs) == ["expirar-requests-vencidos", "fechar-ciclos-vencidos"]
+    assert sorted(global_.jobs) == [
+        "expirar-requests-vencidos",
+        "expirar-tokens-publicos",
+        "fechar-ciclos-vencidos",
+    ]
 
 
 # --------------------------------------------------------------- email

@@ -12,6 +12,8 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.contexts.client_eval.router import public_router as client_eval_public_router
+from app.contexts.client_eval.router import router as client_eval_router
 from app.contexts.engagement.router import router as engagement_router
 from app.contexts.feedback.router import router as feedback_router
 from app.contexts.identity.router import router as identity_router
@@ -53,6 +55,10 @@ def create_app() -> FastAPI:
     app.include_router(identity_router, prefix="/api/v1")
     app.include_router(engagement_router, prefix="/api/v1")
     app.include_router(feedback_router, prefix="/api/v1")
+    app.include_router(client_eval_router, prefix="/api/v1")
+    # Superfície aberta. O prefixo final é /api/v1/public/, que é exatamente onde o
+    # Nginx aplica `limit_req` (AD-06) — mudar isto aqui desliga o rate limiting lá.
+    app.include_router(client_eval_public_router, prefix="/api/v1")
 
     @app.get("/health", tags=["infra"])
     async def health() -> dict[str, str]:

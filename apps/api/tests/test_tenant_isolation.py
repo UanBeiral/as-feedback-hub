@@ -24,7 +24,7 @@ from app.core.tenancy import TenantContext, TenantScopedRepository
 # Única tabela legitimamente sem `tenant_id`: ela é o próprio tenant.
 TABELAS_SEM_TENANT = {"tenants"}
 
-CONTEXTOS = ["identity", "engagement", "feedback"]
+CONTEXTOS = ["identity", "engagement", "feedback", "client_eval"]
 
 # Repositórios que legitimamente não herdam `TenantScopedRepository`, com o motivo.
 # A lista é curta de propósito: cada entrada é uma exceção ao isolamento por herança e
@@ -39,6 +39,11 @@ REPOSITORIOS_SEM_ESCOPO = {
     # Mesmo caso: o job de fechamento varre ciclos vencidos de todos os tenants, e cada
     # ciclo devolvido carrega o próprio `tenant_id`, usado a partir dali.
     "CycleDueRepository",
+    "ExpiredTokenRepository",
+    # Superfície pública: quem chama é o cliente do escritório, sem sessão. O token é a
+    # credencial *e* o resolvedor de tenant — a linha encontrada por ele carrega o
+    # `tenant_id`, e daí em diante tudo é escopado.
+    "PublicEvaluationRepository",
 }
 
 

@@ -55,6 +55,15 @@ SETTINGS_CATALOG: dict[str, str | None] = {
     "gestor_can_access_reports": "false",
     "gestor_can_access_agenda": "false",
     "colaborador_can_generate_own_report": "false",
+    # Três chaves que o catálogo do legado não tinha, exigidas por regras que a
+    # migração manda implementar (ver docs/spec-deviations.md, DEV-A09):
+    # AMB-002 pede o fluxo espontâneo atrás de flag por tenant — desligado por default,
+    # como todo o resto.
+    "client_eval_spontaneous_enabled": "false",
+    # BR-MIGRAR-021 pede palavras negativas *configuráveis por tenant*; sem uma chave,
+    # elas virariam constante no código e o cliente dependeria de deploy para ajustar.
+    "client_eval_negative_keywords": "[]",
+    "client_eval_negative_rating_max": "2",
 }
 
 
