@@ -30,6 +30,16 @@ jobs:
         env:
           JWT_SECRET: chave-de-ci-com-mais-de-32-caracteres-ok
 
+      - name: Contrato OpenAPI está atualizado
+        # O client TypeScript do front é gerado deste arquivo (AD-08). Se ele ficar
+        # para trás, o front compila contra um contrato que não existe mais — foi
+        # assim que o legado acumulou `as any`.
+        run: |
+          python apps/api/scripts/dump_openapi.py apps/web/openapi.json
+          git diff --exit-code apps/web/openapi.json
+        env:
+          JWT_SECRET: chave-de-ci-com-mais-de-32-caracteres-ok
+
       - name: Migrations aplicam do zero
         run: alembic upgrade head
         env:
@@ -48,3 +58,32 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Instalar dependências
+        run: npm ci --no-audit --no-fund
+        working-directory: apps/web
+
+      - name: Lint
+        run: npm run lint
+        working-directory: apps/web
+
+      - name: Tipos
+        # O contrato vem do OpenAPI (AD-08): um campo removido no backend quebra aqui,
+        # e não em produção.
+        run: npm run typecheck
+        working-directory: apps/web
+
+      - name: Build
+        run: npm run build
+        working-directory: apps/web

@@ -1,0 +1,112 @@
+/*
+ * Tokens semânticos do A&S Feedback Hub.
+ *
+ * Fonte: `docs/reversa/design-system/tokens.md` (32 tokens 🟢, extraídos do
+ * `index.css` do legado) + `tokens-derived.md` (4 derivados, DEV-008).
+ *
+ * Formato HSL sem `hsl()` de propósito: é o que permite compor opacidade no Tailwind
+ * (`hsl(var(--primary) / 0.5)`). Foi a convenção do legado e não há motivo para mudar.
+ *
+ * Identidade: navy `213 52% 24%` (#1e3a5f) como primária e gold `42 52% 54%` (#c9a84c)
+ * como destaque. No escuro a primária **inverte para o gold** — não é engano de cópia,
+ * é a decisão do design original: navy sobre fundo escuro sumiria.
+ *
+ * Literal hexadecimal em componente é proibido (DEV-003): toda cor sai daqui.
+ */
+
+:root {
+  --background: 210 33% 97%;
+  --foreground: 213 44% 24%;
+
+  --card: 0 0% 100%;
+  --card-foreground: 213 44% 24%;
+
+  --popover: 0 0% 100%;
+  --popover-foreground: 213 44% 24%;
+
+  --primary: 213 52% 24%;
+  --primary-foreground: 0 0% 100%;
+
+  --secondary: 210 33% 97%;
+  --secondary-foreground: 213 44% 24%;
+
+  --muted: 210 33% 95%;
+  --muted-foreground: 213 10% 47%;
+
+  --accent: 42 52% 54%;
+  --accent-foreground: 0 0% 100%;
+
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+
+  --success: 142 71% 45%;
+  --success-foreground: 0 0% 100%;
+
+  --warning: 38 92% 50%;
+  --warning-foreground: 0 0% 100%;
+
+  --border: 214 20% 88%;
+  --input: 214 20% 88%;
+  --ring: 213 52% 24%;
+
+  /* A sidebar é sempre navy no claro, com o item ativo em gold. */
+  --sidebar-background: 213 52% 24%;
+  --sidebar-foreground: 0 0% 100%;
+  --sidebar-primary: 42 52% 54%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 213 52% 30%;
+  --sidebar-accent-foreground: 0 0% 100%;
+  --sidebar-border: 213 52% 30%;
+  --sidebar-ring: 42 52% 54%;
+  --sidebar-muted-foreground: 210 20% 70%;
+
+  /*
+   * Derivados (DEV-008). O legado usava estas cores nos badges de papel e no fluxo
+   * público sem token nomeado. Os valores abaixo são a leitura documentada em
+   * `tokens-derived.md`: gestor e colaborador reaproveitam tokens existentes, e o roxo
+   * de coordenador/público está marcado para conferência contra o screenshot.
+   */
+  --role-coordinator: 265 60% 55%; /* 🔴 conferir contra o oráculo */
+  --role-manager: var(--accent);
+  --role-collaborator: var(--muted-foreground);
+  --public-gradient-from: 265 60% 55%; /* 🔴 conferir */
+  --public-gradient-to: 213 52% 24%;
+
+  --radius: 0.5rem;
+}
+
+/* Tema escuro por classe, como no legado (`darkMode: ["class"]`). */
+.dark {
+  --background: 215 28% 10%;
+  --foreground: 210 20% 90%;
+
+  --card: 215 28% 13%;
+  --card-foreground: 210 20% 90%;
+
+  --popover: 215 28% 13%;
+  --popover-foreground: 210 20% 90%;
+
+  /* A inversão intencional: no escuro, quem manda é o gold. */
+  --primary: 42 52% 54%;
+  --primary-foreground: 0 0% 100%;
+
+  --secondary: 215 28% 16%;
+  --secondary-foreground: 210 20% 90%;
+
+  --muted: 215 28% 18%;
+  --muted-foreground: 210 15% 60%;
+
+  --accent: 42 52% 54%;
+  --accent-foreground: 0 0% 100%;
+
+  --border: 215 20% 22%;
+  --input: 215 20% 22%;
+  --ring: 42 52% 54%;
+
+  --sidebar-background: 215 28% 8%;
+  --sidebar-foreground: 210 20% 90%;
+  --sidebar-accent: 215 28% 14%;
+  --sidebar-accent-foreground: 210 20% 90%;
+  --sidebar-border: 215 20% 18%;
+  --sidebar-muted-foreground: 210 15% 55%;
+}

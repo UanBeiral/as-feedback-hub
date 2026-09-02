@@ -2,10 +2,9 @@
 # Nada aqui é gerenciado por terceiro: foi essa a restrição do brief que motivou a
 # saída do Supabase.
 #
-# ESTADO ATUAL: `postgres`, `redis`, `api` e `worker` sobem. `web` e `nginx` seguem
-# comentados porque o código deles ainda não existe:
-#   web    → app Next.js em apps/web
-#   nginx  → depois que `web` existir, senão o upstream não resolve no boot
+# ESTADO ATUAL: `postgres`, `redis`, `api`, `worker` e `web` sobem. `nginx` segue
+# comentado até haver certificado TLS na VPS — ele é o último passo do deploy, não do
+# desenvolvimento.
 #
 # O `redis` ainda não é usado por ninguém: a fila do outbox é o próprio Postgres
 # (polling por `status='pending'`, como descreve target_data_model.md). Ele fica de pé
@@ -73,16 +72,20 @@ services:
     deploy:
       replicas: 1
 
-  # web:
-  #   build:
-  #     context: ..
-  #     dockerfile: deploy/web.Dockerfile
-  #   restart: unless-stopped
-  #   env_file: ../.env
-  #   depends_on:
-  #     - api
-  #   expose:
-  #     - "3000"
+  web:
+    build:
+      context: ..
+      dockerfile: deploy/web.Dockerfile
+    restart: unless-stopped
+    env_file: ../.env
+    environment:
+      # O front fala com a API pela rede interna do compose; o navegador nunca vê
+      # este endereço, porque as chamadas passam pelo rewrite do próprio Next.
+      API_ORIGIN: http://api:8000
+    depends_on:
+      - api
+    expose:
+      - "3000"
 
   # nginx:
   #   image: nginx:1.27-alpine
