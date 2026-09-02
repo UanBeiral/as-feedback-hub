@@ -146,8 +146,8 @@ Ainda abertas (`engagement` e `feedback` já foram implementados por cima desta 
 - O scheduler tem três jobs (fechamento de ciclo, expiração de requests e expiração de
   tokens públicos). O inventário do `pg_cron` de produção (AMB-008) continua aberto — é
   ele que diz o que mais precisa existir ali.
-- Falta o contexto `reporting` (relatórios e exportações, BR-MIGRAR-028/029/030 e o
-  cenário de engajamento de PAR-04), incluindo o `ExportJob` assíncrono de AD-07.
+- `apps/web` continua vazio: as 43 telas de `target_screens.md` (35 literais com
+  oráculo de screenshot + 8 modernizadas) e o codegen do cliente OpenAPI (AD-08).
 - `feedback` não tem leitura pelo destinatário (`read_at`/`read_by` em `feedback_requests`
   existem no schema, sem endpoint), nem as telas de histórico de equipe.
 - Provedor de email: só `console`. Resend e SMTP levantam erro explícito, e a mensagem

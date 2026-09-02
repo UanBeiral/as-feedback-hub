@@ -29,3 +29,6 @@ deploy/migrate/reference/*.csv
 # Sistema
 .DS_Store
 Thumbs.db
+
+# Arquivos gerados pelo worker (AD-07/AD-09): saída, não fonte.
+data/

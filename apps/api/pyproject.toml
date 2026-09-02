@@ -16,6 +16,10 @@ dependencies = [
     "pyjwt>=2.10",
     "redis>=5.2",
     "python-multipart>=0.0.12",
+    # Exportações do worker (AD-07). No legado eram jspdf/xlsx no browser, e um
+    # relatório grande travava a aba de quem pediu.
+    "openpyxl>=3.1",
+    "reportlab>=4.2",
 ]
 
 [project.optional-dependencies]

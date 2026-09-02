@@ -24,7 +24,13 @@ from app.core.tenancy import TenantContext, TenantScopedRepository
 # Única tabela legitimamente sem `tenant_id`: ela é o próprio tenant.
 TABELAS_SEM_TENANT = {"tenants"}
 
-CONTEXTOS = ["identity", "engagement", "feedback", "client_eval"]
+CONTEXTOS = ["identity", "engagement", "feedback", "client_eval", "reporting"]
+
+# `reporting` guarda seus read models em `queries.py` (a topologia aprovada prevê isso
+# para contexto de leitura pura). Sem este módulo na varredura, agregações inteiras
+# ficariam fora da vigilância de isolamento — que é justamente onde um SELECT sem
+# tenant passa despercebido.
+MODULOS_DE_REPOSITORIO = ("repository", "queries")
 
 # Repositórios que legitimamente não herdam `TenantScopedRepository`, com o motivo.
 # A lista é curta de propósito: cada entrada é uma exceção ao isolamento por herança e
@@ -44,13 +50,21 @@ REPOSITORIOS_SEM_ESCOPO = {
     # credencial *e* o resolvedor de tenant — a linha encontrada por ele carrega o
     # `tenant_id`, e daí em diante tudo é escopado.
     "PublicEvaluationRepository",
+    # O worker busca o job de exportação pelo id que veio na mensagem; o `tenant_id`
+    # do job encontrado é conferido contra o da mensagem antes de qualquer leitura.
+    "ExportJobDispatchRepository",
 }
 
 
 def _import_all_contexts() -> None:
     for ctx in CONTEXTOS:
         importlib.import_module(f"app.contexts.{ctx}.models")
-        importlib.import_module(f"app.contexts.{ctx}.repository")
+        for modulo in MODULOS_DE_REPOSITORIO:
+            try:
+                importlib.import_module(f"app.contexts.{ctx}.{modulo}")
+            except ModuleNotFoundError:
+                # Nem todo contexto tem os dois módulos; só `reporting` tem `queries`.
+                continue
 
 
 def _all_scoped_repositories() -> list[type[TenantScopedRepository]]:
@@ -98,13 +112,19 @@ def test_nenhum_repositorio_escapa_do_escopo_por_acidente() -> None:
     """
     fora_do_escopo: list[str] = []
     for ctx in CONTEXTOS:
-        modulo = importlib.import_module(f"app.contexts.{ctx}.repository")
-        for nome, cls in inspect.getmembers(modulo, inspect.isclass):
-            if cls.__module__ != modulo.__name__ or not nome.endswith("Repository"):
+        for nome_do_modulo in MODULOS_DE_REPOSITORIO:
+            try:
+                modulo = importlib.import_module(f"app.contexts.{ctx}.{nome_do_modulo}")
+            except ModuleNotFoundError:
                 continue
-            if issubclass(cls, TenantScopedRepository) or nome in REPOSITORIOS_SEM_ESCOPO:
-                continue
-            fora_do_escopo.append(f"{ctx}.{nome}")
+            for nome, cls in inspect.getmembers(modulo, inspect.isclass):
+                if cls.__module__ != modulo.__name__:
+                    continue
+                if not (nome.endswith("Repository") or nome.endswith("Query")):
+                    continue
+                if issubclass(cls, TenantScopedRepository) or nome in REPOSITORIOS_SEM_ESCOPO:
+                    continue
+                fora_do_escopo.append(f"{ctx}.{nome}")
 
     assert not fora_do_escopo, (
         f"Repositórios sem isolamento por herança: {fora_do_escopo}. "

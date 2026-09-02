@@ -51,6 +51,9 @@ class Settings(BaseSettings):
     smtp_password: str = ""
     email_from: str = "nao-responda@exemplo.com"
 
+    # Exportações (AD-07/AD-09): arquivos em disco da VPS, um diretório por tenant.
+    export_dir: str = "data/exports"
+
     # Worker (AD-04/AD-05). O intervalo só vale para fila vazia: com trabalho, os
     # lotes se emendam sem espera.
     worker_poll_seconds: int = 5

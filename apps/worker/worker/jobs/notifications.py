@@ -99,6 +99,13 @@ def registra_handlers(email: EmailAdapter) -> RegistroDeHandlers:
             body=comunicado.content,
         )
 
+    @registro_local.registra("export.requested")
+    async def gerar_exportacao(session: AsyncSession, mensagem: OutboxMessage) -> None:
+        """Delegação: a geração vive em `jobs/exports.py`, que é onde está o assunto."""
+        from worker.jobs.exports import processar_exportacao
+
+        await processar_exportacao(session, mensagem, email)
+
     @registro_local.registra_prefixo("audit.")
     async def notificar_envolvido(session: AsyncSession, mensagem: OutboxMessage) -> None:
         """Avisa quem foi afetado por uma ação sensível (BR-MIGRAR-026).
