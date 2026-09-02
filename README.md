@@ -16,6 +16,9 @@ Leia, nesta ordem, em `docs/reversa/migration/`:
 Depois, `docs/spec-deviations.md`: os pontos em que o código deliberadamente **não**
 segue a spec, com o motivo. Antes de "consertar" algo que parece divergente, confira lá.
 
+E `docs/estado-do-projeto.md`: o que existe, o que falta e o que só aparece rodando
+contra banco de verdade. É a leitura mais curta para entender onde o projeto está.
+
 O código legado **não é referência de implementação**. Quando uma spec conflitar com o
 que o protótipo fazia, a spec vence.
 
