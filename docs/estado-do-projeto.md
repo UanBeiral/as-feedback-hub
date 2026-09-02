@@ -65,6 +65,29 @@ como decidido.
 - **Análises de IA** (AMB-005) e **status `reviewed`** (AMB-003) ficaram fora por decisão
   registrada, não por esquecimento.
 
+## Fila de trabalho
+
+Em ordem de valor, para quem for continuar. Cada item diz o que fazer e onde olhar.
+
+1. **Conferir as 35 telas literais contra o oráculo.** Abrir cada screenshot em
+   `docs/reversa/screens/golden/` ao lado da tela correspondente e registrar divergência
+   em `screen_deviation_log.md`. É a validação que `parity_specs.md` exige e a única que
+   depende de olho humano. Sem ela, "paridade" é afirmação sem prova.
+2. **Tornar os `.feature` executáveis.** Os 10 arquivos em
+   `docs/reversa/migration/parity_tests/` são o roteiro formal da homologação e hoje não
+   rodam. Os cenários estão cobertos por testes de service, mas o cliente vai homologar
+   pelo roteiro, não pela suíte.
+3. **Telas que faltam**: detalhe da avaliação de cliente, envio de feedback livre pela
+   interface. A Agenda está fora do corte por decisão (AMB-007).
+4. **Provedor de email real.** Hoje só `console`; Resend e SMTP levantam erro explícito
+   e a mensagem vai para a DLQ. Nenhum email chega a ninguém até isso mudar
+   (BR-MIGRAR-030).
+5. **Os três itens do runbook** — dependem de acesso à produção e bloqueiam o cutover,
+   não o desenvolvimento. Detalhe abaixo.
+
+Antes de qualquer entrega grande, subir o Postgres e rodar os fluxos de ponta a ponta.
+A seção seguinte explica por quê.
+
 ## Coisas que só aparecem rodando
 
 Quatro defeitos desta fase não foram pegos por teste nenhum — apareceram ao rodar contra
