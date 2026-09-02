@@ -51,17 +51,40 @@ export function Shell({ children }: { children: React.ReactNode }) {
     (temPapel(usuario, "gestor") && toggleLigado(configuracoes, "gestor_can_access_reports")) ||
     temCapacidade(usuario, "can_generate_reports");
 
+  const administra = temPapel(usuario, "admin", "rh");
+  // Escopo de equipe: gestor pelos liderados, coordenador pelos coordenados
+  // (BR-MIGRAR-017). Colaborador comum não tem equipe para ver.
+  const temEquipe = administra || temPapel(usuario, "gestor") || usuario.is_coordinator;
+
+  // A ordem segue a do menu do legado, para quem migra não precisar reaprender onde as
+  // coisas ficam. Os itens de administração aparecem agrupados no fim.
   const itens: ItemDeMenu[] = [
     { href: "/", rotulo: "Início", visivel: true },
     { href: "/meus-feedbacks", rotulo: "Meus feedbacks", visivel: true },
-    { href: "/minha-equipe", rotulo: "Minha equipe", visivel: temPapel(usuario, "admin", "rh", "gestor") || usuario.is_coordinator },
+    { href: "/anotacoes", rotulo: "Anotações", visivel: temEquipe },
+    { href: "/minha-equipe", rotulo: "Minha equipe", visivel: temEquipe },
+    {
+      href: "/historico-equipe",
+      rotulo: "Histórico da equipe",
+      visivel: temEquipe || temCapacidade(usuario, "can_view_team_history"),
+    },
     { href: "/avaliacoes-clientes", rotulo: "Avaliações de clientes", visivel: true },
     { href: "/relatorios", rotulo: "Relatórios", visivel: podeRelatorios },
     { href: "/notificacoes", rotulo: "Notificações", visivel: true },
-    { href: "/admin/usuarios", rotulo: "Usuários", visivel: temPapel(usuario, "admin", "rh") },
-    { href: "/admin/ciclos", rotulo: "Ciclos", visivel: temPapel(usuario, "admin", "rh") },
-    { href: "/admin/configuracoes", rotulo: "Configurações", visivel: temPapel(usuario, "admin", "rh") },
+
+    { href: "/admin/usuarios", rotulo: "Usuários", visivel: administra },
+    { href: "/admin/departamentos", rotulo: "Departamentos", visivel: administra },
+    { href: "/admin/ciclos", rotulo: "Ciclos", visivel: administra },
+    { href: "/admin/permissoes", rotulo: "Permissões", visivel: administra },
+    { href: "/admin/diagnostico", rotulo: "Diagnóstico", visivel: administra },
+    { href: "/admin/formularios", rotulo: "Formulários", visivel: administra },
+    { href: "/admin/auditoria", rotulo: "Auditoria", visivel: administra },
+    { href: "/admin/contatos", rotulo: "Fale conosco (triagem)", visivel: administra },
+    { href: "/admin/atualizacoes", rotulo: "Atualizações", visivel: administra },
+    { href: "/admin/configuracoes", rotulo: "Configurações", visivel: administra },
+
     { href: "/fale-conosco", rotulo: "Fale conosco", visivel: true },
+    { href: "/meu-perfil", rotulo: "Meu perfil", visivel: true },
   ];
 
   return (

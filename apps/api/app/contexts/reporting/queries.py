@@ -13,7 +13,7 @@ não na renderização: o ponto do limite é não trafegar o que ninguém vai ol
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 from uuid import UUID
 
 from sqlalchemy import Select, and_, case, func, select
@@ -23,6 +23,7 @@ from app.contexts.feedback.models import (
     FeedbackAnswer,
     FeedbackCycle,
     FeedbackRequest,
+    FreeFeedback,
 )
 from app.contexts.identity.models import Department, Profile
 from app.core.tenancy import TenantScopedRepository
@@ -237,6 +238,160 @@ class EngagementQuery(TenantScopedRepository[FeedbackRequest]):
             )
             for pid, nome, solicitados, enviados_ in resultado.all()
         ]
+
+
+@dataclass(frozen=True, slots=True)
+class ItemDeHistorico:
+    """Uma linha do histórico, seja de que tipo for.
+
+    Um formato só para os três tipos (livre, cliente, 360) porque a tela os mostra em
+    seções com a mesma estrutura. Guardar três formatos diferentes só empurraria a
+    normalização para o front.
+    """
+
+    tipo: str
+    quando: datetime | None
+    sobre_id: UUID
+    sobre_nome: str
+    titulo: str
+    detalhe: str | None
+    lido_em: datetime | None
+
+
+class TeamHistoryQuery(TenantScopedRepository[FeedbackRequest]):
+    """Histórico dos três tipos de feedback, restrito ao escopo de equipe.
+
+    O escopo chega pronto do `TeamScopeService` — esta query nunca o amplia. É o
+    cenário "parâmetro não amplia escopo" de PAR-05 do lado da leitura: lista de ids
+    vazia devolve vazio, e não "todo mundo".
+    """
+
+    model = FeedbackRequest
+
+    async def livre(
+        self, visiveis: set[UUID], *, limite: int = LIMITE_TABELA
+    ) -> list[ItemDeHistorico]:
+        if not visiveis:
+            return []
+        stmt = (
+            select(
+                FreeFeedback.created_at,
+                Profile.id,
+                Profile.full_name,
+                FreeFeedback.is_anonymous,
+                FreeFeedback.positives,
+                FreeFeedback.improvements,
+                FreeFeedback.message,
+                FreeFeedback.read_at,
+            )
+            .select_from(FreeFeedback)
+            .join(Profile, Profile.id == FreeFeedback.receiver_id)
+            .where(
+                FreeFeedback.tenant_id == self.tenant_id,
+                FreeFeedback.receiver_id.in_(visiveis),
+            )
+            .order_by(FreeFeedback.created_at.desc())
+            .limit(limite)
+        )
+        linhas = (await self._session.execute(stmt)).all()
+        return [
+            ItemDeHistorico(
+                tipo="livre",
+                quando=quando,
+                sobre_id=pid,
+                sobre_nome=nome,
+                titulo="Feedback livre" + (" (anônimo)" if anonimo else ""),
+                detalhe=_juntar(positivos, melhorias, mensagem),
+                lido_em=lido,
+            )
+            for quando, pid, nome, anonimo, positivos, melhorias, mensagem, lido in linhas
+        ]
+
+    async def clientes(
+        self, visiveis: set[UUID], *, limite: int = LIMITE_TABELA
+    ) -> list[ItemDeHistorico]:
+        if not visiveis:
+            return []
+        stmt = (
+            select(
+                ClientEvaluation.submitted_at,
+                Profile.id,
+                Profile.full_name,
+                ClientEvaluation.client_name,
+                ClientEvaluation.overall_rating,
+                ClientEvaluation.has_negative,
+            )
+            .select_from(ClientEvaluation)
+            .join(Profile, Profile.id == ClientEvaluation.target_user_id)
+            .where(
+                ClientEvaluation.tenant_id == self.tenant_id,
+                ClientEvaluation.target_user_id.in_(visiveis),
+                ClientEvaluation.status == "submitted",
+            )
+            .order_by(ClientEvaluation.submitted_at.desc())
+            .limit(limite)
+        )
+        linhas = (await self._session.execute(stmt)).all()
+        return [
+            ItemDeHistorico(
+                tipo="cliente",
+                quando=quando,
+                sobre_id=pid,
+                sobre_nome=nome,
+                titulo=f"Avaliação de {cliente or 'cliente'}",
+                detalhe=_juntar(
+                    f"Nota {nota}" if nota is not None else None,
+                    "sinalizada para atenção" if negativa else None,
+                ),
+                lido_em=None,
+            )
+            for quando, pid, nome, cliente, nota, negativa in linhas
+        ]
+
+    async def ciclos(
+        self, visiveis: set[UUID], *, limite: int = LIMITE_TABELA
+    ) -> list[ItemDeHistorico]:
+        if not visiveis:
+            return []
+        stmt = (
+            select(
+                FeedbackRequest.submitted_at,
+                Profile.id,
+                Profile.full_name,
+                FeedbackCycle.name,
+                FeedbackRequest.read_at,
+            )
+            .select_from(FeedbackRequest)
+            .join(Profile, Profile.id == FeedbackRequest.receiver_id)
+            .join(FeedbackCycle, FeedbackCycle.id == FeedbackRequest.cycle_id)
+            .where(
+                FeedbackRequest.tenant_id == self.tenant_id,
+                FeedbackRequest.receiver_id.in_(visiveis),
+                FeedbackRequest.status == "submitted",
+            )
+            .order_by(FeedbackRequest.submitted_at.desc())
+            .limit(limite)
+        )
+        linhas = (await self._session.execute(stmt)).all()
+        return [
+            ItemDeHistorico(
+                tipo="ciclo",
+                quando=quando,
+                sobre_id=pid,
+                sobre_nome=nome,
+                titulo=f"Feedback 360 — {ciclo}",
+                # Sem o autor, de propósito: quem avaliou não aparece no histórico.
+                detalhe=None,
+                lido_em=lido,
+            )
+            for quando, pid, nome, ciclo, lido in linhas
+        ]
+
+
+def _juntar(*partes: str | None) -> str | None:
+    """Junta o que existe, devolve `None` quando não sobra nada."""
+    texto = " · ".join(parte.strip() for parte in partes if parte and parte.strip())
+    return texto or None
 
 
 class ExecutiveDataQuery(TenantScopedRepository[FeedbackRequest]):

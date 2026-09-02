@@ -12,6 +12,7 @@ Duas coisas que a spec cobra e que ficam visíveis já na assinatura das rotas:
 
 from __future__ import annotations
 
+from dataclasses import asdict
 from typing import Annotated
 from uuid import UUID
 
@@ -19,6 +20,7 @@ from fastapi import APIRouter, Depends, Query, status
 
 from app.contexts.engagement.repository import AuditLogRepository, OutboxRepository
 from app.contexts.engagement.service import AuditService, OutboxService
+from app.contexts.feedback.diagnostics import DiagnosticsService
 from app.contexts.feedback.repository import (
     AnswerRepository,
     CycleNoteRepository,
@@ -37,14 +39,17 @@ from app.contexts.feedback.schemas import (
     CycleNoteIn,
     CycleNoteOut,
     CycleOut,
+    DiagnosticoOut,
     ExtendIn,
     FormIn,
     FormOut,
     FreeFeedbackIn,
     FreeFeedbackOut,
     OpenCycleOut,
+    ParDePermissaoOut,
     PermissionIn,
     PermissionOut,
+    PessoaComCargaOut,
     ProgressOut,
     QuestionIn,
     QuestionOut,
@@ -176,6 +181,55 @@ async def archive_form(form_id: UUID, tenant: AdminDep, service: FormServiceDep)
 
 
 # ---------------------------------------------------------------- permissões
+
+@router.get("/permissions/diagnostics", response_model=DiagnosticoOut)
+async def diagnostico_de_permissoes(tenant: AdminDep, session: SessionDep) -> DiagnosticoOut:
+    """O que vai dar errado no próximo ciclo — antes de ele abrir.
+
+    Declarada acima de `/permissions` com parâmetro de propósito: caminho literal
+    precisa vir antes de rota com placeholder, senão `diagnostics` seria lido como id.
+    """
+    service = DiagnosticsService(
+        permissions=PermissionRepository(session, tenant),
+        cycles=CycleRepository(session, tenant),
+        requests=RequestRepository(session, tenant),
+        profiles=ProfileRepository(session, tenant),
+    )
+    d = await service.gerar()
+    return DiagnosticoOut(
+        pontos_de_atencao=d.pontos_de_atencao,
+        ciclo_ativo=d.ciclo_ativo.name if d.ciclo_ativo else None,
+        dias_para_fechar=d.dias_para_fechar,
+        permissoes_ativas=d.permissoes_ativas,
+        usuarios_ativos=d.usuarios_ativos,
+        requests_a_criar=d.requests_a_criar,
+        # `asdict`, e não `vars`: as dataclasses do diagnóstico usam `slots=True` e
+        # portanto não têm `__dict__`. Com as listas vazias o erro não aparecia — só
+        # com dado de verdade, que é o pior momento para descobrir.
+        sem_request=[ParDePermissaoOut(**asdict(p)) for p in d.sem_request],
+        par_reverso_faltando=[ParDePermissaoOut(**asdict(p)) for p in d.par_reverso_faltando],
+        sem_cobertura=[PessoaComCargaOut(**asdict(p)) for p in d.sem_cobertura],
+        com_usuario_inativo=[ParDePermissaoOut(**asdict(p)) for p in d.com_usuario_inativo],
+        media_por_avaliador=d.media_por_avaliador,
+        media_por_avaliado=d.media_por_avaliado,
+        poucos_avaliadores=[PessoaComCargaOut(**asdict(p)) for p in d.poucos_avaliadores],
+        poucos_avaliados=[PessoaComCargaOut(**asdict(p)) for p in d.poucos_avaliados],
+    )
+
+
+@router.post("/permissions/deactivate-inactive")
+async def desativar_permissoes_com_inativos(
+    tenant: AdminDep, session: SessionDep
+) -> dict[str, int]:
+    """Ação em massa do diagnóstico: desliga o que aponta para quem saiu."""
+    service = DiagnosticsService(
+        permissions=PermissionRepository(session, tenant),
+        cycles=CycleRepository(session, tenant),
+        requests=RequestRepository(session, tenant),
+        profiles=ProfileRepository(session, tenant),
+    )
+    return {"desativadas": await service.desativar_permissoes_com_inativos()}
+
 
 @router.get("/permissions", response_model=list[PermissionOut])
 async def list_permissions(

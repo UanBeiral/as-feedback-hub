@@ -88,6 +88,19 @@ class ProfileUpdateIn(BaseModel):
     department_id: UUID | None = None
 
 
+class OwnProfileIn(BaseModel):
+    """O que a própria pessoa pode mudar. Papel e capacidades não estão aqui."""
+
+    full_name: str | None = None
+    job_title: str | None = None
+    whatsapp: str | None = None
+
+
+class OwnPasswordIn(BaseModel):
+    senha_atual: str = Field(min_length=1, max_length=72)
+    nova_senha: str = Field(min_length=8, max_length=72)
+
+
 class RoleIn(BaseModel):
     role: str = Field(pattern="^(admin|rh|gestor|colaborador)$")
 

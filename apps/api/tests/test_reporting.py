@@ -252,3 +252,26 @@ def test_percentual_de_360_nao_divide_por_zero() -> None:
 def test_percentual_de_engajamento() -> None:
     linha = LinhaDeEngajamento(profile_id=uuid4(), nome="Ana", solicitados=8, enviados=6)
     assert linha.percentual == 75.0
+
+
+def test_item_de_historico_e_serializavel() -> None:
+    """Mesma regressão do diagnóstico: dataclass com `slots` não tem `__dict__`."""
+    from dataclasses import asdict
+    from datetime import UTC, datetime
+
+    from app.contexts.reporting.queries import ItemDeHistorico
+    from app.contexts.reporting.schemas import ItemDeHistoricoOut
+
+    item = ItemDeHistorico(
+        tipo="livre",
+        quando=datetime.now(UTC),
+        sobre_id=uuid4(),
+        sobre_nome="Ana",
+        titulo="Feedback livre",
+        detalhe=None,
+        lido_em=None,
+    )
+
+    assert ItemDeHistoricoOut(**asdict(item)).sobre_nome == "Ana"
+    with pytest.raises(TypeError):
+        vars(item)

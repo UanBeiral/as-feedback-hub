@@ -136,6 +136,48 @@ class ProfileService:
             perfil.department_id = department_id
         return perfil
 
+    async def update_own_profile(
+        self,
+        tenant: TenantContext,
+        *,
+        full_name: str | None = None,
+        job_title: str | None = None,
+        whatsapp: str | None = None,
+    ) -> Profile:
+        """A pessoa edita os próprios dados de contato — e só eles.
+
+        Papel, capacidades e status ficam de fora de propósito: se alguém pudesse
+        mudar o próprio papel, a autorização inteira viraria decoração.
+        """
+        return await self.update_profile(
+            tenant,
+            tenant.user_id,
+            full_name=full_name,
+            job_title=job_title,
+            whatsapp=whatsapp,
+        )
+
+    async def change_own_password(
+        self, tenant: TenantContext, *, senha_atual: str, nova_senha: str
+    ) -> None:
+        """Troca a própria senha, exigindo a atual.
+
+        Pedir a senha atual não é burocracia: sem isso, uma sessão esquecida em máquina
+        alheia vira sequestro de conta com dois cliques. E, como na redefinição feita
+        pelo admin, todas as sessões caem — inclusive a de quem estava com a senha
+        antiga.
+        """
+        usuario = await self._auth.get_user(tenant.tenant_id, tenant.user_id)
+        if usuario is None:
+            raise NotFoundError("Usuário não encontrado")
+
+        if not self._hasher.verify(senha_atual, usuario.password_hash):
+            raise ValidationError("Senha atual incorreta")
+
+        usuario.password_hash = self._hasher.hash(nova_senha)
+        await self._auth.revoke_all_for_user(tenant.tenant_id, tenant.user_id)
+        await self._registrar(tenant, "user.password_changed", tenant.user_id, None)
+
     async def change_role(
         self, tenant: TenantContext, profile_id: UUID, *, role: str
     ) -> Profile:

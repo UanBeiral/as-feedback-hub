@@ -91,6 +91,24 @@ class ExportJobOut(BaseModel):
         )
 
 
+class ItemDeHistoricoOut(BaseModel):
+    tipo: str
+    quando: datetime | None
+    sobre_id: UUID
+    sobre_nome: str
+    titulo: str
+    detalhe: str | None
+    lido_em: datetime | None
+
+
+class HistoricoDaEquipeOut(BaseModel):
+    """As três seções do histórico, como no legado."""
+
+    livre: list[ItemDeHistoricoOut]
+    clientes: list[ItemDeHistoricoOut]
+    ciclos: list[ItemDeHistoricoOut]
+
+
 class PeriodoIn(BaseModel):
     desde: date | None = None
     ate: date | None = None

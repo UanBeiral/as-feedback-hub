@@ -22,6 +22,7 @@ export type FeedNotificacoes = S["NotificationFeed"];
 export type Configuracao = S["SettingOut"];
 export type Comunicado = S["PlatformUpdateOut"];
 export type MensagemDeContato = S["ContactMessageOut"];
+export type RegistroDeAuditoria = S["AuditLogOut"];
 
 export type Ciclo = S["CycleOut"];
 export type Progresso = S["ProgressOut"];
@@ -29,6 +30,7 @@ export type Requisicao = S["RequestOut"];
 export type RequisicaoDetalhada = S["RequestDetailOut"];
 export type Pergunta = S["QuestionOut"];
 export type Formulario = S["FormOut"];
+export type PermissaoDeFeedback = S["PermissionOut"];
 export type FeedbackLivre = S["FreeFeedbackOut"];
 export type AnotacaoDeCiclo = S["CycleNoteOut"];
 
@@ -41,6 +43,12 @@ export type Linha360 = S["Linha360Out"];
 export type LinhaDeCliente = S["LinhaClienteOut"];
 export type LinhaDeEngajamento = S["LinhaEngajamentoOut"];
 export type JobDeExportacao = S["ExportJobOut"];
+export type HistoricoDaEquipe = S["HistoricoDaEquipeOut"];
+export type ItemDeHistorico = S["ItemDeHistoricoOut"];
+
+export type Diagnostico = S["DiagnosticoOut"];
+export type ParDePermissao = S["ParDePermissaoOut"];
+export type PessoaComCarga = S["PessoaComCargaOut"];
 
 export type Papel = "admin" | "rh" | "gestor" | "colaborador";
 

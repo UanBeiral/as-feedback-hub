@@ -952,6 +952,117 @@
         "title": "DepartmentsIn",
         "type": "object"
       },
+      "DiagnosticoOut": {
+        "description": "Retrato do que vai dar errado no próximo ciclo, se nada mudar.",
+        "properties": {
+          "ciclo_ativo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ciclo Ativo"
+          },
+          "com_usuario_inativo": {
+            "items": {
+              "$ref": "#/components/schemas/ParDePermissaoOut"
+            },
+            "title": "Com Usuario Inativo",
+            "type": "array"
+          },
+          "dias_para_fechar": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dias Para Fechar"
+          },
+          "media_por_avaliado": {
+            "title": "Media Por Avaliado",
+            "type": "number"
+          },
+          "media_por_avaliador": {
+            "title": "Media Por Avaliador",
+            "type": "number"
+          },
+          "par_reverso_faltando": {
+            "items": {
+              "$ref": "#/components/schemas/ParDePermissaoOut"
+            },
+            "title": "Par Reverso Faltando",
+            "type": "array"
+          },
+          "permissoes_ativas": {
+            "title": "Permissoes Ativas",
+            "type": "integer"
+          },
+          "pontos_de_atencao": {
+            "title": "Pontos De Atencao",
+            "type": "integer"
+          },
+          "poucos_avaliadores": {
+            "items": {
+              "$ref": "#/components/schemas/PessoaComCargaOut"
+            },
+            "title": "Poucos Avaliadores",
+            "type": "array"
+          },
+          "poucos_avaliados": {
+            "items": {
+              "$ref": "#/components/schemas/PessoaComCargaOut"
+            },
+            "title": "Poucos Avaliados",
+            "type": "array"
+          },
+          "requests_a_criar": {
+            "title": "Requests A Criar",
+            "type": "integer"
+          },
+          "sem_cobertura": {
+            "items": {
+              "$ref": "#/components/schemas/PessoaComCargaOut"
+            },
+            "title": "Sem Cobertura",
+            "type": "array"
+          },
+          "sem_request": {
+            "items": {
+              "$ref": "#/components/schemas/ParDePermissaoOut"
+            },
+            "title": "Sem Request",
+            "type": "array"
+          },
+          "usuarios_ativos": {
+            "title": "Usuarios Ativos",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "pontos_de_atencao",
+          "ciclo_ativo",
+          "dias_para_fechar",
+          "permissoes_ativas",
+          "usuarios_ativos",
+          "requests_a_criar",
+          "sem_request",
+          "par_reverso_faltando",
+          "sem_cobertura",
+          "com_usuario_inativo",
+          "media_por_avaliador",
+          "media_por_avaliado",
+          "poucos_avaliadores",
+          "poucos_avaliados"
+        ],
+        "title": "DiagnosticoOut",
+        "type": "object"
+      },
       "EvaluationOut": {
         "description": "Serialização interna, com WhatsApp mascarado por padrão (BR-MIGRAR-022).",
         "properties": {
@@ -1551,6 +1662,106 @@
         "title": "HTTPValidationError",
         "type": "object"
       },
+      "HistoricoDaEquipeOut": {
+        "description": "As três seções do histórico, como no legado.",
+        "properties": {
+          "ciclos": {
+            "items": {
+              "$ref": "#/components/schemas/ItemDeHistoricoOut"
+            },
+            "title": "Ciclos",
+            "type": "array"
+          },
+          "clientes": {
+            "items": {
+              "$ref": "#/components/schemas/ItemDeHistoricoOut"
+            },
+            "title": "Clientes",
+            "type": "array"
+          },
+          "livre": {
+            "items": {
+              "$ref": "#/components/schemas/ItemDeHistoricoOut"
+            },
+            "title": "Livre",
+            "type": "array"
+          }
+        },
+        "required": [
+          "livre",
+          "clientes",
+          "ciclos"
+        ],
+        "title": "HistoricoDaEquipeOut",
+        "type": "object"
+      },
+      "ItemDeHistoricoOut": {
+        "properties": {
+          "detalhe": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detalhe"
+          },
+          "lido_em": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lido Em"
+          },
+          "quando": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quando"
+          },
+          "sobre_id": {
+            "format": "uuid",
+            "title": "Sobre Id",
+            "type": "string"
+          },
+          "sobre_nome": {
+            "title": "Sobre Nome",
+            "type": "string"
+          },
+          "tipo": {
+            "title": "Tipo",
+            "type": "string"
+          },
+          "titulo": {
+            "title": "Titulo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tipo",
+          "quando",
+          "sobre_id",
+          "sobre_nome",
+          "titulo",
+          "detalhe",
+          "lido_em"
+        ],
+        "title": "ItemDeHistoricoOut",
+        "type": "object"
+      },
       "Linha360Out": {
         "properties": {
           "departamento": {
@@ -1851,6 +2062,109 @@
         "title": "OpenCycleOut",
         "type": "object"
       },
+      "OwnPasswordIn": {
+        "properties": {
+          "nova_senha": {
+            "maxLength": 72,
+            "minLength": 8,
+            "title": "Nova Senha",
+            "type": "string"
+          },
+          "senha_atual": {
+            "maxLength": 72,
+            "minLength": 1,
+            "title": "Senha Atual",
+            "type": "string"
+          }
+        },
+        "required": [
+          "senha_atual",
+          "nova_senha"
+        ],
+        "title": "OwnPasswordIn",
+        "type": "object"
+      },
+      "OwnProfileIn": {
+        "description": "O que a própria pessoa pode mudar. Papel e capacidades não estão aqui.",
+        "properties": {
+          "full_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Full Name"
+          },
+          "job_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Title"
+          },
+          "whatsapp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Whatsapp"
+          }
+        },
+        "title": "OwnProfileIn",
+        "type": "object"
+      },
+      "ParDePermissaoOut": {
+        "properties": {
+          "permission_id": {
+            "format": "uuid",
+            "title": "Permission Id",
+            "type": "string"
+          },
+          "permission_type": {
+            "title": "Permission Type",
+            "type": "string"
+          },
+          "reviewee_id": {
+            "format": "uuid",
+            "title": "Reviewee Id",
+            "type": "string"
+          },
+          "reviewee_nome": {
+            "title": "Reviewee Nome",
+            "type": "string"
+          },
+          "reviewer_id": {
+            "format": "uuid",
+            "title": "Reviewer Id",
+            "type": "string"
+          },
+          "reviewer_nome": {
+            "title": "Reviewer Nome",
+            "type": "string"
+          }
+        },
+        "required": [
+          "permission_id",
+          "reviewer_id",
+          "reviewer_nome",
+          "reviewee_id",
+          "reviewee_nome",
+          "permission_type"
+        ],
+        "title": "ParDePermissaoOut",
+        "type": "object"
+      },
       "PasswordResetIn": {
         "properties": {
           "nova_senha": {
@@ -1955,6 +2269,30 @@
           "active"
         ],
         "title": "PermissionOut",
+        "type": "object"
+      },
+      "PessoaComCargaOut": {
+        "properties": {
+          "nome": {
+            "title": "Nome",
+            "type": "string"
+          },
+          "profile_id": {
+            "format": "uuid",
+            "title": "Profile Id",
+            "type": "string"
+          },
+          "quantidade": {
+            "title": "Quantidade",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "profile_id",
+          "nome",
+          "quantidade"
+        ],
+        "title": "PessoaComCargaOut",
         "type": "object"
       },
       "PlatformUpdateIn": {
@@ -3532,6 +3870,91 @@
           }
         ],
         "summary": "Me",
+        "tags": [
+          "identity"
+        ]
+      },
+      "patch": {
+        "description": "Edita os próprios dados de contato.",
+        "operationId": "atualizar_meu_perfil_api_v1_auth_me_patch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OwnProfileIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CurrentUser"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Atualizar Meu Perfil",
+        "tags": [
+          "identity"
+        ]
+      }
+    },
+    "/api/v1/auth/me/password": {
+      "post": {
+        "description": "Troca a própria senha. Exige a atual e derruba todas as sessões.",
+        "operationId": "trocar_minha_senha_api_v1_auth_me_password_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OwnPasswordIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Trocar Minha Senha",
         "tags": [
           "identity"
         ]
@@ -5550,6 +5973,64 @@
         ]
       }
     },
+    "/api/v1/permissions/deactivate-inactive": {
+      "post": {
+        "description": "Ação em massa do diagnóstico: desliga o que aponta para quem saiu.",
+        "operationId": "desativar_permissoes_com_inativos_api_v1_permissions_deactivate_inactive_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "integer"
+                  },
+                  "title": "Response Desativar Permissoes Com Inativos Api V1 Permissions Deactivate Inactive Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Desativar Permissoes Com Inativos",
+        "tags": [
+          "feedback"
+        ]
+      }
+    },
+    "/api/v1/permissions/diagnostics": {
+      "get": {
+        "description": "O que vai dar errado no próximo ciclo — antes de ele abrir.\n\nDeclarada acima de `/permissions` com parâmetro de propósito: caminho literal\nprecisa vir antes de rota com placeholder, senão `diagnostics` seria lido como id.",
+        "operationId": "diagnostico_de_permissoes_api_v1_permissions_diagnostics_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiagnosticoOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Diagnostico De Permissoes",
+        "tags": [
+          "feedback"
+        ]
+      }
+    },
     "/api/v1/platform-updates": {
       "get": {
         "description": "Todo mundo vê os publicados; admin/RH também vê os rascunhos.",
@@ -6936,6 +7417,33 @@
           }
         ],
         "summary": "Relatorio 360 Csv",
+        "tags": [
+          "reporting"
+        ]
+      }
+    },
+    "/api/v1/reports/team-history": {
+      "get": {
+        "description": "Histórico dos três tipos de feedback, dentro do escopo de equipe.\n\nO escopo sai do `TeamScopeService` e entra na query como lista de ids. Nenhum\nparâmetro desta rota amplia o que a pessoa enxerga — no máximo filtraria dentro\n(PAR-05).",
+        "operationId": "historico_da_equipe_api_v1_reports_team_history_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HistoricoDaEquipeOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Historico Da Equipe",
         "tags": [
           "reporting"
         ]

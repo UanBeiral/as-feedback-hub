@@ -21,6 +21,8 @@ from app.contexts.identity.schemas import (
     ActiveRoleIn,
     CurrentUser,
     LoginRequest,
+    OwnPasswordIn,
+    OwnProfileIn,
     ProfileSummary,
     RefreshRequest,
     TokenPair,
@@ -107,6 +109,64 @@ async def logout_all(tenant: TenantDep, service: AuthServiceDep) -> None:
 @router.get("/me", response_model=CurrentUser)
 async def me(tenant: TenantDep, service: AuthServiceDep) -> CurrentUser:
     return await service.describe_current_user(tenant)
+
+
+@router.patch("/me", response_model=CurrentUser)
+async def atualizar_meu_perfil(
+    payload: OwnProfileIn,
+    tenant: TenantDep,
+    session: SessionDep,
+    hasher: PasswordHasherDep,
+    service: AuthServiceDep,
+) -> CurrentUser:
+    """Edita os próprios dados de contato."""
+    from app.contexts.identity.admin_service import ProfileService
+    from app.contexts.identity.repository import ProfileDepartmentRepository, UserRepository
+
+    perfis = ProfileService(
+        profiles=ProfileRepository(session, tenant),
+        users=UserRepository(session, tenant),
+        auth=AuthRepository(session),
+        hasher=hasher,
+        departments=ProfileDepartmentRepository(session, tenant),
+    )
+    await perfis.update_own_profile(
+        tenant,
+        full_name=payload.full_name,
+        job_title=payload.job_title,
+        whatsapp=payload.whatsapp,
+    )
+    await session.flush()
+    return await service.describe_current_user(tenant)
+
+
+@router.post("/me/password", status_code=status.HTTP_204_NO_CONTENT)
+async def trocar_minha_senha(
+    payload: OwnPasswordIn,
+    tenant: TenantDep,
+    session: SessionDep,
+    hasher: PasswordHasherDep,
+) -> None:
+    """Troca a própria senha. Exige a atual e derruba todas as sessões."""
+    from app.contexts.engagement.repository import AuditLogRepository, OutboxRepository
+    from app.contexts.engagement.service import AuditService, OutboxService
+    from app.contexts.identity.admin_service import ProfileService
+    from app.contexts.identity.repository import ProfileDepartmentRepository, UserRepository
+
+    perfis = ProfileService(
+        profiles=ProfileRepository(session, tenant),
+        users=UserRepository(session, tenant),
+        auth=AuthRepository(session),
+        hasher=hasher,
+        departments=ProfileDepartmentRepository(session, tenant),
+        audit=AuditService(
+            AuditLogRepository(session, tenant),
+            OutboxService(OutboxRepository(session, tenant)),
+        ),
+    )
+    await perfis.change_own_password(
+        tenant, senha_atual=payload.senha_atual, nova_senha=payload.nova_senha
+    )
 
 
 @router.get("/my-team", response_model=list[ProfileSummary])

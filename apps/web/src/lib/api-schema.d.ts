@@ -117,6 +117,30 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
+        /**
+         * Atualizar Meu Perfil
+         * @description Edita os próprios dados de contato.
+         */
+        patch: operations["atualizar_meu_perfil_api_v1_auth_me_patch"];
+        trace?: never;
+    };
+    "/api/v1/auth/me/password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Trocar Minha Senha
+         * @description Troca a própria senha. Exige a atual e derruba todas as sessões.
+         */
+        post: operations["trocar_minha_senha_api_v1_auth_me_password_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
         patch?: never;
         trace?: never;
     };
@@ -757,6 +781,49 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/permissions/deactivate-inactive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Desativar Permissoes Com Inativos
+         * @description Ação em massa do diagnóstico: desliga o que aponta para quem saiu.
+         */
+        post: operations["desativar_permissoes_com_inativos_api_v1_permissions_deactivate_inactive_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/permissions/diagnostics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Diagnostico De Permissoes
+         * @description O que vai dar errado no próximo ciclo — antes de ele abrir.
+         *
+         *     Declarada acima de `/permissions` com parâmetro de propósito: caminho literal
+         *     precisa vir antes de rota com placeholder, senão `diagnostics` seria lido como id.
+         */
+        get: operations["diagnostico_de_permissoes_api_v1_permissions_diagnostics_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/platform-updates": {
         parameters: {
             query?: never;
@@ -1208,6 +1275,30 @@ export interface paths {
          * @description A exportação reflete exatamente os filtros ativos (BR-MIGRAR-029).
          */
         get: operations["relatorio_360_csv_api_v1_reports_feedback_360_csv_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/team-history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Historico Da Equipe
+         * @description Histórico dos três tipos de feedback, dentro do escopo de equipe.
+         *
+         *     O escopo sai do `TeamScopeService` e entra na query como lista de ids. Nenhum
+         *     parâmetro desta rota amplia o que a pessoa enxerga — no máximo filtraria dentro
+         *     (PAR-05).
+         */
+        get: operations["historico_da_equipe_api_v1_reports_team_history_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1912,6 +2003,40 @@ export interface components {
             department_ids?: string[];
         };
         /**
+         * DiagnosticoOut
+         * @description Retrato do que vai dar errado no próximo ciclo, se nada mudar.
+         */
+        DiagnosticoOut: {
+            /** Ciclo Ativo */
+            ciclo_ativo: string | null;
+            /** Com Usuario Inativo */
+            com_usuario_inativo: components["schemas"]["ParDePermissaoOut"][];
+            /** Dias Para Fechar */
+            dias_para_fechar: number | null;
+            /** Media Por Avaliado */
+            media_por_avaliado: number;
+            /** Media Por Avaliador */
+            media_por_avaliador: number;
+            /** Par Reverso Faltando */
+            par_reverso_faltando: components["schemas"]["ParDePermissaoOut"][];
+            /** Permissoes Ativas */
+            permissoes_ativas: number;
+            /** Pontos De Atencao */
+            pontos_de_atencao: number;
+            /** Poucos Avaliadores */
+            poucos_avaliadores: components["schemas"]["PessoaComCargaOut"][];
+            /** Poucos Avaliados */
+            poucos_avaliados: components["schemas"]["PessoaComCargaOut"][];
+            /** Requests A Criar */
+            requests_a_criar: number;
+            /** Sem Cobertura */
+            sem_cobertura: components["schemas"]["PessoaComCargaOut"][];
+            /** Sem Request */
+            sem_request: components["schemas"]["ParDePermissaoOut"][];
+            /** Usuarios Ativos */
+            usuarios_ativos: number;
+        };
+        /**
          * EvaluationOut
          * @description Serialização interna, com WhatsApp mascarado por padrão (BR-MIGRAR-022).
          */
@@ -2114,6 +2239,38 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /**
+         * HistoricoDaEquipeOut
+         * @description As três seções do histórico, como no legado.
+         */
+        HistoricoDaEquipeOut: {
+            /** Ciclos */
+            ciclos: components["schemas"]["ItemDeHistoricoOut"][];
+            /** Clientes */
+            clientes: components["schemas"]["ItemDeHistoricoOut"][];
+            /** Livre */
+            livre: components["schemas"]["ItemDeHistoricoOut"][];
+        };
+        /** ItemDeHistoricoOut */
+        ItemDeHistoricoOut: {
+            /** Detalhe */
+            detalhe: string | null;
+            /** Lido Em */
+            lido_em: string | null;
+            /** Quando */
+            quando: string | null;
+            /**
+             * Sobre Id
+             * Format: uuid
+             */
+            sobre_id: string;
+            /** Sobre Nome */
+            sobre_nome: string;
+            /** Tipo */
+            tipo: string;
+            /** Titulo */
+            titulo: string;
+        };
         /** Linha360Out */
         Linha360Out: {
             /** Departamento */
@@ -2229,6 +2386,49 @@ export interface components {
             /** Requests Criados */
             requests_criados: number;
         };
+        /** OwnPasswordIn */
+        OwnPasswordIn: {
+            /** Nova Senha */
+            nova_senha: string;
+            /** Senha Atual */
+            senha_atual: string;
+        };
+        /**
+         * OwnProfileIn
+         * @description O que a própria pessoa pode mudar. Papel e capacidades não estão aqui.
+         */
+        OwnProfileIn: {
+            /** Full Name */
+            full_name?: string | null;
+            /** Job Title */
+            job_title?: string | null;
+            /** Whatsapp */
+            whatsapp?: string | null;
+        };
+        /** ParDePermissaoOut */
+        ParDePermissaoOut: {
+            /**
+             * Permission Id
+             * Format: uuid
+             */
+            permission_id: string;
+            /** Permission Type */
+            permission_type: string;
+            /**
+             * Reviewee Id
+             * Format: uuid
+             */
+            reviewee_id: string;
+            /** Reviewee Nome */
+            reviewee_nome: string;
+            /**
+             * Reviewer Id
+             * Format: uuid
+             */
+            reviewer_id: string;
+            /** Reviewer Nome */
+            reviewer_nome: string;
+        };
         /** PasswordResetIn */
         PasswordResetIn: {
             /** Nova Senha */
@@ -2279,6 +2479,18 @@ export interface components {
              * Format: uuid
              */
             reviewer_id: string;
+        };
+        /** PessoaComCargaOut */
+        PessoaComCargaOut: {
+            /** Nome */
+            nome: string;
+            /**
+             * Profile Id
+             * Format: uuid
+             */
+            profile_id: string;
+            /** Quantidade */
+            quantidade: number;
         };
         /** PlatformUpdateIn */
         PlatformUpdateIn: {
@@ -2935,6 +3147,70 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CurrentUser"];
+                };
+            };
+        };
+    };
+    atualizar_meu_perfil_api_v1_auth_me_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OwnProfileIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CurrentUser"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    trocar_minha_senha_api_v1_auth_me_password_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OwnPasswordIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -4243,6 +4519,48 @@ export interface operations {
             };
         };
     };
+    desativar_permissoes_com_inativos_api_v1_permissions_deactivate_inactive_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: number;
+                    };
+                };
+            };
+        };
+    };
+    diagnostico_de_permissoes_api_v1_permissions_diagnostics_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DiagnosticoOut"];
+                };
+            };
+        };
+    };
     list_platform_updates_api_v1_platform_updates_get: {
         parameters: {
             query?: never;
@@ -5077,6 +5395,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    historico_da_equipe_api_v1_reports_team_history_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HistoricoDaEquipeOut"];
                 };
             };
         };

@@ -8,8 +8,9 @@ existe rota nenhuma para proteger.
 
 from __future__ import annotations
 
+from dataclasses import asdict
 from datetime import date
-from typing import Annotated
+from typing import Annotated, Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, Response, status
@@ -17,16 +18,21 @@ from fastapi.responses import FileResponse
 
 from app.contexts.engagement.repository import OutboxRepository
 from app.contexts.engagement.service import OutboxService
+from app.contexts.identity.repository import CoordinatorMemberRepository, ProfileRepository
+from app.contexts.identity.service import TeamScopeService
 from app.contexts.reporting.queries import (
     ClientReportQuery,
     EngagementQuery,
     Report360Query,
+    TeamHistoryQuery,
 )
 from app.contexts.reporting.repository import ExportJobRepository
 from app.contexts.reporting.schemas import (
     ExecutiveReportIn,
     ExportJobOut,
     ExportRequestIn,
+    HistoricoDaEquipeOut,
+    ItemDeHistoricoOut,
     Linha360Out,
     LinhaClienteOut,
     LinhaEngajamentoOut,
@@ -145,6 +151,33 @@ async def relatorio_de_engajamento(
         )
         for linha in linhas
     ]
+
+
+@router.get("/team-history", response_model=HistoricoDaEquipeOut)
+async def historico_da_equipe(tenant: TenantDep, session: SessionDep) -> HistoricoDaEquipeOut:
+    """Histórico dos três tipos de feedback, dentro do escopo de equipe.
+
+    O escopo sai do `TeamScopeService` e entra na query como lista de ids. Nenhum
+    parâmetro desta rota amplia o que a pessoa enxerga — no máximo filtraria dentro
+    (PAR-05).
+    """
+    escopo = TeamScopeService(
+        profiles=ProfileRepository(session, tenant),
+        coordinator_members=CoordinatorMemberRepository(session, tenant),
+    )
+    visiveis = await escopo.resolve_visible_profile_ids(tenant)
+    historico = TeamHistoryQuery(session, tenant)
+
+    def converter(itens: list[Any]) -> list[ItemDeHistoricoOut]:
+        # `asdict` pelo mesmo motivo do diagnóstico: dataclass com `slots` não tem
+        # `__dict__`, e a falha só aparece quando existe conteúdo para converter.
+        return [ItemDeHistoricoOut(**asdict(item)) for item in itens]
+
+    return HistoricoDaEquipeOut(
+        livre=converter(await historico.livre(visiveis)),
+        clientes=converter(await historico.clientes(visiveis)),
+        ciclos=converter(await historico.ciclos(visiveis)),
+    )
 
 
 # ---------------------------------------------------------------- CSV síncrono

@@ -115,6 +115,42 @@ class ProgressOut(BaseModel):
     percentual: float
 
 
+class ParDePermissaoOut(BaseModel):
+    permission_id: UUID
+    reviewer_id: UUID
+    reviewer_nome: str
+    reviewee_id: UUID
+    reviewee_nome: str
+    permission_type: str
+
+
+class PessoaComCargaOut(BaseModel):
+    profile_id: UUID
+    nome: str
+    quantidade: int
+
+
+class DiagnosticoOut(BaseModel):
+    """Retrato do que vai dar errado no próximo ciclo, se nada mudar."""
+
+    pontos_de_atencao: int
+    ciclo_ativo: str | None
+    dias_para_fechar: int | None
+    permissoes_ativas: int
+    usuarios_ativos: int
+    requests_a_criar: int
+
+    sem_request: list[ParDePermissaoOut]
+    par_reverso_faltando: list[ParDePermissaoOut]
+    sem_cobertura: list[PessoaComCargaOut]
+    com_usuario_inativo: list[ParDePermissaoOut]
+
+    media_por_avaliador: float
+    media_por_avaliado: float
+    poucos_avaliadores: list[PessoaComCargaOut]
+    poucos_avaliados: list[PessoaComCargaOut]
+
+
 class AnswerIn(BaseModel):
     question_id: UUID
     answer_text: str | None = None
