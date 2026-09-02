@@ -17,6 +17,8 @@ from app.contexts.identity.repository import (
     ProfileRepository,
 )
 from app.contexts.identity.schemas import (
+    AccessTokenOut,
+    ActiveRoleIn,
     CurrentUser,
     LoginRequest,
     ProfileSummary,
@@ -32,6 +34,8 @@ from app.core.di import (
     TokenServiceDep,
     client_ip,
 )
+from app.core.errors import AuthorizationError
+from app.core.security import pode_assumir
 
 router = APIRouter(prefix="/auth", tags=["identity"])
 
@@ -115,3 +119,39 @@ async def my_team(
     visible = await scope.resolve_visible_profile_ids(tenant)
     profiles = ProfileRepository(session, tenant)
     return [ProfileSummary.model_validate(p) for p in await profiles.list_by_ids(visible)]
+
+
+# ---------------------------------------------------------------- contexto ativo
+
+@router.post("/active-role", response_model=AccessTokenOut)
+async def trocar_contexto_ativo(
+    payload: ActiveRoleIn,
+    tenant: TenantDep,
+    tokens: TokenServiceDep,
+) -> AccessTokenOut:
+    """Troca o papel ativo da sessão (BR-MIGRAR-016 / PAR-05).
+
+    A troca **desce** na hierarquia e só isso: um admin pode olhar o sistema como
+    gestor para entender o que a equipe vê, e um gestor não pode se declarar admin.
+    Por isso ela não é autorização — a autorização continua olhando o papel persistido,
+    que este endpoint não toca.
+
+    Emite só um access token novo. O refresh continua o mesmo: trocar de visão não é
+    trocar de sessão, e rotacionar aqui derrubaria as outras abas da pessoa.
+    """
+    if not pode_assumir(tenant.role, payload.active_role):
+        raise AuthorizationError(
+            "Não é possível assumir um papel acima do seu",
+            details={"role": tenant.role, "solicitado": payload.active_role},
+        )
+
+    access, expires_at = tokens.create_access_token(
+        user_id=tenant.user_id,
+        tenant_id=tenant.tenant_id,
+        role=tenant.role,
+        flags=tenant.flags,
+        active_role=payload.active_role,
+    )
+    return AccessTokenOut(
+        access_token=access, expires_at=expires_at, active_role=payload.active_role
+    )

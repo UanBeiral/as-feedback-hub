@@ -69,3 +69,97 @@ class ProfileSummary(BaseModel):
     is_coordinator: bool
     department_id: UUID | None
     manager_id: UUID | None
+
+
+class RegisterUserIn(BaseModel):
+    email: EmailStr
+    senha: str = Field(min_length=8, max_length=72)
+    full_name: str = Field(min_length=1)
+    role: str = Field(pattern="^(admin|rh|gestor|colaborador)$")
+    job_title: str | None = None
+    department_id: UUID | None = None
+    manager_id: UUID | None = None
+
+
+class ProfileUpdateIn(BaseModel):
+    full_name: str | None = None
+    job_title: str | None = None
+    whatsapp: str | None = None
+    department_id: UUID | None = None
+
+
+class RoleIn(BaseModel):
+    role: str = Field(pattern="^(admin|rh|gestor|colaborador)$")
+
+
+class FlagsIn(BaseModel):
+    """PATCH de capacidades: só as chaves enviadas mudam (BR-MIGRAR-013)."""
+
+    flags: dict[str, bool] = Field(min_length=1)
+
+
+class CoordinatorIn(BaseModel):
+    is_coordinator: bool
+
+
+class ManagerIn(BaseModel):
+    manager_id: UUID | None = None
+
+
+class DepartmentsIn(BaseModel):
+    department_ids: list[UUID] = Field(default_factory=list)
+
+
+class PasswordResetIn(BaseModel):
+    nova_senha: str = Field(min_length=8, max_length=72)
+
+
+class DepartmentIn(BaseModel):
+    name: str = Field(min_length=1)
+
+
+class DepartmentOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    name: str
+
+
+class CoordinatorMemberIn(BaseModel):
+    coordinator_id: UUID
+    member_id: UUID
+
+
+class TeamRequestIn(BaseModel):
+    requested_member_id: UUID
+
+
+class TeamRequestRejectIn(BaseModel):
+    motivo: str | None = None
+
+
+class TeamRequestOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    requester_id: UUID
+    requested_member_id: UUID
+    status: str
+    rejection_reason: str | None
+    resolved_at: datetime | None
+
+
+class ActiveRoleIn(BaseModel):
+    """Troca de contexto ativo (BR-MIGRAR-016).
+
+    Só desce na hierarquia: a troca restringe a visão, nunca concede poder.
+    """
+
+    active_role: str = Field(pattern="^(admin|rh|gestor|colaborador)$")
+
+
+class AccessTokenOut(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    expires_at: datetime
+    active_role: str

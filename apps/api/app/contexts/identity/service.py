@@ -195,7 +195,12 @@ class TeamScopeService:
         self._coordinator_members = coordinator_members
 
     async def resolve_visible_profile_ids(self, tenant: TenantContext) -> set[UUID]:
-        if tenant.has_role("admin", "rh"):
+        # `enxerga_como`, e não `has_role`: aqui é **visão**, e o papel ativo manda
+        # (BR-MIGRAR-016 / PAR-05). Um admin que trocou o contexto para gestor passa a
+        # ver a equipe dele, que é o ponto de trocar. Como a troca só desce na
+        # hierarquia, isso restringe — nunca amplia. Autorização continua olhando o
+        # papel persistido, em `require_role`.
+        if tenant.enxerga_como("admin", "rh"):
             return await self._profiles.list_active_ids()
 
         profile = await self._profiles.get_by_user(tenant.user_id)

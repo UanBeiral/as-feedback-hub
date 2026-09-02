@@ -71,6 +71,7 @@ async def get_tenant_context(
         user_id=claims.user_id,
         role=claims.role,
         flags=claims.flags,
+        active_role=claims.contexto_ativo,
     )
 
 

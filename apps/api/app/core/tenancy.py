@@ -34,12 +34,28 @@ class TenantContext:
     user_id: UUID
     role: str
     flags: frozenset[str]
+    # Contexto que a pessoa escolheu enxergar (BR-MIGRAR-016). Vazio significa "o
+    # próprio papel". Restringe o escopo; nunca amplia a autorização.
+    active_role: str = ""
 
     def has_flag(self, flag: str) -> bool:
         return flag in self.flags
 
     def has_role(self, *roles: str) -> bool:
+        """Autorização olha o papel **persistido**, sempre.
+
+        Se olhasse o ativo, bastaria alguém pedir para "ser admin" e a troca de
+        contexto viraria escalada de privilégio.
+        """
         return self.role in roles
+
+    @property
+    def contexto_ativo(self) -> str:
+        return self.active_role or self.role
+
+    def enxerga_como(self, *roles: str) -> bool:
+        """O que a **visão** considera — o papel ativo, que é sempre ≤ o persistido."""
+        return self.contexto_ativo in roles
 
 
 # Revalidação de sessão a cada requisição (PAR-08 § "Acesso revogado imediatamente").
@@ -127,6 +143,15 @@ class TenantScopedRepository[TModel: Base]:
         entity.tenant_id = self._tenant.tenant_id
         self._session.add(entity)
         return entity
+
+    async def flush(self) -> None:
+        """Empurra o pendente para o banco sem fechar a transação.
+
+        Necessário quando a ordem entre dois INSERTs importa e não dá para confiar na
+        ordenação automática do unit of work — o caso clássico é criar uma linha e, em
+        seguida, outra que a referencia por FK dentro do mesmo comando.
+        """
+        await self._session.flush()
 
     async def remove(self, entity: TModel) -> None:
         """Remoção física, para o que não tem histórico a preservar.

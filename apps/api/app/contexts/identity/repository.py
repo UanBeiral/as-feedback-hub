@@ -11,13 +11,16 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from uuid import UUID
 
-from sqlalchemy import select, update
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.contexts.identity.models import (
     CoordinatorMember,
+    Department,
     Profile,
+    ProfileDepartment,
     RefreshToken,
+    TeamRequest,
     Tenant,
     User,
 )
@@ -138,6 +141,19 @@ class ProfileRepository(TenantScopedRepository[Profile]):
         )
         return set(result.scalars().all())
 
+    async def contar_admins_ativos(self) -> int:
+        """Usado antes de remover alguém: o tenant não pode ficar sem administrador."""
+        stmt = (
+            select(func.count())
+            .select_from(Profile)
+            .where(
+                Profile.tenant_id == self.tenant_id,
+                Profile.role == "admin",
+                Profile.status == "active",
+            )
+        )
+        return int((await self._session.execute(stmt)).scalar_one())
+
     async def list_direct_report_ids(self, manager_id: UUID) -> set[UUID]:
         stmt = (
             self._scoped()
@@ -148,8 +164,92 @@ class ProfileRepository(TenantScopedRepository[Profile]):
         return set(result.scalars().all())
 
 
+class UserRepository(TenantScopedRepository[User]):
+    """Escrita de credencial. A leitura de login continua no `AuthRepository`, que é
+    quem trabalha antes de o tenant existir no contexto."""
+
+    model = User
+
+    def add_user(self, user: User) -> User:
+        return self.add(user)
+
+
+class DepartmentRepository(TenantScopedRepository[Department]):
+    model = Department
+
+    async def list_all_ordenado(self) -> list[Department]:
+        stmt = self._scoped().order_by(Department.name)
+        return list((await self._session.execute(stmt)).scalars().all())
+
+    async def get_por_nome(self, name: str) -> Department | None:
+        stmt = self._scoped().where(Department.name == name)
+        return (await self._session.execute(stmt)).scalar_one_or_none()
+
+
+class ProfileDepartmentRepository(TenantScopedRepository[ProfileDepartment]):
+    model = ProfileDepartment
+
+    async def list_ids_do_perfil(self, profile_id: UUID) -> set[UUID]:
+        stmt = (
+            self._scoped()
+            .where(ProfileDepartment.profile_id == profile_id)
+            .with_only_columns(ProfileDepartment.department_id)
+        )
+        return set((await self._session.execute(stmt)).scalars().all())
+
+    async def substituir(self, profile_id: UUID, department_ids: list[UUID]) -> None:
+        """Troca o conjunto inteiro de departamentos adicionais.
+
+        Apagar e reinserir, em vez de calcular a diferença: a lista é pequena, a
+        operação é atômica dentro da transação, e o resultado é exatamente o que veio
+        na requisição — sem sobra de vínculo antigo que ninguém percebe.
+        """
+        await self._session.execute(
+            delete(ProfileDepartment).where(
+                ProfileDepartment.tenant_id == self.tenant_id,
+                ProfileDepartment.profile_id == profile_id,
+            )
+        )
+        for department_id in dict.fromkeys(department_ids):
+            self.add(
+                ProfileDepartment(profile_id=profile_id, department_id=department_id)
+            )
+
+
+class TeamRequestRepository(TenantScopedRepository[TeamRequest]):
+    model = TeamRequest
+
+    async def get_pendente(
+        self, requester_id: UUID, requested_member_id: UUID
+    ) -> TeamRequest | None:
+        stmt = self._scoped().where(
+            TeamRequest.requester_id == requester_id,
+            TeamRequest.requested_member_id == requested_member_id,
+            TeamRequest.status == "pending",
+        )
+        return (await self._session.execute(stmt)).scalars().first()
+
+    async def list_pendentes_para(self, manager_id: UUID) -> list[TeamRequest]:
+        """Pedidos que este gestor precisa decidir."""
+        stmt = (
+            self._scoped()
+            .where(TeamRequest.status == "pending", TeamRequest.requester_id == manager_id)
+            .order_by(TeamRequest.created_at)
+        )
+        return list((await self._session.execute(stmt)).scalars().all())
+
+
 class CoordinatorMemberRepository(TenantScopedRepository[CoordinatorMember]):
     model = CoordinatorMember
+
+    async def get_vinculo(
+        self, coordinator_id: UUID, member_id: UUID
+    ) -> CoordinatorMember | None:
+        stmt = self._scoped().where(
+            CoordinatorMember.coordinator_id == coordinator_id,
+            CoordinatorMember.member_id == member_id,
+        )
+        return (await self._session.execute(stmt)).scalar_one_or_none()
 
     async def list_member_ids(self, coordinator_id: UUID) -> set[UUID]:
         """Membros sob coordenação, restrito aos perfis ativos do mesmo tenant.

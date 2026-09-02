@@ -133,13 +133,8 @@ B3 (repositório fora do isolamento passava no CI), C1 (`/auth/my-team` truncava
 
 Ainda abertas (`engagement` e `feedback` já foram implementados por cima desta base):
 
-- `identity` cobre só a fatia de sessão. Faltam os comandos de `Profile` e `TeamScope`
-  do `target_domain_model.md`: `register`, `reset_password`, `update_profile`,
-  `change_role`, `set_flags`, `soft_delete`, `assign_manager`, `set_departments`,
-  `add_coordinator_member`, `remove_member`, `approve_team_request`,
-  `reject_team_request`.
-- `Department`, `ProfileDepartment` e `TeamRequest` têm model, sem repository/service/router.
-- O VO `ActiveRole` (BR-MIGRAR-016, com cenário próprio em PAR-05) não foi modelado.
+- (fechado) Os comandos de `Profile` e `TeamScope`, `Department`/`ProfileDepartment`/
+  `TeamRequest` e o papel ativo (BR-MIGRAR-016) foram implementados.
 - Nenhum passo de codegen do cliente OpenAPI no CI (AD-08).
 - Os testes de service usam dublês; falta a camada de integração contra Postgres que
   exercite os `.feature` de PAR-05, PAR-07 e PAR-08 ponta a ponta.
