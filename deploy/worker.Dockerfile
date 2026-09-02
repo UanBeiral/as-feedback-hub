@@ -12,11 +12,13 @@ COPY apps/api/pyproject.toml apps/api/pyproject.toml
 RUN pip install --upgrade pip && pip install -e apps/api
 
 COPY apps/api/app apps/api/app
-COPY apps/worker/app apps/worker/app
+COPY apps/worker/worker apps/worker/worker
 
+# `app` é a API, `worker` é o worker. Se os dois se chamassem `app`, o primeiro do
+# PYTHONPATH sombrearia o outro e este container subiria a API sem ninguém notar.
 ENV PYTHONPATH=/srv/apps/api:/srv/apps/worker
 
 RUN useradd --create-home --uid 10001 app && chown -R app:app /srv
 USER app
 
-CMD ["python", "-m", "app.main"]
+CMD ["python", "-m", "worker.main"]

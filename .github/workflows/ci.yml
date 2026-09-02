@@ -20,7 +20,7 @@ jobs:
         run: pip install -e "apps/api[dev]"
 
       - name: Lint
-        run: ruff check apps/api
+        run: ruff check apps/api apps/worker deploy
 
       - name: Testes
         # Inclui os guards de isolamento multi-tenant (AD-10 / R-09) e de

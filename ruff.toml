@@ -1,0 +1,15 @@
+# Configuração única para os dois pacotes Python do monorepo (apps/api e apps/worker).
+# Vive na raiz de propósito: com o ruff.toml dentro de apps/api, os arquivos do worker
+# caíam na configuração default do ruff — outra largura de linha, outro conjunto de
+# regras — e ninguém notaria até um diff estranho.
+
+line-length = 100
+target-version = "py312"
+
+[lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[lint.isort]
+# `app` (API) e `worker` são nossos; sem isto o ruff os trata como biblioteca de
+# terceiro e os mistura com sqlalchemy no mesmo bloco.
+known-first-party = ["app", "worker"]

@@ -2,12 +2,14 @@
 # Nada aqui é gerenciado por terceiro: foi essa a restrição do brief que motivou a
 # saída do Supabase.
 #
-# ESTADO ATUAL: só `postgres`, `redis` e `api` sobem hoje. Os serviços `worker`, `web`
-# e `nginx` estão comentados porque o código deles ainda não existe (fase Fundação
-# entregou a API). Descomente cada um junto com o contexto correspondente:
-#   worker → contexto `engagement` (outbox + scheduler, AD-04/AD-05)
+# ESTADO ATUAL: `postgres`, `redis`, `api` e `worker` sobem. `web` e `nginx` seguem
+# comentados porque o código deles ainda não existe:
 #   web    → app Next.js em apps/web
 #   nginx  → depois que `web` existir, senão o upstream não resolve no boot
+#
+# O `redis` ainda não é usado por ninguém: a fila do outbox é o próprio Postgres
+# (polling por `status='pending'`, como descreve target_data_model.md). Ele fica de pé
+# para o cache e para o que vier depois.
 
 services:
   postgres:
@@ -55,20 +57,21 @@ services:
     ports:
       - "127.0.0.1:8000:8000"
 
-  # worker:
-  #   build:
-  #     context: ..
-  #     dockerfile: deploy/worker.Dockerfile
-  #   restart: unless-stopped
-  #   env_file: ../.env
-  #   depends_on:
-  #     postgres: { condition: service_healthy }
-  #     redis: { condition: service_healthy }
-  #   # O worker é o único processo que roda o scheduler. Escalar réplicas exige
-  #   # antes resolver a eleição de líder, senão o fechamento de ciclo roda em
-  #   # duplicata (AD-05).
-  #   deploy:
-  #     replicas: 1
+  worker:
+    build:
+      context: ..
+      dockerfile: deploy/worker.Dockerfile
+    restart: unless-stopped
+    env_file: ../.env
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    # O worker é o único processo que roda o scheduler. O despacho do outbox escala
+    # sem susto (FOR UPDATE SKIP LOCKED dá conta), mas o scheduler não: subir uma
+    # segunda réplica faria o fechamento de ciclo rodar em duplicata enquanto não
+    # houver eleição de líder (AD-05).
+    deploy:
+      replicas: 1
 
   # web:
   #   build:

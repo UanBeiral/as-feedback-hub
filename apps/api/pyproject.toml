@@ -34,13 +34,10 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["app"]
 
-[tool.ruff]
-line-length = 100
-target-version = "py312"
-
-[tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B", "SIM"]
-
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+# O worker vive fora de apps/api mas importa `app.*` como biblioteca; uma suíte só
+# cobre os dois, e é ela que garante que o contrato entre eles não se quebre em
+# silêncio.
+pythonpath = [".", "../worker"]

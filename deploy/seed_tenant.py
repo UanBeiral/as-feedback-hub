@@ -16,11 +16,12 @@ import asyncio
 import sys
 from uuid import uuid4
 
+from sqlalchemy import select
+
 from app.contexts.identity.models import Profile, Tenant, User
 from app.core.config import get_settings
 from app.core.db import get_session_factory
 from app.core.security import PasswordHasher
-from sqlalchemy import select
 
 
 async def seed(slug: str, nome: str, email: str, senha: str) -> int:

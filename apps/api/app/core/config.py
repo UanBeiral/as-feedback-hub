@@ -51,6 +51,11 @@ class Settings(BaseSettings):
     smtp_password: str = ""
     email_from: str = "nao-responda@exemplo.com"
 
+    # Worker (AD-04/AD-05). O intervalo só vale para fila vazia: com trabalho, os
+    # lotes se emendam sem espera.
+    worker_poll_seconds: int = 5
+    worker_batch_size: int = 20
+
     # Web
     cors_origins: str = "http://localhost:3000"
     public_base_url: str = "http://localhost:3000"

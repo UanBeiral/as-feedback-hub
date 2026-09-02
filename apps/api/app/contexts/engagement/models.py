@@ -114,7 +114,11 @@ class OutboxMessage(UUIDPrimaryKeyMixin, TenantScopedMixin, Base):
     idempotency_key: Mapped[str] = mapped_column(Text, nullable=False)
     status: Mapped[str] = mapped_column(Text, nullable=False, server_default="pending")
     attempts: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
-    next_attempt_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Nulável porque `dispatched`/`dead` não têm próxima tentativa; com default para
+    # que um INSERT que omita o campo nasça pronta para despacho, e não invisível.
+    next_attempt_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
     # Fora do DDL da spec: uma DLQ sem o motivo da morte não é operável — quem for
     # investigar às 7h da manhã precisa saber o que falhou (ver docs/spec-deviations.md).
     last_error: Mapped[str | None] = mapped_column(Text)

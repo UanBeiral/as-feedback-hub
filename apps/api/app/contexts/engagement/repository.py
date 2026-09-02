@@ -12,7 +12,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import func, insert, select, update
+from sqlalchemy import func, insert, or_, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -144,12 +144,21 @@ class OutboxDispatchRepository:
         externa: cada um leva mensagens diferentes, ninguém espera pelo outro, e uma
         mensagem travada por um worker que morreu volta a ficar disponível quando a
         transação dele cai.
+
+        `next_attempt_at IS NULL` conta como "pronta agora", e essa cláusula não é
+        defensiva à toa: em SQL, `NULL <= now()` é NULL, não falso. Sem ela, qualquer
+        linha inserida sem o campo — um ETL, um contexto novo escrevendo SQL direto, um
+        operador reenfileirando com `UPDATE ... SET status='pending'` — ficaria invisível
+        para o worker **para sempre**, sem erro em lugar nenhum.
         """
         stmt = (
             select(OutboxMessage)
             .where(
                 OutboxMessage.status.in_(("pending", "failed")),
-                OutboxMessage.next_attempt_at <= datetime.now(UTC),
+                or_(
+                    OutboxMessage.next_attempt_at.is_(None),
+                    OutboxMessage.next_attempt_at <= datetime.now(UTC),
+                ),
             )
             .order_by(OutboxMessage.next_attempt_at)
             .limit(limit)

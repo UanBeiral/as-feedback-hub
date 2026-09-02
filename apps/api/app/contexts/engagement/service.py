@@ -166,7 +166,11 @@ class AuditService:
         for destinatario in notificar or []:
             await self._outbox.enqueue(
                 topic=f"audit.{action}",
-                payload={"action": action, "record_id": str(record_id) if record_id else None},
+                payload={
+                    "action": action,
+                    "record_id": str(record_id) if record_id else None,
+                    "user_id": str(destinatario),
+                },
                 idempotency_key=f"{action}:{record_id}:{destinatario}",
             )
 

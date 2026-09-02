@@ -89,6 +89,18 @@
 - **Ação na spec**: registrar a escolha em BR-MIGRAR-026, mantendo o outbox para a parte
   de notificação.
 
+## DEV-A08 — o pacote do worker se chama `worker`, não `app`
+
+- **Spec**: `target_architecture.md` § Honra à topologia desenha
+  `apps/worker/app/{consumers,scheduler,jobs}/`.
+- **Código**: `apps/worker/worker/{consumers,scheduler,jobs}/`.
+- **Motivo**: dois pacotes regulares com o mesmo nome no mesmo interpretador não
+  coexistem — o primeiro do `PYTHONPATH` sombreia o outro. Com os dois chamados `app`,
+  o `CMD ["python", "-m", "app.main"]` do `worker.Dockerfile` subiria a **API** dentro
+  do container do worker, e nada no boot denunciaria a troca. O worker continua
+  importando `app.*` como biblioteca, que é o ponto que a spec queria garantir.
+- **Ação na spec**: corrigir a árvore para `apps/worker/worker/`.
+
 ## Pendências abertas do gate R-06
 
 Corrigidas nesta rodada: B1 (revogação desfeita pelo rollback), B2 (PAR-08 `@critico`),
@@ -106,6 +118,9 @@ Ainda abertas (o contexto `engagement` já foi implementado por cima desta base)
 - Nenhum passo de codegen do cliente OpenAPI no CI (AD-08).
 - Os testes de service usam dublês; falta a camada de integração contra Postgres que
   exercite os `.feature` de PAR-05, PAR-07 e PAR-08 ponta a ponta.
-- `apps/worker` continua vazio: o consumidor do outbox e o scheduler (AD-05) são o
-  próximo passo. Até eles existirem, mensagens enfileiradas ficam em `pending` e
-  nenhuma notificação chega ao destinatário.
+- O scheduler existe, mas **sem nenhum job registrado**: os dois previstos (fechamento
+  de ciclo com carência de 3 dias e expiração de tokens) pertencem a `feedback` e
+  `client_eval`. Além disso, o inventário do `pg_cron` de produção (AMB-008) continua
+  aberto — é ele que diz o que mais precisa existir aqui.
+- Provedor de email: só `console`. Resend e SMTP levantam erro explícito, e a mensagem
+  vai para a DLQ com o motivo — entram junto com o envio de relatórios (BR-MIGRAR-029/030).
