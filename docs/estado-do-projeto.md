@@ -69,10 +69,10 @@ como decidido.
 
 Em ordem de valor, para quem for continuar. Cada item diz o que fazer e onde olhar.
 
-1. **Conferir as 35 telas literais contra o oráculo.** Abrir cada screenshot em
-   `docs/reversa/screens/golden/` ao lado da tela correspondente e registrar divergência
-   em `screen_deviation_log.md`. É a validação que `parity_specs.md` exige e a única que
-   depende de olho humano. Sem ela, "paridade" é afirmação sem prova.
+1. **Conferir as 35 telas literais contra o oráculo.** O roteiro está pronto em
+   [`docs/conferencia-oraculo.md`](conferencia-oraculo.md): cada tela do sistema novo com
+   o screenshot correspondente e o que olhar. É a validação que `parity_specs.md` exige e
+   a única que depende de olho humano. Sem ela, "paridade" é afirmação sem prova.
 2. **Tornar os `.feature` executáveis.** Os 10 arquivos em
    `docs/reversa/migration/parity_tests/` são o roteiro formal da homologação e hoje não
    rodam. Os cenários estão cobertos por testes de service, mas o cliente vai homologar
