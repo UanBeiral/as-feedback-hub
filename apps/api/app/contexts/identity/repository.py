@@ -21,6 +21,7 @@ from app.contexts.identity.models import (
     Tenant,
     User,
 )
+from app.core.db import autonomous_session
 from app.core.tenancy import TenantScopedRepository
 
 
@@ -63,16 +64,27 @@ class AuthRepository:
         return token
 
     async def revoke_all_for_user(self, tenant_id: UUID, user_id: UUID) -> None:
-        """Usado no logout total e na detecção de reúso de refresh token."""
-        await self._session.execute(
-            update(RefreshToken)
-            .where(
-                RefreshToken.tenant_id == tenant_id,
-                RefreshToken.user_id == user_id,
-                RefreshToken.revoked_at.is_(None),
+        """Derruba todas as sessões do usuário, em transação própria.
+
+        A sessão é autônoma porque o principal chamador — a detecção de reúso de
+        refresh token — revoga **e em seguida levanta** `AuthenticationError`. Na
+        transação da requisição, o rollback do `get_session` desfaria a revogação e o
+        token roubado continuaria valendo: o detector viraria enfeite. Aqui a revogação
+        commita sozinha e sobrevive ao erro.
+
+        Revogar é sempre o lado seguro de errar, então persistir mesmo com a requisição
+        falhando é a direção certa (ver `core/db.autonomous_session`).
+        """
+        async with autonomous_session() as session:
+            await session.execute(
+                update(RefreshToken)
+                .where(
+                    RefreshToken.tenant_id == tenant_id,
+                    RefreshToken.user_id == user_id,
+                    RefreshToken.revoked_at.is_(None),
+                )
+                .values(revoked_at=datetime.now(UTC))
             )
-            .values(revoked_at=datetime.now(UTC))
-        )
 
     async def touch_last_login(self, user: User) -> None:
         user.last_login_at = datetime.now(UTC)
@@ -92,6 +104,23 @@ class ProfileRepository(TenantScopedRepository[Profile]):
             .order_by(Profile.full_name)
             .limit(limit)
             .offset(offset)
+        )
+        result = await self._session.execute(stmt)
+        return list(result.scalars().all())
+
+    async def list_by_ids(self, profile_ids: set[UUID]) -> list[Profile]:
+        """Perfis ativos de um conjunto já resolvido pelo `TeamScopeService`.
+
+        O filtro é do banco de propósito: buscar uma página de perfis e peneirar em
+        Python omite silenciosamente quem cair fora do LIMIT — um bug que só aparece
+        quando a empresa cresce, e aparece como "sumiu gente da minha equipe".
+        """
+        if not profile_ids:
+            return []
+        stmt = (
+            self._scoped()
+            .where(Profile.id.in_(profile_ids), Profile.status == "active")
+            .order_by(Profile.full_name)
         )
         result = await self._session.execute(stmt)
         return list(result.scalars().all())

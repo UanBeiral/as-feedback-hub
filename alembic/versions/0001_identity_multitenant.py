@@ -11,6 +11,11 @@ Diferenças conscientes em relação ao legado:
   acabava lido como permissão concedida (BR-MIGRAR-013).
 - `citext` no e-mail: o Supabase tratava e-mail como case-insensitive, e mudar isso
   em silêncio criaria contas duplicadas na migração.
+- `profiles.id` não tem default: é sempre o `id` do usuário, como no legado e como o
+  `data_migration_plan.md` exige (IDs preservados). O CHECK `id = user_id` faz o banco
+  cobrar isso de todo mundo — ETL e aplicação.
+- `profiles.job_title` ("Cargo"): coluna visível em quatro telas do subset literal que
+  o DDL de `target_data_model.md` não listou.
 
 Revision ID: 0001
 Revises:
@@ -107,8 +112,8 @@ def upgrade() -> None:
 
     op.create_table(
         "profiles",
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True,
-                  server_default=sa.text("gen_random_uuid()")),
+        # Sem default: o id do perfil é o id do usuário (ver docstring).
+        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
         sa.Column("tenant_id", postgresql.UUID(as_uuid=True),
                   sa.ForeignKey("tenants.id"), nullable=False),
         sa.Column("user_id", postgresql.UUID(as_uuid=True),
@@ -121,7 +126,7 @@ def upgrade() -> None:
         sa.Column("manager_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("profiles.id")),
         sa.Column("is_coordinator", sa.Boolean(), nullable=False, server_default="false"),
         sa.Column("whatsapp", sa.Text()),
-        sa.Column("hired_at", sa.Date()),
+        sa.Column("job_title", sa.Text()),
         sa.Column("can_request_client_feedback", sa.Boolean(), nullable=False,
                   server_default="false"),
         sa.Column("can_view_feedback_answers", sa.Boolean(), nullable=False,
@@ -140,6 +145,7 @@ def upgrade() -> None:
                            name="role_valido"),
         sa.CheckConstraint("status IN ('active','inactive','deleted')",
                            name="status_valido"),
+        sa.CheckConstraint("id = user_id", name="id_igual_ao_user"),
     )
     op.create_index("ix_profiles_tenant_id", "profiles", ["tenant_id"])
     op.create_index("ix_profiles_tenant_status", "profiles", ["tenant_id", "status"])

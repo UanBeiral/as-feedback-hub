@@ -113,11 +113,5 @@ async def my_team(
 ) -> list[ProfileSummary]:
     """Equipe visível para quem está pedindo, já resolvida por `TeamScopeService`."""
     visible = await scope.resolve_visible_profile_ids(tenant)
-    if not visible:
-        return []
     profiles = ProfileRepository(session, tenant)
-    return [
-        ProfileSummary.model_validate(p)
-        for p in await profiles.list_active()
-        if p.id in visible
-    ]
+    return [ProfileSummary.model_validate(p) for p in await profiles.list_by_ids(visible)]

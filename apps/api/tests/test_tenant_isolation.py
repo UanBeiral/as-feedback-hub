@@ -13,6 +13,7 @@ Quando um contexto novo entrar, importe seus models e repositórios em
 from __future__ import annotations
 
 import importlib
+import inspect
 from uuid import uuid4
 
 import pytest
@@ -24,6 +25,15 @@ from app.core.tenancy import TenantContext, TenantScopedRepository
 TABELAS_SEM_TENANT = {"tenants"}
 
 CONTEXTOS = ["identity"]
+
+# Repositórios que legitimamente não herdam `TenantScopedRepository`, com o motivo.
+# A lista é curta de propósito: cada entrada é uma exceção ao isolamento por herança e
+# precisa de justificativa escrita aqui, não no code review de daqui a seis meses.
+REPOSITORIOS_SEM_ESCOPO = {
+    # No login o tenant ainda não foi resolvido — resolvê-lo é o trabalho. Todo método
+    # recebe `tenant_id` explícito e nenhum aceita consulta cross-tenant implícita.
+    "AuthRepository",
+}
 
 
 def _import_all_contexts() -> None:
@@ -64,6 +74,32 @@ def test_tenant_id_nunca_e_nulavel() -> None:
         if "tenant_id" in tabela.columns and tabela.columns["tenant_id"].nullable
     ]
     assert not nulaveis, f"`tenant_id` nulável permite linha órfã: {nulaveis}"
+
+
+def test_nenhum_repositorio_escapa_do_escopo_por_acidente() -> None:
+    """A herança é o mecanismo — mas nada obriga alguém a herdar.
+
+    Sem este teste, um contexto novo pode declarar `class CycleRepository:` do zero,
+    escrever `select(Model)` sem tenant e passar no CI limpo, porque os testes acima só
+    enxergam subclasses de `TenantScopedRepository`. O precedente já existe dentro de
+    `identity` (`AuthRepository`), então a pergunta não é hipotética: é o caminho que a
+    pessoa apressada vai copiar.
+    """
+    fora_do_escopo: list[str] = []
+    for ctx in CONTEXTOS:
+        modulo = importlib.import_module(f"app.contexts.{ctx}.repository")
+        for nome, cls in inspect.getmembers(modulo, inspect.isclass):
+            if cls.__module__ != modulo.__name__ or not nome.endswith("Repository"):
+                continue
+            if issubclass(cls, TenantScopedRepository) or nome in REPOSITORIOS_SEM_ESCOPO:
+                continue
+            fora_do_escopo.append(f"{ctx}.{nome}")
+
+    assert not fora_do_escopo, (
+        f"Repositórios sem isolamento por herança: {fora_do_escopo}. "
+        "Ou herdam TenantScopedRepository, ou entram em REPOSITORIOS_SEM_ESCOPO com "
+        "justificativa escrita."
+    )
 
 
 def test_existe_pelo_menos_um_repositorio_vigiado() -> None:

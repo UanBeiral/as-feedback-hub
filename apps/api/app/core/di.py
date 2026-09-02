@@ -5,10 +5,16 @@ só deixa passar o que reconhece explicitamente. Um endpoint sem guard não é u
 público — é um bug, e `require_role`/`require_flag` existem para que a permissão fique
 declarada na assinatura da rota, visível na revisão.
 
-Onde os poderes vêm: o access token carrega papel e flags resolvidos no login. Como ele
-vale 15 minutos (AD-03), uma permissão revogada continua valendo até o token expirar.
-É a troca consciente do JWT curto — nada de consulta ao banco a cada requisição. Ações
-sensíveis que não toleram essa janela devem revalidar contra o banco no próprio service.
+Onde os poderes vêm: o access token carrega papel e flags resolvidos no login (AD-03).
+Papel e flags, portanto, ficam congelados por até 15 minutos — uma capacidade revogada
+só some do token na próxima renovação, e ações que não toleram essa janela devem
+revalidar contra o banco no próprio service.
+
+O que **não** fica congelado é o direito de estar ali: `assert_session_active` consulta
+o banco a cada requisição e derruba a sessão de quem foi removido, desativado, ou cujo
+tenant saiu do ar. Isso custa uma leitura indexada por requisição e é o que faz o
+cenário @critico de PAR-08 ("acesso revogado imediatamente") passar — sem ele, um
+usuário soft-deleted continuaria trabalhando por 15 minutos.
 """
 
 from __future__ import annotations
@@ -24,7 +30,7 @@ from app.core.config import Settings, get_settings
 from app.core.db import get_session
 from app.core.errors import AuthenticationError, AuthorizationError
 from app.core.security import InvalidTokenError, PasswordHasher, TokenService
-from app.core.tenancy import TenantContext
+from app.core.tenancy import TenantContext, assert_session_active
 
 # auto_error=False: queremos a nossa própria 401 no formato de erro do domínio.
 _bearer = HTTPBearer(auto_error=False)
@@ -48,6 +54,7 @@ TokenServiceDep = Annotated[TokenService, Depends(get_token_service)]
 async def get_tenant_context(
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer)],
     tokens: TokenServiceDep,
+    session: SessionDep,
 ) -> TenantContext:
     if credentials is None or not credentials.credentials:
         raise AuthenticationError("Credenciais ausentes")
@@ -56,6 +63,8 @@ async def get_tenant_context(
         claims = tokens.decode_access_token(credentials.credentials)
     except InvalidTokenError as exc:
         raise AuthenticationError("Token inválido ou expirado") from exc
+
+    await assert_session_active(session, tenant_id=claims.tenant_id, user_id=claims.user_id)
 
     return TenantContext(
         tenant_id=claims.tenant_id,
@@ -105,9 +114,18 @@ def require_flag(*flags: str, require_all: bool = True) -> Callable[[TenantConte
 
 
 def client_ip(request: Request) -> str:
-    """IP real atrás do Nginx. Só o primeiro salto do X-Forwarded-For é confiável,
-    e apenas porque o proxy da nossa VPS reescreve o header (AD-06)."""
-    forwarded = request.headers.get("x-forwarded-for", "")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
+    """IP real atrás do Nginx (AD-06).
+
+    Lemos `X-Real-IP`, e não `X-Forwarded-For`: o Nginx usa
+    `$proxy_add_x_forwarded_for`, que **anexa** o endereço da conexão ao que o cliente
+    mandou no header. O primeiro elemento do XFF é, portanto, escrito pelo cliente —
+    qualquer um pode dizer que é 10.0.0.1. Já `X-Real-IP` é sobrescrito com
+    `$remote_addr` a cada salto do nosso proxy, então não aceita palpite de fora.
+
+    Se um dia a API for exposta sem o Nginx na frente, os dois headers voltam a ser
+    controlados pelo cliente e este valor deixa de valer para qualquer decisão.
+    """
+    real = request.headers.get("x-real-ip", "").strip()
+    if real:
+        return real
     return request.client.host if request.client else "unknown"

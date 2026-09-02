@@ -51,6 +51,7 @@ class CurrentUser(BaseModel):
     email: EmailStr
     full_name: str
     role: str
+    job_title: str | None
     is_coordinator: bool
     department_id: UUID | None
     manager_id: UUID | None
@@ -63,6 +64,7 @@ class ProfileSummary(BaseModel):
     id: UUID
     full_name: str
     role: str
+    job_title: str | None
     status: str
     is_coordinator: bool
     department_id: UUID | None

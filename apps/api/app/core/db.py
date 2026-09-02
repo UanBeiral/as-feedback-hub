@@ -7,6 +7,7 @@ transação, ou nenhuma entra.
 """
 
 from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from datetime import datetime
 from uuid import UUID, uuid4
 
@@ -86,6 +87,31 @@ def get_session_factory() -> async_sessionmaker[AsyncSession]:
 
 async def get_session() -> AsyncIterator[AsyncSession]:
     """Dependency de sessão. Commit no sucesso, rollback em qualquer exceção."""
+    async with get_session_factory()() as session:
+        try:
+            yield session
+        except Exception:
+            await session.rollback()
+            raise
+        else:
+            await session.commit()
+
+
+@asynccontextmanager
+async def autonomous_session() -> AsyncIterator[AsyncSession]:
+    """Sessão própria, com commit independente da transação da requisição.
+
+    Existe por causa de uma armadilha que custa caro: quando um service escreve e em
+    seguida levanta um erro de domínio, o `get_session` acima faz rollback e a escrita
+    **some**. Para quase tudo isso é o comportamento certo. Para efeitos que precisam
+    sobreviver justamente ao caminho de erro — revogar sessões ao detectar reúso de
+    refresh token, contar tentativas de login, registrar auditoria de falha — é o
+    oposto do que se quer.
+
+    Regra: use isto **só** para efeitos que devem persistir mesmo com a requisição
+    falhando, e sempre no sentido seguro (revogar acesso, nunca conceder). Escrita de
+    domínio continua na sessão da requisição, dentro da transação única.
+    """
     async with get_session_factory()() as session:
         try:
             yield session

@@ -55,16 +55,9 @@ async def seed(slug: str, nome: str, email: str, senha: str) -> int:
         await session.flush()
 
         # O perfil é obrigatório: sem ele o login recusa a sessão, porque papel e
-        # capacidades vivem no Profile, não no User.
-        session.add(
-            Profile(
-                id=uuid4(),
-                tenant_id=tenant.id,
-                user_id=user.id,
-                full_name=nome + " — Admin",
-                role="admin",
-            )
-        )
+        # capacidades vivem no Profile, não no User. `for_user` garante o id do perfil
+        # igual ao do usuário, invariante que o banco cobra com CHECK.
+        session.add(Profile.for_user(user, full_name=nome + " — Admin", role="admin"))
         await session.commit()
         print(f"admin criado: {email}")
         return 0

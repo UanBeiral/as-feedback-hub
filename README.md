@@ -13,6 +13,9 @@ Leia, nesta ordem, em `docs/reversa/migration/`:
    **Papel de usuário é autorização, nunca pasta.**
 4. **`screen_modernization_decision.md`** — inegociável. 35 telas literais + 8 modernizadas.
 
+Depois, `docs/spec-deviations.md`: os pontos em que o código deliberadamente **não**
+segue a spec, com o motivo. Antes de "consertar" algo que parece divergente, confira lá.
+
 O código legado **não é referência de implementação**. Quando uma spec conflitar com o
 que o protótipo fazia, a spec vence.
 

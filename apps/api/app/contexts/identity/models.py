@@ -12,19 +12,19 @@ relação ao legado, todas registradas em `target_data_model.md`:
 
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import datetime
 from uuid import UUID
 
 from sqlalchemy import (
     Boolean,
     CheckConstraint,
-    Date,
     DateTime,
     ForeignKey,
     Index,
     String,
     Text,
     UniqueConstraint,
+    func,
 )
 from sqlalchemy.dialects.postgresql import CITEXT
 from sqlalchemy.dialects.postgresql import UUID as PgUUID
@@ -109,7 +109,7 @@ class RefreshToken(UUIDPrimaryKeyMixin, TenantScopedMixin, Base):
     used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, server_default="now()"
+        DateTime(timezone=True), nullable=False, server_default=func.now()
     )
     user_agent: Mapped[str | None] = mapped_column(Text)
     ip_address: Mapped[str | None] = mapped_column(String(45))
@@ -128,15 +128,24 @@ class Department(UUIDPrimaryKeyMixin, TenantScopedMixin, TimestampMixin, Base):
     __table_args__ = (UniqueConstraint("tenant_id", "name", name="uq_departments_tenant_name"),)
 
 
-class Profile(UUIDPrimaryKeyMixin, TenantScopedMixin, TimestampMixin, Base):
+class Profile(TenantScopedMixin, TimestampMixin, Base):
     """Pessoa dentro do tenant: papel, capacidades e posição na hierarquia.
 
     `role` é um único valor; coordenação e capacidades são atributos separados
     (BR-MIGRAR-015). Foi assim que o legado se enrolou: tratava "coordenador" como se
     fosse um papel, e acabou com telas duplicadas por papel.
+
+    **`id` é o mesmo `id` do `User`**, e não um uuid próprio. Não é economia de coluna:
+    no legado `profiles.id` *é* o `auth.users.id`, e o `data_migration_plan.md` migra
+    com os UUIDs preservados. Se o app criasse perfis com id novo, metade da base teria
+    `profile.id == user.id` e a outra metade não — e todo FK para `profiles(id)` nos
+    outros contextos herdaria essa loteria. O CHECK abaixo transforma a promessa em
+    invariante do banco; use `Profile.for_user()` para não ter que lembrar dela.
     """
 
     __tablename__ = "profiles"
+
+    id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True)
 
     tenant_id: Mapped[UUID] = mapped_column(
         PgUUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True
@@ -153,7 +162,11 @@ class Profile(UUIDPrimaryKeyMixin, TenantScopedMixin, TimestampMixin, Base):
     manager_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), ForeignKey("profiles.id"))
     is_coordinator: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
     whatsapp: Mapped[str | None] = mapped_column(Text)
-    hired_at: Mapped[date | None] = mapped_column(Date)
+    # "Cargo" nas telas: aparece na tabela de usuários do admin, em Minha Equipe
+    # (gestor e coordenador), em Meu Perfil e na busca de Solicitar Avaliação. O DDL de
+    # `target_data_model.md` esqueceu esta coluna; sem ela, quatro telas do subset
+    # literal perdem uma coluna visível e o dado morre no cutover.
+    job_title: Mapped[str | None] = mapped_column(Text)
 
     # Capacidades. NOT NULL com default false é o deny-by-default no schema
     # (BR-MIGRAR-013): no legado eram nuláveis, e NULL era lido como permissão.
@@ -176,9 +189,15 @@ class Profile(UUIDPrimaryKeyMixin, TenantScopedMixin, TimestampMixin, Base):
     __table_args__ = (
         CheckConstraint("role IN ('admin','rh','gestor','colaborador')", name="role_valido"),
         CheckConstraint("status IN ('active','inactive','deleted')", name="status_valido"),
+        CheckConstraint("id = user_id", name="id_igual_ao_user"),
         Index("ix_profiles_tenant_status", "tenant_id", "status"),
         Index("ix_profiles_tenant_manager", "tenant_id", "manager_id"),
     )
+
+    @classmethod
+    def for_user(cls, user: User, **campos: object) -> Profile:
+        """Único jeito correto de criar um perfil: id e tenant vêm do usuário."""
+        return cls(id=user.id, user_id=user.id, tenant_id=user.tenant_id, **campos)  # type: ignore[arg-type]
 
     @property
     def flags(self) -> frozenset[str]:
@@ -201,7 +220,7 @@ class ProfileDepartment(UUIDPrimaryKeyMixin, TenantScopedMixin, Base):
         PgUUID(as_uuid=True), ForeignKey("departments.id", ondelete="CASCADE"), nullable=False
     )
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, server_default="now()"
+        DateTime(timezone=True), nullable=False, server_default=func.now()
     )
 
     __table_args__ = (
@@ -225,7 +244,7 @@ class CoordinatorMember(UUIDPrimaryKeyMixin, TenantScopedMixin, Base):
         PgUUID(as_uuid=True), ForeignKey("profiles.id", ondelete="CASCADE"), nullable=False
     )
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, server_default="now()"
+        DateTime(timezone=True), nullable=False, server_default=func.now()
     )
 
     __table_args__ = (

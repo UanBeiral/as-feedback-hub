@@ -15,10 +15,11 @@ from dataclasses import dataclass
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import Select, select
+from sqlalchemy import Select, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import Base
+from app.core.errors import AuthenticationError
 
 
 @dataclass(frozen=True, slots=True)
@@ -39,6 +40,46 @@ class TenantContext:
 
     def has_role(self, *roles: str) -> bool:
         return self.role in roles
+
+
+# Revalidação de sessão a cada requisição (PAR-08 § "Acesso revogado imediatamente").
+#
+# O access token vale 15 minutos e carrega papel e flags (AD-03). Sem esta consulta,
+# um usuário removido continuaria usando a sessão até o token expirar — e PAR-08 marca
+# esse cenário como @critico, ou seja, bloqueador de cutover. A troca consciente é uma
+# leitura indexada por requisição.
+#
+# A consulta usa SQL textual de propósito: `core/` não importa modelos de contexto, ou
+# a dependência se inverte (`identity` depende de `core`, nunca o contrário). O preço é
+# esta única referência a nomes de tabela fora do contexto dono deles.
+_SESSAO_ATIVA = text(
+    """
+    SELECT u.status AS user_status,
+           t.status AS tenant_status,
+           p.status AS profile_status
+      FROM users u
+      JOIN tenants t ON t.id = u.tenant_id
+      LEFT JOIN profiles p ON p.user_id = u.id
+     WHERE u.id = :user_id AND u.tenant_id = :tenant_id
+    """
+)
+
+
+async def assert_session_active(session: AsyncSession, *, tenant_id: UUID, user_id: UUID) -> None:
+    """Recusa a requisição se usuário, perfil ou tenant deixaram de estar ativos.
+
+    Falha fechada: linha ausente (usuário apagado de verdade, ou perfil nunca criado)
+    também nega. A mensagem é a mesma em todos os casos — quem perdeu o acesso não
+    precisa saber qual dos três estados mudou.
+    """
+    row = (
+        await session.execute(_SESSAO_ATIVA, {"user_id": user_id, "tenant_id": tenant_id})
+    ).mappings().first()
+
+    if row is None or any(
+        row[campo] != "active" for campo in ("user_status", "tenant_status", "profile_status")
+    ):
+        raise AuthenticationError("Sessão encerrada. Entre novamente.")
 
 
 class TenantScopedRepository[TModel: Base]:

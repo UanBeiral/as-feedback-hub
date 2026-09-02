@@ -89,6 +89,8 @@ class AuthService:
             # O token é de uso único. Uma segunda apresentação significa que alguém
             # tem uma cópia: não dá para saber se é o dono ou o ladrão, então as duas
             # sessões caem e o login é refeito.
+            # Commita em transação própria: o `raise` logo abaixo faz a requisição
+            # dar rollback, e sem isso a revogação não sobreviveria.
             await self._repo.revoke_all_for_user(stored.tenant_id, stored.user_id)
             raise AuthenticationError("Sessão encerrada por segurança. Entre novamente.")
 
@@ -158,6 +160,7 @@ def _to_current_user(user: User, profile: Profile) -> CurrentUser:
         email=user.email,
         full_name=profile.full_name,
         role=profile.role,
+        job_title=profile.job_title,
         is_coordinator=profile.is_coordinator,
         department_id=profile.department_id,
         manager_id=profile.manager_id,
