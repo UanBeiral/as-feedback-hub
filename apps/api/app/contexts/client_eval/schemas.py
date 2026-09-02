@@ -132,10 +132,34 @@ class PublicQuestionOut(BaseModel):
 
 
 class PublicFormOut(BaseModel):
+    """Tudo que o wizard público precisa para desenhar as 16 etapas — e nada mais.
+
+    Os dados de contato voltam **completos**, sem o mascaramento de BR-MIGRAR-022: ali
+    o alvo é a listagem interna, onde o WhatsApp do cliente é dado de terceiro. Aqui
+    quem tem o token é o próprio cliente, e a etapa de identificação nasce preenchida
+    com o que o escritório já digitou na solicitação (SCR-0035 etapa 1) — pedir de novo
+    o número para quem recebeu o link naquele número seria trabalho inventado.
+    """
+
     questions: list[PublicQuestionOut]
     service_tags: list[ServiceTagOut]
     # Nome de quem será avaliado: o cliente precisa saber sobre quem está falando.
     target_name: str | None
+    # Pré-preenchimento da etapa de identificação. Campos **obrigatórios no contrato**,
+    # ainda que anuláveis: o front precisa distinguir "o escritório não preencheu" de
+    # "esta versão da API não manda o campo", e sem isso o TypeScript gerado espalha
+    # `?.` por toda a tela.
+    client_name: str | None
+    client_whatsapp: str | None
+    client_email: EmailStr | None
+    # Motivações ligadas pelo tenant (setting `client_feedback_motivations`). A etapa 2
+    # some inteira quando o escritório desliga todas — e o wizard pula direto adiante.
+    motivations: list[str]
+    # Identidade do escritório na capa: o cliente precisa saber quem está perguntando.
+    # Só o nome — o `logo_url` do catálogo de settings aponta para host arbitrário, e
+    # carregar imagem de terceiro na única página aberta na internet é superfície que
+    # esta tela não precisa ter.
+    company_name: str | None
 
 
 class PublicAnswerIn(BaseModel):
@@ -159,7 +183,9 @@ class PublicSubmitIn(BaseModel):
         default=None, pattern="^(praise|evaluate|problem|other)$"
     )
     contact_motivation_text: str | None = None
-    overall_rating: int | None = Field(default=None, ge=1, le=5)
+    # Escala 0–10, a mesma das estrelas do wizard e a mesma que os relatórios exibem
+    # ("Nota Geral 9/10" em `reports/screens.md`). Ver DEV-A12 em docs/spec-deviations.md.
+    overall_rating: int | None = Field(default=None, ge=0, le=10)
     recommendation_rating: int | None = Field(default=None, ge=0, le=10)
     service_tag_ids: list[UUID] = Field(default_factory=list)
 

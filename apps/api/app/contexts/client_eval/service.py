@@ -36,9 +36,10 @@ from app.core.security import generate_public_token
 from app.core.tenancy import TenantContext
 
 # Nota que dispara a sinalização automática (BR-MIGRAR-021). O legado não registrou o
-# limiar em lugar nenhum; 2 numa escala de 5 é a leitura conservadora, e o valor é
+# limiar em lugar nenhum; 4 numa escala de 0–10 é a leitura conservadora — a escala é a
+# das estrelas do wizard público e a dos relatórios ("Nota Geral 9/10"). O valor é
 # configurável por tenant justamente para o cliente ajustar sem deploy.
-NOTA_NEGATIVA_PADRAO = 2
+NOTA_NEGATIVA_PADRAO = 4
 
 
 @dataclass(frozen=True, slots=True)

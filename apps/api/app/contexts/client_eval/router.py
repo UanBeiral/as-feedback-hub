@@ -7,11 +7,13 @@ conta. Três cuidados moram nele:
 - O prefixo `/public/` não é cosmético: o Nginx aplica `limit_req` justamente nele
   (AD-06). Rota pública fora desse prefixo nasce sem rate limiting.
 - Nenhuma resposta pública distingue "token não existe" de "token já usado".
-- Nada do escritório vaza junto do formulário além do nome de quem será avaliado.
+- Do escritório só saem o nome de quem será avaliado, o nome da empresa e quais
+  motivações estão ligadas — o suficiente para desenhar o wizard, nada além disso.
 """
 
 from __future__ import annotations
 
+import json
 from typing import Annotated
 from uuid import UUID
 
@@ -194,6 +196,29 @@ async def list_service_tags(tenant: TenantDep, session: SessionDep) -> list[Serv
 
 # ---------------------------------------------------------------- público
 
+# Ordem das quatro motivações na etapa 2 do wizard (SCR-0035). É a ordem do legado, e
+# o catálogo de settings guarda só o liga/desliga de cada uma.
+MOTIVACOES = ("praise", "evaluate", "problem", "other")
+
+
+def _motivacoes_ligadas(settings_do_tenant: dict[str, str | None]) -> list[str]:
+    """Quais motivações o escritório deixou ligadas (`client_feedback_motivations`).
+
+    Configuração ausente ou quebrada libera as quatro: a etapa é opcional para o
+    resultado, e sumir com ela por causa de um JSON torto seria pior que mostrá-la.
+    """
+    bruto = settings_do_tenant.get("client_feedback_motivations")
+    if not bruto:
+        return list(MOTIVACOES)
+    try:
+        escolhas = json.loads(bruto)
+    except (ValueError, TypeError):
+        return list(MOTIVACOES)
+    if not isinstance(escolhas, dict):
+        return list(MOTIVACOES)
+    return [m for m in MOTIVACOES if escolhas.get(m, True)]
+
+
 async def _politica(session: SessionDep, tenant_id: UUID) -> PoliticaDeSinalizacao:
     """Lê a política de sinalização do tenant dono da avaliação (BR-MIGRAR-021)."""
     contexto = TenantContext(
@@ -234,11 +259,20 @@ async def open_public_form(token: str, session: SessionDep) -> PublicFormOut:
     )
     tags = await ServiceTagRepository(session, contexto).list_active()
     avaliado = await ProfileRepository(session, contexto).get(avaliacao.target_user_id)
+    settings_do_tenant = {
+        s.key: s.value
+        for s in await TenantSettingRepository(session, contexto).list_all_settings()
+    }
 
     return PublicFormOut(
         questions=[PublicQuestionOut.model_validate(q) for q in perguntas],
         service_tags=[ServiceTagOut.model_validate(t) for t in tags],
         target_name=avaliado.full_name if avaliado else None,
+        client_name=avaliacao.client_name,
+        client_whatsapp=avaliacao.client_whatsapp,
+        client_email=avaliacao.client_email,
+        motivations=_motivacoes_ligadas(settings_do_tenant),
+        company_name=settings_do_tenant.get("company_name"),
     )
 
 

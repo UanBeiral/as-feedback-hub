@@ -27,8 +27,8 @@ Leitura obrigatória antes de mexer, nesta ordem:
 |---|---|
 | API (FastAPI) | 5 contextos, 82 rotas, 30 tabelas |
 | Worker | despacho do outbox + 3 jobs agendados |
-| Front (Next.js) | 24 rotas, client tipado gerado do OpenAPI |
-| Testes | 314, todos verdes |
+| Front (Next.js) | 24 rotas, client tipado gerado do OpenAPI; fluxo público em wizard |
+| Testes | 322, todos verdes |
 | Migrations | 0001→0005, aplicam do zero |
 | CI | lint + testes + migrations + build do front |
 
@@ -52,14 +52,19 @@ como decidido.
 
 **Não bloqueia, mas está aberto:**
 
-- **A comparação com o oráculo nunca foi feita.** As 35 telas do subset literal precisam
-  ser conferidas contra os screenshots em `docs/reversa/screens/golden/`. É a validação
-  que `parity_specs.md` exige e que nenhum teste automatizado substitui.
+- **A comparação com o oráculo mal começou.** Das 35 telas do subset literal, só a
+  SCR-0035 (fluxo público) foi conferida — as outras 34 seguem pendentes contra os
+  screenshots em `docs/reversa/screens/golden/`. É a validação que `parity_specs.md`
+  exige e que nenhum teste automatizado substitui.
 - **Os 10 arquivos `.feature` de paridade não rodam.** Os cenários estão cobertos por
   testes de service, mas o roteiro formal da homologação ainda não é executável.
 - **Telas secundárias**: 24 das 43. Falta o detalhe de avaliação de cliente, o envio de
   feedback livre pela interface e a Agenda — esta última fora do corte por decisão
   (AMB-007, fase 2).
+- **Três pontos do wizard público dependem do cliente, não de código**: qual pergunta era
+  a Q6 do legado, qual pergunta alimenta a coluna "Nota Geral" dos relatórios e o que
+  fazer com o chip "+ Outro…" do tipo de serviço. Estão em `spec-deviations.md`
+  (DEV-A12, DEV-A13) e no roteiro de conferência.
 - **Email só sai pelo console.** Resend e SMTP levantam erro explícito e a mensagem vai
   para a DLQ com o motivo — melhor que sumir achando que foi enviada.
 - **Análises de IA** (AMB-005) e **status `reviewed`** (AMB-003) ficaram fora por decisão
@@ -69,16 +74,20 @@ como decidido.
 
 Em ordem de valor, para quem for continuar. Cada item diz o que fazer e onde olhar.
 
-1. **Conferir as 35 telas literais contra o oráculo.** O roteiro está pronto em
-   [`docs/conferencia-oraculo.md`](conferencia-oraculo.md): cada tela do sistema novo com
-   o screenshot correspondente e o que olhar. É a validação que `parity_specs.md` exige e
-   a única que depende de olho humano. Sem ela, "paridade" é afirmação sem prova.
+1. **Conferir as 34 telas literais que faltam contra o oráculo.** O roteiro está pronto
+   em [`docs/conferencia-oraculo.md`](conferencia-oraculo.md): cada tela do sistema novo
+   com o screenshot correspondente e o que olhar. É a validação que `parity_specs.md`
+   exige e a única que depende de olho humano. Sem ela, "paridade" é afirmação sem prova.
+   A SCR-0035 já saiu — e mostrou o que essa conferência rende: virou a reescrita da tela
+   como wizard e três deviations que ninguém tinha visto.
 2. **Tornar os `.feature` executáveis.** Os 10 arquivos em
    `docs/reversa/migration/parity_tests/` são o roteiro formal da homologação e hoje não
    rodam. Os cenários estão cobertos por testes de service, mas o cliente vai homologar
    pelo roteiro, não pela suíte.
 3. **Telas que faltam**: detalhe da avaliação de cliente, envio de feedback livre pela
    interface. A Agenda está fora do corte por decisão (AMB-007).
+   Junto: perguntar ao cliente os três pontos em aberto do wizard público (Q6, origem da
+   "Nota Geral", chip "+ Outro…").
 4. **Provedor de email real.** Hoje só `console`; Resend e SMTP levantam erro explícito
    e a mensagem vai para a DLQ. Nenhum email chega a ninguém até isso mudar
    (BR-MIGRAR-030).

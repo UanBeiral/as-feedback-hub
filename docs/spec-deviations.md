@@ -126,6 +126,56 @@
   dentro da validade", e é isso que o código implementa.
 - **Ação na spec**: corrigir o SQL de exemplo.
 
+## DEV-A11 — o formulário público devolve contato pré-preenchido, motivações e empresa
+
+- **Spec**: `target_screens.md` SCR-0035 descreve `entry: GET /public/evaluations/{token}`
+  sem listar o corpo; `public/screens.md` diz que a etapa de identificação vem
+  **pré-preenchida com os dados da solicitação**.
+- **Código**: `PublicFormOut` carrega, além de `target_name`, os campos `client_name`,
+  `client_whatsapp`, `client_email`, `motivations` e `company_name`.
+- **Motivo**: sem eles o wizard não desenha três das 16 etapas. A identificação pediria
+  de novo o número de quem recebeu o link *naquele número*; a etapa de motivação
+  ignoraria o setting `client_feedback_motivations`, que existe justamente para o
+  escritório ligar e desligar cada motivo; e a capa não teria como identificar o
+  escritório num sistema multi-tenant.
+- **Privacidade**: o WhatsApp sai **completo**, sem o mascaramento de BR-MIGRAR-022. A
+  regra protege dado de terceiro na listagem interna; aqui quem apresenta o token é o
+  próprio cliente, e o número é dele. O `logo_url` do catálogo **não** sai: apontaria
+  para host arbitrário, e a única página aberta na internet não precisa carregar imagem
+  de terceiro.
+- **Ação na spec**: documentar o corpo do `entry` em SCR-0035.
+
+## DEV-A12 — `overall_rating` é 0–10, e sai das próprias perguntas
+
+- **Spec**: `target_data_model.md` declara `overall_rating int` sem faixa;
+  `reports/screens.md` mostra a coluna como "9/10" e `public/screens.md` registra que
+  "notas em estrelas mapeiam para escala 0–10".
+- **Código**: `PublicSubmitIn.overall_rating` passou de `ge=1, le=5` para `ge=0, le=10`.
+  Junto, `NOTA_NEGATIVA_PADRAO` (BR-MIGRAR-021) foi de 2 para 4 e a chave
+  `client_eval_negative_rating_max` do catálogo passou a nascer em `"4"`.
+- **Motivo**: a faixa 1–5 era herança da página única, que tinha um select "Nota geral"
+  de 1 a 5. O wizard não tem etapa própria para essa nota — o oráculo mostra dez
+  estrelas em cada pergunta — então a escala precisava ser a mesma dos relatórios. E o
+  limiar de sinalização tinha de acompanhar: "≤ 2" numa escala de 10 só pegaria nota
+  quase zero, e avaliações negativas deixariam de ser sinalizadas **em silêncio**.
+- **Derivação, e o que ela tem de palpite**: sem etapa própria, o wizard usa a **primeira
+  pergunta de tipo `rating`** como `overall_rating` e a **primeira de tipo `nps`** como
+  `recommendation_rating` (a hipótese de SCR-0044). É o que os screenshots permitem
+  concluir — a Q1 é literalmente "No geral, como você avalia…" — mas o legado pode ter
+  amarrado outra pergunta. **Confirmar na conferência do oráculo**; se divergir, o ponto
+  a mudar é `enviar()` em `apps/web/src/app/avaliacao/[token]/page.tsx`.
+- **Ação na spec**: fixar a faixa 0–10 no DDL e dizer qual pergunta alimenta cada coluna.
+
+## DEV-A13 — a etapa de tipo de serviço não tem o chip "+ Outro…"
+
+- **Spec**: `public/screens.md` etapa 13 lista os chips e termina com "**+ Outro…**".
+- **Código**: só os `service_tags` cadastrados no tenant.
+- **Motivo**: `POST /public/evaluations/{token}` aceita `service_tag_ids` (UUIDs) e mais
+  nada. Um chip "+ Outro…" abriria um campo livre que o contrato descarta — o cliente
+  digitaria e o texto sumiria. Melhor não oferecer do que oferecer e perder.
+- **Ação na spec**: decidir se "Outro" vira uma `service_tag` de catálogo (custo zero,
+  resolve hoje) ou se o modelo ganha texto livre por avaliação.
+
 ## Pendências abertas do gate R-06
 
 Corrigidas nesta rodada: B1 (revogação desfeita pelo rollback), B2 (PAR-08 `@critico`),
@@ -147,9 +197,10 @@ Ainda abertas (`engagement` e `feedback` já foram implementados por cima desta 
   telas de `target_screens.md`, faltam as secundárias — histórico de equipe, caderno
   do ciclo, feedback livre, formulários e permissões de admin, auditoria, comunicados,
   triagem de contatos e o detalhe de avaliação de cliente.
-- **A comparação com o oráculo não foi feita.** As 35 telas do subset literal precisam
-  ser conferidas contra os screenshots de `docs/reversa/screens/golden/` — é a validação
-  que `parity_specs.md` exige e que depende de olho humano ou de um runner visual.
+- **A comparação com o oráculo não foi feita**, salvo SCR-0035, conferido tela a tela
+  contra `docs/reversa/public/screenshots/`. As demais 34 telas do subset literal
+  continuam pendentes — é a validação que `parity_specs.md` exige e que depende de olho
+  humano ou de um runner visual.
 - `feedback` não tem leitura pelo destinatário (`read_at`/`read_by` em `feedback_requests`
   existem no schema, sem endpoint), nem as telas de histórico de equipe.
 - Provedor de email: só `console`. Resend e SMTP levantam erro explícito, e a mensagem

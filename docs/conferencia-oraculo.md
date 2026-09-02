@@ -132,13 +132,18 @@ Legenda: ✅ tela existe · ⚠️ existe parcialmente · ❌ não implementada
       O legado tinha tela própria; aqui é uma seção. Confira se os campos de escopo do
       relatório executivo estão todos presentes.
 
-- [ ] **SCR-0035 · Fluxo Público do Cliente** ⚠️ **divergência estrutural conhecida**
-      `docs/reversa/public/screenshots/` — 17 capturas do wizard
-      O legado é um **wizard de 16 etapas** (boas-vindas → identificação → motivação com
-      ramos → 9 perguntas → tipo de serviço → agradecimento). O novo é **página única**.
-      Funciona e preserva as perguntas, mas a experiência é outra. Esta é a maior
-      divergência do subset literal e precisa de decisão: ou vira deviation aprovada, ou
-      a tela é refeita como wizard.
+- [x] **SCR-0035 · Fluxo Público do Cliente** ✅ **conferida em 02/09/2026** —
+      `/avaliacao/{token}` · `docs/reversa/public/screenshots/` (17 capturas)
+      A tela foi **refeita como wizard**: a divergência estrutural não existe mais. Cada
+      etapa foi comparada com sua captura, inclusive a barra de progresso, que reproduz a
+      escala de seis casas do legado (identificação 1/6, motivação/ramo/transição 2/6,
+      perguntas interpolando de 3/6 a 4/6, tipo de serviço 5/6; capa e agradecimento sem
+      barra).
+      *Sobra para conferir com o cliente*, e nenhum destes se decide por screenshot:
+      **(a)** a etapa Q6 nunca foi capturada — aqui ela é uma pergunta `nps` do formulário,
+      conforme a hipótese de SCR-0044; **(b)** qual pergunta alimenta `overall_rating` nos
+      relatórios (DEV-A12 assume a primeira de tipo `rating`); **(c)** o chip "+ Outro…" do
+      tipo de serviço não existe, porque o contrato não aceita texto livre (DEV-A13).
 
 ## Sessão
 
@@ -154,10 +159,11 @@ Legenda: ✅ tela existe · ⚠️ existe parcialmente · ❌ não implementada
 
 | | |
 |---|---|
-| Telas literais a conferir | 35 (uma, a Agenda, está fora do corte) |
+| Telas literais a conferir | 34 (uma, a Agenda, está fora do corte; SCR-0035 já conferida) |
+| Já conferidas | SCR-0035 (Avaliação Pública) — 02/09/2026 |
 | Já sabidamente ausentes | SCR-0021 (Meu Histórico), SCR-0023 (Feedback Livre) |
 | Parciais | SCR-0017 (Emitir Relatório), SCR-0022 (Caderno do Ciclo) |
-| Divergência estrutural | SCR-0035 (wizard vs página única) |
+| Divergência estrutural | nenhuma em aberto |
 
 As **8 telas modernizadas** (SCR-0036 a SCR-0044) não entram nesta conferência: por
 decisão do modo híbrido elas não têm oráculo visual, e a paridade delas é semântica —

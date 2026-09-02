@@ -63,7 +63,7 @@ SETTINGS_CATALOG: dict[str, str | None] = {
     # BR-MIGRAR-021 pede palavras negativas *configuráveis por tenant*; sem uma chave,
     # elas virariam constante no código e o cliente dependeria de deploy para ajustar.
     "client_eval_negative_keywords": "[]",
-    "client_eval_negative_rating_max": "2",
+    "client_eval_negative_rating_max": "4",
 }
 
 

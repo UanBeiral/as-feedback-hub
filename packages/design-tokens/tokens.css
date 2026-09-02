@@ -62,15 +62,19 @@
 
   /*
    * Derivados (DEV-008). O legado usava estas cores nos badges de papel e no fluxo
-   * público sem token nomeado. Os valores abaixo são a leitura documentada em
-   * `tokens-derived.md`: gestor e colaborador reaproveitam tokens existentes, e o roxo
-   * de coordenador/público está marcado para conferência contra o screenshot.
+   * público sem token nomeado. Gestor e colaborador reaproveitam tokens existentes.
+   *
+   * O gradiente público saiu do oráculo por amostragem de pixel nos screenshots de
+   * `docs/reversa/public/screenshots/` (botão "Começar avaliação" e barra de progresso):
+   * #6366f1 → #8b5cf6. Ele **não** é o navy da identidade interna, e isso é de
+   * propósito: o fluxo público tem identidade própria, da mesma família do login.
    */
   --role-coordinator: 265 60% 55%; /* 🔴 conferir contra o oráculo */
   --role-manager: var(--accent);
   --role-collaborator: var(--muted-foreground);
-  --public-gradient-from: 265 60% 55%; /* 🔴 conferir */
-  --public-gradient-to: 213 52% 24%;
+  --public-gradient-from: 239 84% 67%; /* #6366f1 */
+  --public-gradient-to: 258 90% 66%; /* #8b5cf6 */
+  --public-surface: 220 27% 98%; /* #f8f9fb — fundo da página pública */
 
   --radius: 0.5rem;
 }

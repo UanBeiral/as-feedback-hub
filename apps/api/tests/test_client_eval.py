@@ -11,14 +11,17 @@ from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
 
 import pytest
+from pydantic import ValidationError as PydanticValidationError
 
 from app.contexts.client_eval.models import (
     ClientEvalFormQuestion,
     ClientEvaluation,
     mascarar_whatsapp,
 )
-from app.contexts.client_eval.schemas import EvaluationOut
+from app.contexts.client_eval.router import _motivacoes_ligadas
+from app.contexts.client_eval.schemas import EvaluationOut, PublicSubmitIn
 from app.contexts.client_eval.service import (
+    NOTA_NEGATIVA_PADRAO,
     PoliticaDeSinalizacao,
     PublicEvaluationService,
 )
@@ -305,8 +308,8 @@ def test_configuracao_quebrada_nao_derruba_a_submissao() -> None:
     )
 
     assert politica.palavras == ()
-    assert politica.nota_maxima == 2
-    assert not politica.sinaliza(notas=[5], textos=["qualquer coisa"])
+    assert politica.nota_maxima == NOTA_NEGATIVA_PADRAO
+    assert not politica.sinaliza(notas=[9], textos=["qualquer coisa"])
 
 
 # ---------------------------------------------------------------- espontâneo
@@ -393,3 +396,36 @@ def test_mapa_de_status_para_exibicao(status: str, exibicao: str) -> None:
     """BR-MIGRAR-022: `in_progress` e `pending` são a mesma coisa para quem olha a lista."""
     avaliacao = _avaliacao(status=status)
     assert avaliacao.status_exibicao == exibicao
+
+
+# ---------------------------------------------------------------- wizard público
+
+
+@pytest.mark.parametrize(
+    "bruto,esperado",
+    [
+        (None, ["praise", "evaluate", "problem", "other"]),
+        ("", ["praise", "evaluate", "problem", "other"]),
+        ('{"praise":true,"evaluate":true,"problem":true,"other":true}',
+         ["praise", "evaluate", "problem", "other"]),
+        ('{"praise":false,"problem":true}', ["evaluate", "problem", "other"]),
+        ('{"praise":false,"evaluate":false,"problem":false,"other":false}', []),
+        ("{isto não é json", ["praise", "evaluate", "problem", "other"]),
+        ('["praise"]', ["praise", "evaluate", "problem", "other"]),
+    ],
+)
+def test_motivacoes_ligadas(bruto: str | None, esperado: list[str]) -> None:
+    """Etapa 2 do wizard (SCR-0035): o tenant liga e desliga cada motivação.
+
+    Config ausente ou torta libera as quatro — sumir com a etapa por causa de um JSON
+    quebrado seria pior que mostrá-la. A ordem é sempre a do legado.
+    """
+    assert _motivacoes_ligadas({"client_feedback_motivations": bruto}) == esperado
+
+
+def test_nota_geral_aceita_a_escala_de_zero_a_dez() -> None:
+    """O wizard manda estrelas 0–10, a mesma escala que os relatórios exibem (DEV-A12)."""
+    assert PublicSubmitIn(overall_rating=0).overall_rating == 0
+    assert PublicSubmitIn(overall_rating=10).overall_rating == 10
+    with pytest.raises(PydanticValidationError):
+        PublicSubmitIn(overall_rating=11)

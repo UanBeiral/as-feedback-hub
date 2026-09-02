@@ -2567,7 +2567,60 @@
         "type": "object"
       },
       "PublicFormOut": {
+        "description": "Tudo que o wizard público precisa para desenhar as 16 etapas — e nada mais.\n\nOs dados de contato voltam **completos**, sem o mascaramento de BR-MIGRAR-022: ali\no alvo é a listagem interna, onde o WhatsApp do cliente é dado de terceiro. Aqui\nquem tem o token é o próprio cliente, e a etapa de identificação nasce preenchida\ncom o que o escritório já digitou na solicitação (SCR-0035 etapa 1) — pedir de novo\no número para quem recebeu o link naquele número seria trabalho inventado.",
         "properties": {
+          "client_email": {
+            "anyOf": [
+              {
+                "format": "email",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Email"
+          },
+          "client_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Name"
+          },
+          "client_whatsapp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Whatsapp"
+          },
+          "company_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Company Name"
+          },
+          "motivations": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Motivations",
+            "type": "array"
+          },
           "questions": {
             "items": {
               "$ref": "#/components/schemas/PublicQuestionOut"
@@ -2597,7 +2650,12 @@
         "required": [
           "questions",
           "service_tags",
-          "target_name"
+          "target_name",
+          "client_name",
+          "client_whatsapp",
+          "client_email",
+          "motivations",
+          "company_name"
         ],
         "title": "PublicFormOut",
         "type": "object"
@@ -2714,8 +2772,8 @@
           "overall_rating": {
             "anyOf": [
               {
-                "maximum": 5.0,
-                "minimum": 1.0,
+                "maximum": 10.0,
+                "minimum": 0.0,
                 "type": "integer"
               },
               {
@@ -2826,8 +2884,8 @@
           "overall_rating": {
             "anyOf": [
               {
-                "maximum": 5.0,
-                "minimum": 1.0,
+                "maximum": 10.0,
+                "minimum": 0.0,
                 "type": "integer"
               },
               {

@@ -2585,8 +2585,27 @@ export interface components {
             /** Text Value */
             text_value?: string | null;
         };
-        /** PublicFormOut */
+        /**
+         * PublicFormOut
+         * @description Tudo que o wizard público precisa para desenhar as 16 etapas — e nada mais.
+         *
+         *     Os dados de contato voltam **completos**, sem o mascaramento de BR-MIGRAR-022: ali
+         *     o alvo é a listagem interna, onde o WhatsApp do cliente é dado de terceiro. Aqui
+         *     quem tem o token é o próprio cliente, e a etapa de identificação nasce preenchida
+         *     com o que o escritório já digitou na solicitação (SCR-0035 etapa 1) — pedir de novo
+         *     o número para quem recebeu o link naquele número seria trabalho inventado.
+         */
         PublicFormOut: {
+            /** Client Email */
+            client_email: string | null;
+            /** Client Name */
+            client_name: string | null;
+            /** Client Whatsapp */
+            client_whatsapp: string | null;
+            /** Company Name */
+            company_name: string | null;
+            /** Motivations */
+            motivations: string[];
             /** Questions */
             questions: components["schemas"]["PublicQuestionOut"][];
             /** Service Tags */

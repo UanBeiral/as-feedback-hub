@@ -44,6 +44,12 @@ const config: Config = {
           manager: "hsl(var(--role-manager))",
           collaborator: "hsl(var(--role-collaborator))",
         },
+        // Identidade própria do fluxo público (DEV-008), fora da paleta do app interno.
+        publico: {
+          de: "hsl(var(--public-gradient-from))",
+          ate: "hsl(var(--public-gradient-to))",
+          fundo: "hsl(var(--public-surface))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
