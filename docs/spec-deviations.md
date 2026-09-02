@@ -62,12 +62,39 @@
   está do outro lado. `X-Real-IP` é sobrescrito a cada salto do nosso proxy.
 - **Ação na spec**: nenhuma.
 
+## DEV-A06 — `outbox_messages.last_error`
+
+- **Spec**: `target_data_model.md` § DDL não lista a coluna.
+- **Código**: `last_error text` (migration `0002`), preenchida por `OutboxService.mark_failed`.
+- **Motivo**: uma DLQ sem o motivo da morte não é operável. Quando alguém for investigar
+  por que quatro mensagens estão em `dead`, a alternativa sem esta coluna é correlacionar
+  log de aplicação por horário — que é exatamente o tipo de arqueologia que a migração
+  existe para não repetir.
+- **Ação na spec**: incluir a coluna no DDL de `outbox_messages`.
+
+## DEV-A07 — auditoria é gravada na transação do comando, não via outbox
+
+- **Spec**: `target_domain_model.md` § AuditLog diz "gravado via outbox pós-commit";
+  BR-MIGRAR-026 idem.
+- **Código**: `AuditService.record` insere em `audit_logs` na mesma transação; só a
+  *notificação* dos envolvidos vira mensagem de outbox.
+- **Motivo**: a mensagem de outbox seria igualmente um `INSERT` na mesma transação, com
+  o mesmo perfil de falha — o outbox não protege contra nada aqui. O que ele protege é a
+  chamada externa (email, push), e essa continua no outbox. Em troca, a tela de Auditoria
+  mostra a ação no instante em que ela acontece, sem depender de o worker estar de pé, e
+  não existe janela em que a ação já aconteceu mas a trilha ainda não registra.
+- **Risco aceito**: se o `INSERT` em `audit_logs` falhar (ex.: constraint violada por
+  bug), a operação principal cai junto. Como a inserção não tem constraint além das FKs,
+  o cenário é hipotético — e falhar alto é preferível a auditar errado.
+- **Ação na spec**: registrar a escolha em BR-MIGRAR-026, mantendo o outbox para a parte
+  de notificação.
+
 ## Pendências abertas do gate R-06
 
 Corrigidas nesta rodada: B1 (revogação desfeita pelo rollback), B2 (PAR-08 `@critico`),
 B3 (repositório fora do isolamento passava no CI), C1 (`/auth/my-team` truncava em 500).
 
-Ainda abertas, e **não** bloqueiam o início de `engagement`:
+Ainda abertas (o contexto `engagement` já foi implementado por cima desta base):
 
 - `identity` cobre só a fatia de sessão. Faltam os comandos de `Profile` e `TeamScope`
   do `target_domain_model.md`: `register`, `reset_password`, `update_profile`,
@@ -78,4 +105,7 @@ Ainda abertas, e **não** bloqueiam o início de `engagement`:
 - O VO `ActiveRole` (BR-MIGRAR-016, com cenário próprio em PAR-05) não foi modelado.
 - Nenhum passo de codegen do cliente OpenAPI no CI (AD-08).
 - Os testes de service usam dublês; falta a camada de integração contra Postgres que
-  exercite os `.feature` de PAR-05 e PAR-08 ponta a ponta.
+  exercite os `.feature` de PAR-05, PAR-07 e PAR-08 ponta a ponta.
+- `apps/worker` continua vazio: o consumidor do outbox e o scheduler (AD-05) são o
+  próximo passo. Até eles existirem, mensagens enfileiradas ficam em `pending` e
+  nenhuma notificação chega ao destinatário.
