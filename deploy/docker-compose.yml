@@ -50,6 +50,13 @@ services:
       dockerfile: deploy/api.Dockerfile
     restart: unless-stopped
     env_file: ../.env
+    environment:
+      # O `.env` aponta para `localhost` porque é o que serve a quem roda a API na
+      # máquina, fora do compose. Dentro de um container, `localhost` é o próprio
+      # container — o banco e o Redis são alcançados pelo nome do serviço. Este bloco
+      # sobrescreve o `env_file`, que é carregado antes.
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-asfeedback}
+      REDIS_URL: redis://redis:6379/0
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
@@ -62,6 +69,13 @@ services:
       dockerfile: deploy/worker.Dockerfile
     restart: unless-stopped
     env_file: ../.env
+    environment:
+      # O `.env` aponta para `localhost` porque é o que serve a quem roda a API na
+      # máquina, fora do compose. Dentro de um container, `localhost` é o próprio
+      # container — o banco e o Redis são alcançados pelo nome do serviço. Este bloco
+      # sobrescreve o `env_file`, que é carregado antes.
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-asfeedback}
+      REDIS_URL: redis://redis:6379/0
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
@@ -76,16 +90,22 @@ services:
     build:
       context: ..
       dockerfile: deploy/web.Dockerfile
+      args:
+        # Precisa ser build arg, e não variável de runtime: o Next resolve o destino
+        # do rewrite durante o build. O navegador nunca vê este endereço — ele chama
+        # /api na própria origem, e quem encaminha é o servidor do Next.
+        API_ORIGIN: http://api:8000
     restart: unless-stopped
     env_file: ../.env
-    environment:
-      # O front fala com a API pela rede interna do compose; o navegador nunca vê
-      # este endereço, porque as chamadas passam pelo rewrite do próprio Next.
-      API_ORIGIN: http://api:8000
     depends_on:
       - api
     expose:
       - "3000"
+    ports:
+      # Publicado só em localhost, como o Postgres e a API. Em produção quem atende a
+      # internet é o Nginx (AD-06) e esta seção sai — o web não precisa de porta
+      # própria quando há proxy na frente.
+      - "127.0.0.1:3000:3000"
 
   # nginx:
   #   image: nginx:1.27-alpine

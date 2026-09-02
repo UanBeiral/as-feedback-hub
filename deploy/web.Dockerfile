@@ -9,7 +9,13 @@ RUN npm ci --no-audit --no-fund
 COPY packages/design-tokens /srv/packages/design-tokens
 COPY apps/web ./
 
-ENV NEXT_TELEMETRY_DISABLED=1
+# O destino do rewrite de /api é resolvido no `next build` e gravado no
+# routes-manifest — variável de ambiente em runtime não muda mais nada. Por isso vem
+# como build arg: dentro do compose, a API é `http://api:8000`. Em produção com Nginx
+# na frente (AD-06) o rewrite nem chega a ser usado, porque /api é interceptado antes.
+ARG API_ORIGIN=http://api:8000
+ENV API_ORIGIN=${API_ORIGIN}     NEXT_TELEMETRY_DISABLED=1
+
 RUN npm run build
 
 FROM node:22-slim AS runtime
