@@ -63,10 +63,18 @@ class FakeProfileRepository:
 class FakeUserRepository:
     def __init__(self) -> None:
         self.usuarios: list[User] = []
+        self.flushes = 0
 
     def add_user(self, user: User) -> User:
         self.usuarios.append(user)
         return user
+
+    async def flush(self) -> None:
+        # O service dá flush entre usuário e perfil de propósito: `profiles.user_id`
+        # referencia `users.id`, e sem isso um autoflush no meio inverte a ordem dos
+        # INSERTs e viola a FK. O dublê conta as chamadas para o teste abaixo prender
+        # esse contrato.
+        self.flushes += 1
 
 
 class FakeAuthRepository:
@@ -109,10 +117,11 @@ def _service(
     auth: FakeAuthRepository,
     audit: FakeAudit | None = None,
     departamentos: FakeProfileDepartments | None = None,
+    usuarios: FakeUserRepository | None = None,
 ) -> ProfileService:
     return ProfileService(  # type: ignore[arg-type]
         profiles=perfis,
-        users=FakeUserRepository(),
+        users=usuarios or FakeUserRepository(),
         auth=auth,
         hasher=PasswordHasher(rounds=10),
         departments=departamentos or FakeProfileDepartments(),
@@ -126,15 +135,19 @@ def _service(
 async def test_registrar_cria_usuario_e_perfil_com_o_mesmo_id() -> None:
     tenant = _contexto()
     perfis, auth = FakeProfileRepository([]), FakeAuthRepository()
-    audit = FakeAudit()
+    audit, usuarios = FakeAudit(), FakeUserRepository()
 
-    perfil = await _service(perfis, auth, audit).register(
+    perfil = await _service(perfis, auth, audit, usuarios=usuarios).register(
         tenant, email="nova@exemplo.com", senha="senha-forte-123", full_name="Nova", role="gestor"
     )
 
     assert perfil.id == perfil.user_id, "invariante do banco: profiles.id = users.id"
     assert perfil.role == "gestor"
     assert audit.nomes == ["user.registered"]
+    # O flush entre usuário e perfil não é detalhe de implementação: sem ele, o
+    # autoflush da auditoria inverte a ordem dos INSERTs e a FK estoura. Só apareceu
+    # contra o Postgres real, e é por isso que está preso aqui.
+    assert usuarios.flushes == 1
 
 
 async def test_email_duplicado_e_recusado() -> None:
