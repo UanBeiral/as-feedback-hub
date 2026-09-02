@@ -37,3 +37,10 @@ data/
 node_modules/
 .next/
 next-env.d.ts
+
+# Reversa: saída de trabalho dos agentes (specs versionadas ficam em docs/reversa/).
+_reversa_forward/
+_reversa_bugs/
+_reversa_refactor/
+_reversa_docs/
+.reversa/context/
