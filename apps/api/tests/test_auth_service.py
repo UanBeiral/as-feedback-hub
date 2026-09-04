@@ -7,6 +7,7 @@ repositórios são dublês em memória — o que está sob teste é a regra, nã
 
 from __future__ import annotations
 
+import asyncio
 from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
 
@@ -14,6 +15,7 @@ import pytest
 
 from app.contexts.identity.models import Profile, RefreshToken, Tenant, User
 from app.contexts.identity.repository import AuthRepository
+from app.contexts.identity.schemas import TokenPair
 from app.contexts.identity.service import AuthService
 from app.core.config import Settings
 from app.core.errors import AuthenticationError
@@ -56,6 +58,14 @@ class FakeAuthRepository:
     def add_refresh_token(self, token: RefreshToken) -> RefreshToken:
         self.refresh_tokens.append(token)
         return token
+
+    async def reivindicar_refresh_token(self, digest: str) -> bool:
+        """Reproduz o UPDATE condicional: decide e grava sem ponto de espera no meio."""
+        alvo = next((t for t in self.refresh_tokens if t.token_digest == digest), None)
+        if alvo is None or alvo.used_at is not None:
+            return False
+        alvo.used_at = datetime.now(UTC)
+        return True
 
     async def revoke_all_for_user(self, tenant_id: UUID, user_id: UUID) -> None:
         self.revogacoes.append((tenant_id, user_id))
@@ -194,6 +204,35 @@ async def test_reuso_de_refresh_derruba_todas_as_sessoes(hasher, tokens) -> None
 
     assert len(repo.revogacoes) == 1, "reúso tem que revogar as sessões do usuário"
     assert all(t.revoked_at is not None for t in repo.refresh_tokens)
+
+
+async def test_renovacoes_simultaneas_nao_passam_as_duas(hasher, tokens) -> None:
+    """A rotação é uma reivindicação atômica, não um "leia, decida e grave".
+
+    Antes, duas renovações do mesmo token que se cruzassem liam `used_at` nulo juntas e
+    **ambas** eram aceitas: o detector de reúso ficava mudo justamente no caso em que
+    existe para falar. Agora o UPDATE condicional escolhe um vencedor, e o outro é
+    tratado como reúso.
+
+    O outro lado deste defeito estava no front, que disparava `/auth/me` e `/settings`
+    em paralelo no boot: os dois tomavam 401 e renovavam com o mesmo token, e recarregar
+    a página derrubava a própria sessão.
+    """
+    repo = _cenario(hasher)
+    service = _service(repo, hasher, tokens)
+    par = await service.authenticate(email="pessoa@exemplo.com", password=SENHA)
+
+    resultados = await asyncio.gather(
+        service.refresh_session(refresh_token=par.refresh_token),
+        service.refresh_session(refresh_token=par.refresh_token),
+        return_exceptions=True,
+    )
+
+    sucessos = [r for r in resultados if isinstance(r, TokenPair)]
+    recusas = [r for r in resultados if isinstance(r, AuthenticationError)]
+    assert len(sucessos) == 1, "só uma das renovações pode rotacionar o token"
+    assert len(recusas) == 1
+    assert len(repo.revogacoes) == 1
 
 
 async def test_refresh_de_usuario_removido_e_negado(hasher, tokens) -> None:

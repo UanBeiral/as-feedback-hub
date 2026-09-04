@@ -66,6 +66,24 @@ class AuthRepository:
         self._session.add(token)
         return token
 
+    async def reivindicar_refresh_token(self, digest: str) -> bool:
+        """Marca o token como usado **num passo só**, e diz se foi este quem conseguiu.
+
+        Ler `used_at`, decidir e depois gravar é uma corrida: duas renovações
+        simultâneas do mesmo token leem `NULL` juntas, ambas passam, e a segunda a
+        commitar deixa o detector de reúso sem nada para detectar — ou, pior, dispara
+        num caso legítimo e derruba a sessão de quem só recarregou a página.
+
+        O UPDATE condicional decide no banco quem rotaciona. Quem receber `False` está
+        diante de um token já gasto: aí, sim, é reúso.
+        """
+        resultado = await self._session.execute(
+            update(RefreshToken)
+            .where(RefreshToken.token_digest == digest, RefreshToken.used_at.is_(None))
+            .values(used_at=datetime.now(UTC))
+        )
+        return resultado.rowcount == 1
+
     async def revoke_all_for_user(self, tenant_id: UUID, user_id: UUID) -> None:
         """Derruba todas as sessões do usuário, em transação própria.
 

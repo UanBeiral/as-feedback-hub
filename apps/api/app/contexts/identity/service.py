@@ -81,11 +81,20 @@ class AuthService:
     async def refresh_session(
         self, *, refresh_token: str, user_agent: str | None = None, ip_address: str | None = None
     ) -> TokenPair:
-        stored = await self._repo.get_refresh_token(hash_refresh_token(refresh_token))
+        digest = hash_refresh_token(refresh_token)
+        stored = await self._repo.get_refresh_token(digest)
         if stored is None:
             raise AuthenticationError("Sessão inválida")
 
-        if stored.used_at is not None:
+        now = datetime.now(UTC)
+        if stored.revoked_at is not None or stored.expires_at <= now:
+            raise AuthenticationError("Sessão expirada")
+
+        # Rotaciona antes de qualquer outra coisa, e num passo só: é a reivindicação
+        # atômica que decide quem fica com o token. Ler `used_at` e gravar depois
+        # deixava duas renovações simultâneas do mesmo token passarem juntas — e a
+        # segunda a chegar derrubava a sessão de quem apenas recarregou a página.
+        if not await self._repo.reivindicar_refresh_token(digest):
             # O token é de uso único. Uma segunda apresentação significa que alguém
             # tem uma cópia: não dá para saber se é o dono ou o ladrão, então as duas
             # sessões caem e o login é refeito.
@@ -93,10 +102,6 @@ class AuthService:
             # dar rollback, e sem isso a revogação não sobreviveria.
             await self._repo.revoke_all_for_user(stored.tenant_id, stored.user_id)
             raise AuthenticationError("Sessão encerrada por segurança. Entre novamente.")
-
-        now = datetime.now(UTC)
-        if stored.revoked_at is not None or stored.expires_at <= now:
-            raise AuthenticationError("Sessão expirada")
 
         user = await self._repo.get_user(stored.tenant_id, stored.user_id)
         if user is None or not user.can_sign_in:
@@ -106,7 +111,6 @@ class AuthService:
         if profile is None or profile.status != "active":
             raise AuthenticationError("Conta inativa. Procure o administrador.")
 
-        stored.used_at = now
         return self._issue_pair(user, profile, user_agent=user_agent, ip_address=ip_address)
 
     async def logout(self, *, refresh_token: str) -> None:
