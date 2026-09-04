@@ -189,7 +189,11 @@ export default function AdminUsuarios() {
 
         <Cartao
           titulo="Pessoas"
-          descricao={`${departamentos.length} departamento(s) cadastrado(s).`}
+          descricao={
+            perfis === null
+              ? undefined
+              : `${perfis.length} pessoa(s) ativa(s) no escritório.`
+          }
         >
           {perfis === null ? (
             <Carregando />

@@ -62,6 +62,19 @@ PYTHONPATH=apps/api python deploy/seed_tenant.py     --slug as --nome "A&S" --em
 cd apps/api && uvicorn app.main:app --reload
 ```
 
+Para **exercitar as telas** — conferir contra o oráculo, demonstrar, ou só ver o sistema
+com gente dentro — use o tenant de demonstração em vez do admin solitário acima:
+
+```bash
+PYTHONPATH=apps/api python deploy/seed_demo.py --slug demo --senha "Demo!2026"
+```
+
+Ele cria nove pessoas nos quatro papéis (com um coordenador e um desligado), um ciclo
+aberto com pedidos em todos os estados, avaliações de cliente respondidas e pendentes,
+anotações, notificações, comunicados e auditoria — e deixa defeitos de propósito na
+matriz de permissões, para a tela de Diagnóstico ter o que diagnosticar. Depois aponte
+`DEFAULT_TENANT_SLUG=demo` no `.env` e reinicie a API. `--recriar` refaz do zero.
+
 E o front, em outro terminal:
 
 ```bash

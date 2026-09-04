@@ -3,9 +3,13 @@
 > Roteiro para a validação que `parity_specs.md` exige e que nenhum teste automatizado
 > substitui: comparar cada tela do sistema novo com o screenshot do legado.
 >
-> **Como usar**: suba o sistema (`README` § Rodando local), abra a rota numa aba e o
-> screenshot noutra, e marque a caixa quando conferir. Divergência encontrada vai para
-> `docs/reversa/migration/screen_deviation_log.md`, com o SCR e o que difere.
+> **Como usar**: suba o sistema (`README` § Rodando local), popule com
+> `deploy/seed_demo.py` — tela vazia esconde coluna, filtro e badge, e conferir contra
+> ela é marcar caixa sem provar nada —, abra a rota numa aba e o screenshot noutra, e
+> marque a caixa quando conferir. O que diverge vai para
+> [`conferencia-resultado.md`](conferencia-resultado.md), tela a tela; o que for
+> aprovado como divergência deliberada segue depois para
+> `docs/reversa/migration/screen_deviation_log.md`.
 >
 > O que olhar, em ordem de importância: **texto** (rótulos, mensagens, estados vazios —
 > o modo literal exige diff zero), **colunas e campos** presentes, **ações** disponíveis,
@@ -18,12 +22,14 @@ Legenda: ✅ tela existe · ⚠️ existe parcialmente · ❌ não implementada
 
 ## Administração
 
-- [ ] **SCR-0003 · Painel Administrativo** ✅ `/`
+- [x] **SCR-0003 · Painel Administrativo** ✅ `/` — **conferida**, 7 divergências
+      (4 seções inteiras ausentes); ver `conferencia-resultado.md`
       `docs/reversa/admin/screenshots/dashboard.png` (+ `-2`, `-3`, `-4`)
       *Atenção*: no legado eram quatro telas de início por papel; aqui é uma rota só que
       se adapta. Confira se o conteúdo do admin bate — não o caminho.
 
-- [ ] **SCR-0007 · Usuários** ✅ `/admin/usuarios`
+- [x] **SCR-0007 · Usuários** ✅ `/admin/usuarios` — **conferida**, 5 divergências
+      (faltam colunas, filtros, exportação e ordenação); ver `conferencia-resultado.md`
       `admin/screenshots/usuarios.png` · `usuarios-modal-novo-usuario.png`
       *Atenção*: o modal virou formulário na própria página.
 
@@ -147,7 +153,8 @@ Legenda: ✅ tela existe · ⚠️ existe parcialmente · ❌ não implementada
 
 ## Sessão
 
-- [ ] **SCR-0001 · Login** ✅ `/login`
+- [x] **SCR-0001 · Login** ✅ `/login` — **conferida**, 6 divergências;
+      ver `conferencia-resultado.md`
       `docs/reversa/auth/screenshots/login.png`
 
 - [ ] **SCR-0002 · Meu Perfil** ✅ `/meu-perfil`
@@ -159,8 +166,9 @@ Legenda: ✅ tela existe · ⚠️ existe parcialmente · ❌ não implementada
 
 | | |
 |---|---|
-| Telas literais a conferir | 34 (uma, a Agenda, está fora do corte; SCR-0035 já conferida) |
-| Já conferidas | SCR-0035 (Avaliação Pública) — 02/09/2026 |
+| Telas literais a conferir | 31 (uma, a Agenda, está fora do corte) |
+| Já conferidas | SCR-0035 (02/09) · SCR-0001, SCR-0003, SCR-0007 (04/09) |
+| Resultado até aqui | [`conferencia-resultado.md`](conferencia-resultado.md) — 18 divergências e 2 defeitos próprios |
 | Já sabidamente ausentes | SCR-0021 (Meu Histórico), SCR-0023 (Feedback Livre) |
 | Parciais | SCR-0017 (Emitir Relatório), SCR-0022 (Caderno do Ciclo) |
 | Divergência estrutural | nenhuma em aberto |

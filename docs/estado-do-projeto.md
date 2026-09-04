@@ -28,7 +28,7 @@ Leitura obrigatória antes de mexer, nesta ordem:
 | API (FastAPI) | 5 contextos, 82 rotas, 30 tabelas |
 | Worker | despacho do outbox + 3 jobs agendados |
 | Front (Next.js) | 24 rotas, client tipado gerado do OpenAPI; fluxo público em wizard |
-| Testes | 322, todos verdes |
+| Testes | 323, todos verdes |
 | Migrations | 0001→0005, aplicam do zero |
 | CI | lint + testes + migrations + build do front |
 
@@ -52,10 +52,12 @@ como decidido.
 
 **Não bloqueia, mas está aberto:**
 
-- **A comparação com o oráculo mal começou.** Das 35 telas do subset literal, só a
-  SCR-0035 (fluxo público) foi conferida — as outras 34 seguem pendentes contra os
-  screenshots em `docs/reversa/screens/golden/`. É a validação que `parity_specs.md`
-  exige e que nenhum teste automatizado substitui.
+- **A comparação com o oráculo começou.** 4 das 35 telas do subset literal foram
+  conferidas (SCR-0035, 0001, 0003, 0007) e renderam 18 divergências em
+  [`docs/conferencia-resultado.md`](conferencia-resultado.md); 31 seguem pendentes. É a
+  validação que `parity_specs.md` exige e que nenhum teste automatizado substitui — e a
+  amostra sugere que o painel administrativo e as tabelas de admin são onde falta mais
+  coisa.
 - **Os 10 arquivos `.feature` de paridade não rodam.** Os cenários estão cobertos por
   testes de service, mas o roteiro formal da homologação ainda não é executável.
 - **Telas secundárias**: 24 das 43. Falta o detalhe de avaliação de cliente, o envio de
@@ -74,12 +76,13 @@ como decidido.
 
 Em ordem de valor, para quem for continuar. Cada item diz o que fazer e onde olhar.
 
-1. **Conferir as 34 telas literais que faltam contra o oráculo.** O roteiro está pronto
-   em [`docs/conferencia-oraculo.md`](conferencia-oraculo.md): cada tela do sistema novo
-   com o screenshot correspondente e o que olhar. É a validação que `parity_specs.md`
-   exige e a única que depende de olho humano. Sem ela, "paridade" é afirmação sem prova.
-   A SCR-0035 já saiu — e mostrou o que essa conferência rende: virou a reescrita da tela
-   como wizard e três deviations que ninguém tinha visto.
+1. **Conferir as 31 telas literais que faltam contra o oráculo.** O roteiro está em
+   [`docs/conferencia-oraculo.md`](conferencia-oraculo.md) e o retorno vai para
+   [`docs/conferencia-resultado.md`](conferencia-resultado.md). Suba o ambiente com
+   `deploy/seed_demo.py` antes: contra tabela vazia a conferência não prova nada.
+   As quatro primeiras já mostraram o que ela rende — a reescrita do fluxo público como
+   wizard, 18 divergências e dois defeitos que nenhum teste pegava, um deles derrubando
+   a sessão a cada F5.
 2. **Tornar os `.feature` executáveis.** Os 10 arquivos em
    `docs/reversa/migration/parity_tests/` são o roteiro formal da homologação e hoje não
    rodam. Os cenários estão cobertos por testes de service, mas o cliente vai homologar
@@ -104,6 +107,11 @@ Postgres de verdade. Vale saber que essa é a classe de erro que escapa:
 
 - Escrita seguida de `raise` era desfeita pelo rollback do request, e o detector de reúso
   de refresh token virava enfeite. Corrigido com transação autônoma.
+- O mesmo detector, depois de consertado, passou a **derrubar a sessão em todo F5**: o
+  boot do front pedia `/auth/me` e `/settings` em paralelo, os dois renovavam com o
+  mesmo refresh token, e a rotação lia-decidia-gravava sem atomicidade. Duas
+  apresentações simultâneas de um token roubado também passavam as duas. Corrigido dos
+  dois lados — renovação única no front, UPDATE condicional na API.
 - `NULL <= now()` é NULL, não falso: mensagens de outbox sem `next_attempt_at` ficavam
   invisíveis para o worker **para sempre**, sem erro em lugar nenhum.
 - Autoflush invertia a ordem de dois INSERTs com FK entre si.
