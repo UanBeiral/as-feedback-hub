@@ -33,37 +33,37 @@ Legenda: ✅ tela existe · ⚠️ existe parcialmente · ❌ não implementada
       `admin/screenshots/usuarios.png` · `usuarios-modal-novo-usuario.png`
       *Atenção*: o modal virou formulário na própria página.
 
-- [ ] **SCR-0008 · Departamentos** ✅ `/admin/departamentos`
+- [x] **SCR-0008 · Departamentos** ✅ `/admin/departamentos` — **conferida**, 4 divergências
       `admin/screenshots/departamentos.png` · `departamentos-modal-novo.png`
 
-- [ ] **SCR-0009 · Ciclos de Feedback** ✅ `/admin/ciclos`
+- [x] **SCR-0009 · Ciclos de Feedback** ✅ `/admin/ciclos` — **conferida**, 5 divergências
       `admin/screenshots/ciclos.png` · `ciclos-modal-novo.png` (+ `-2`, `-3`) ·
       `ciclos-modal-editar.png`
 
-- [ ] **SCR-0010 · Permissões** ✅ `/admin/permissoes`
+- [x] **SCR-0010 · Permissões** ✅ `/admin/permissoes` — **conferida**, 6 divergências (estrutural)
       `admin/screenshots/permissoes.png` · `permissoes-modal-nova.png`
       *Atenção*: o legado tinha importação em massa; a tela nova não tem.
 
-- [ ] **SCR-0011 · Diagnóstico de Permissões** ✅ `/admin/diagnostico`
+- [x] **SCR-0011 · Diagnóstico de Permissões** ✅ `/admin/diagnostico` — **conferida**, sem divergência
       `admin/screenshots/diagnostico.png` (+ `-2`, `-3`, `-4`)
       *Atenção*: é a tela mais densa do legado. Confira as **5 categorias**, o texto de
       cada banner explicativo e as ações em massa.
 
-- [ ] **SCR-0012 · Auditoria** ✅ `/admin/auditoria`
+- [x] **SCR-0012 · Auditoria** ✅ `/admin/auditoria` — **conferida**, 7 divergências
       `admin/screenshots/auditoria.png` (+ `-2`, `-3`)
 
-- [ ] **SCR-0013 · Fale Conosco (admin)** ✅ `/admin/contatos`
+- [x] **SCR-0013 · Fale Conosco (admin)** ✅ `/admin/contatos` — **conferida**, 4 divergências
       `admin/screenshots/fale-conosco.png`
 
-- [ ] **SCR-0015 · Central de Atualizações** ✅ `/admin/atualizacoes`
+- [x] **SCR-0015 · Central de Atualizações** ✅ `/admin/atualizacoes` — **conferida**, sem divergência
       `admin/screenshots/atualizacoes.png`
 
-- [ ] **SCR-0024 · Configurações** ✅ `/admin/configuracoes`
+- [x] **SCR-0024 · Configurações** ✅ `/admin/configuracoes` — **conferida**, 5 divergências
       `docs/reversa/company-settings/screenshots/configuracoes.png`
       *Atenção*: o novo tem 11 chaves contra 8 do legado (DEV-A09). As três extras são
       esperadas.
 
-- [ ] **SCR-0018 · Formulários** ✅ `/admin/formularios`
+- [x] **SCR-0018 · Formulários** ✅ `/admin/formularios` — **conferida**, 4 divergências (falta a aba de cliente externo)
       `docs/reversa/feedback/screenshots/formularios.png` · `formularios-modal-novo.png`
 
 - **SCR-0014 · Agenda** ❌ fora do corte por decisão (AMB-007, fase 2).
@@ -166,9 +166,10 @@ Legenda: ✅ tela existe · ⚠️ existe parcialmente · ❌ não implementada
 
 | | |
 |---|---|
-| Telas literais a conferir | 31 (uma, a Agenda, está fora do corte) |
-| Já conferidas | SCR-0035 (02/09) · SCR-0001, SCR-0003, SCR-0007 (04/09) |
-| Resultado até aqui | [`conferencia-resultado.md`](conferencia-resultado.md) — 18 divergências e 2 defeitos próprios |
+| Telas literais a conferir | 24 (uma, a Agenda, está fora do corte) |
+| Já conferidas | 11 — todo o bloco de Administração, mais SCR-0035 e SCR-0001 |
+| Faltam | os blocos de Equipe, Feedback e Cliente/Relatórios |
+| Resultado até aqui | [`conferencia-resultado.md`](conferencia-resultado.md) — 53 divergências e 2 defeitos próprios |
 | Já sabidamente ausentes | SCR-0021 (Meu Histórico), SCR-0023 (Feedback Livre) |
 | Parciais | SCR-0017 (Emitir Relatório), SCR-0022 (Caderno do Ciclo) |
 | Divergência estrutural | nenhuma em aberto |

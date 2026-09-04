@@ -44,6 +44,7 @@ from app.contexts.engagement.models import (
     ContactMessage,
     Notification,
     PlatformUpdate,
+    TenantSetting,
 )
 from app.contexts.feedback.models import (
     CycleNote,
@@ -643,7 +644,9 @@ async def seed(slug: str, nome_do_tenant: str, senha: str, recriar: bool = False
 
         session.add_all([
             ContactMessage(
-                tenant_id=tenant.id, type="suporte", company="Construtora Avelar Ltda.",
+                # `type` é texto livre no schema — o legado usa "sugestao" e "critica"
+                # (as duas únicas opções vistas em `admin/screenshots/fale-conosco.png`).
+                tenant_id=tenant.id, type="critica", company="Construtora Avelar Ltda.",
                 contact_name="Regina Avelar", email="regina@avelar.com.br",
                 phone="11987650000",
                 message="O link da avaliação que recebi por WhatsApp diz que expirou. "
@@ -652,14 +655,14 @@ async def seed(slug: str, nome_do_tenant: str, senha: str, recriar: bool = False
                 created_at=AGORA - timedelta(hours=6),
             ),
             ContactMessage(
-                tenant_id=tenant.id, type="comercial", company="Serra Azul Transportes",
+                tenant_id=tenant.id, type="sugestao", company="Serra Azul Transportes",
                 contact_name="Otávio Serra", email="otavio@serraazul.com.br",
                 message="Gostaria de entender como funciona o plano para 40 pessoas.",
                 status="em_andamento", created_by=perfis["admin"].id,
                 created_at=AGORA - timedelta(days=3),
             ),
             ContactMessage(
-                tenant_id=tenant.id, type="suporte", contact_name="Diego Ramos",
+                tenant_id=tenant.id, type="critica", contact_name="Diego Ramos",
                 email=f"diego@{DOMINIO}",
                 message="Não consigo salvar rascunho no formulário de feedback.",
                 status="resolvido", created_by=perfis["diego"].id,
@@ -692,6 +695,25 @@ async def seed(slug: str, nome_do_tenant: str, senha: str, recriar: bool = False
                 content="Rascunho — não publicar antes da fase 2.",
                 created_by=perfis["admin"].id,
                 draft=True,
+            ),
+        ])
+
+        session.add_all([
+            TenantSetting(
+                tenant_id=tenant.id, key="company_name", value=nome_do_tenant,
+                updated_by=perfis["admin"].id,
+            ),
+            TenantSetting(
+                tenant_id=tenant.id, key="whatsapp_message_template",
+                value="Olá {cliente}! Como foi seu atendimento com {profissional}? "
+                      "Sua opinião leva menos de 2 minutos: {link}",
+                updated_by=perfis["admin"].id,
+            ),
+            # Ligada para o gestor enxergar relatórios — é o toggle de BR-MIGRAR-027 que
+            # mais muda a navegação, e vale estar ligado em pelo menos um ambiente.
+            TenantSetting(
+                tenant_id=tenant.id, key="gestor_can_access_reports", value="true",
+                updated_by=perfis["admin"].id,
             ),
         ])
 
