@@ -35,6 +35,7 @@ import {
   FiltroSelecao,
   Linha,
   Progresso,
+  Selecao,
   Selo,
   SeloDePapel,
   Tabela,
@@ -43,7 +44,7 @@ import { ApiError, api } from "@/lib/api";
 import { exportarCsv } from "@/lib/exportar";
 import { ROTULO_DO_STATUS_DE_PESSOA } from "@/lib/formato";
 import { useTabela } from "@/lib/tabela";
-import type { AcompanhamentoDaEquipe, PedidoDeEquipe } from "@/lib/tipos";
+import type { AcompanhamentoDaEquipe, PedidoDeEquipe, Perfil } from "@/lib/tipos";
 
 /** Ação textual dentro de uma linha de tabela. Botão cheio aqui pesaria a tabela. */
 function AcaoDeLinha({
@@ -213,10 +214,23 @@ export default function MinhaEquipe() {
   const [aviso, setAviso] = useState<{ tom: "erro" | "sucesso"; texto: string } | null>(null);
   const [feedbackPara, setFeedbackPara] = useState<Membro | null>(null);
   const [lembrando, setLembrando] = useState<string | null>(null);
+  const [aIncluir, setAIncluir] = useState("");
+  const [foraDaEquipe, setForaDaEquipe] = useState<Perfil[]>([]);
 
 
   async function carregar() {
-    setEquipe(await api<AcompanhamentoDaEquipe>("/team/progress"));
+    const acompanhamento = await api<AcompanhamentoDaEquipe>("/team/progress");
+    setEquipe(acompanhamento);
+    try {
+      // Só quem já não está na equipe entra no seletor: oferecer quem já está seria
+      // pedir uma inclusão que a administração recusaria.
+      const todos = await api<Perfil[]>("/profiles");
+      const jaTenho = new Set(acompanhamento.membros.map((m) => m.profile_id));
+      setForaDaEquipe(todos.filter((p) => !jaTenho.has(p.id)));
+    } catch {
+      // Sem `/profiles` (gestor comum) não há como listar candidatos, e o cartão some.
+      setForaDaEquipe([]);
+    }
     try {
       setPedidos(await api<PedidoDeEquipe[]>("/team-requests"));
     } catch {
@@ -306,6 +320,32 @@ export default function MinhaEquipe() {
     );
   }
 
+  async function pedirInclusao(evento: React.FormEvent) {
+    evento.preventDefault();
+    setAviso(null);
+    try {
+      // Pedido, e não inclusão direta. Puxar alguém para a sua equipe muda a hierarquia
+      // de outra pessoa: no legado o "+ Adicionar Membro" fazia isso em silêncio, e aqui
+      // o fluxo de `team-requests` — que já existia — avisa os dois lados e deixa a
+      // decisão com quem administra.
+      await api("/team-requests", {
+        method: "POST",
+        body: { requested_member_id: aIncluir },
+      });
+      setAIncluir("");
+      setAviso({
+        tom: "sucesso",
+        texto: "Pedido enviado. A administração decide, e os dois lados são avisados.",
+      });
+      await carregar();
+    } catch (falha) {
+      setAviso({
+        tom: "erro",
+        texto: falha instanceof ApiError ? falha.message : "Não foi possível pedir agora.",
+      });
+    }
+  }
+
   async function removerDaEquipe(membro: Membro) {
     setAviso(null);
     // Confirmação porque a ação some com a pessoa da tela e ninguém a desfaz daqui: para
@@ -379,6 +419,34 @@ export default function MinhaEquipe() {
                 </li>
               ))}
             </ul>
+          </Cartao>
+        )}
+
+        {foraDaEquipe.length > 0 && (
+          <Cartao
+            titulo="Incluir alguém na equipe"
+            descricao="Vira um pedido: a administração decide, e os dois lados são avisados."
+          >
+            <form onSubmit={pedirInclusao} className="flex flex-wrap items-end gap-3">
+              <div className="min-w-64 flex-1">
+                <Campo rotulo="Pessoa" obrigatorio>
+                  <Selecao
+                    required
+                    value={aIncluir}
+                    onChange={(e) => setAIncluir(e.target.value)}
+                  >
+                    <option value="">Selecione</option>
+                    {foraDaEquipe.map((pessoa) => (
+                      <option key={pessoa.id} value={pessoa.id}>
+                        {pessoa.full_name}
+                        {pessoa.job_title ? ` — ${pessoa.job_title}` : ""}
+                      </option>
+                    ))}
+                  </Selecao>
+                </Campo>
+              </div>
+              <Botao tipo="submit">Pedir inclusão</Botao>
+            </form>
           </Cartao>
         )}
 

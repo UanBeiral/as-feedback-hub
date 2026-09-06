@@ -2594,6 +2594,11 @@ export interface components {
             detalhe: string | null;
             /** Lido Em */
             lido_em: string | null;
+            /**
+             * Partes
+             * @default []
+             */
+            partes: components["schemas"]["ParteDoHistoricoOut"][];
             /** Quando */
             quando: string | null;
             /**
@@ -2804,6 +2809,13 @@ export interface components {
             reviewer_id: string;
             /** Reviewer Nome */
             reviewer_nome: string;
+        };
+        /** ParteDoHistoricoOut */
+        ParteDoHistoricoOut: {
+            /** Rotulo */
+            rotulo: string;
+            /** Texto */
+            texto: string;
         };
         /** PasswordResetIn */
         PasswordResetIn: {

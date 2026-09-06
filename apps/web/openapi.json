@@ -1964,6 +1964,14 @@
             ],
             "title": "Lido Em"
           },
+          "partes": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ParteDoHistoricoOut"
+            },
+            "title": "Partes",
+            "type": "array"
+          },
           "quando": {
             "anyOf": [
               {
@@ -2493,6 +2501,24 @@
           "permission_type"
         ],
         "title": "ParDePermissaoOut",
+        "type": "object"
+      },
+      "ParteDoHistoricoOut": {
+        "properties": {
+          "rotulo": {
+            "title": "Rotulo",
+            "type": "string"
+          },
+          "texto": {
+            "title": "Texto",
+            "type": "string"
+          }
+        },
+        "required": [
+          "rotulo",
+          "texto"
+        ],
+        "title": "ParteDoHistoricoOut",
         "type": "object"
       },
       "PasswordResetIn": {

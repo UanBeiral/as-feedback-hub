@@ -105,6 +105,27 @@ export default function PaginaInicial() {
         <Aviso tom="erro">{erro}</Aviso>
       ) : (
         <div className="space-y-6">
+          {/* A entrada do feedback livre, no topo e para todo mundo. No legado é um
+              banner destacado em toda tela inicial, e a razão é o que ele resolve: dar
+              feedback fora do ciclo não tem gatilho nenhum — se não estiver à vista,
+              ninguém lembra que pode. */}
+          <Link
+            href="/minha-equipe"
+            className="flex items-start gap-3 rounded-lg border border-accent bg-accent/10 px-4 py-3 transition hover:bg-accent/20"
+          >
+            <span className="text-lg" aria-hidden="true">
+              💬
+            </span>
+            <span>
+              <span className="block text-sm font-medium text-foreground">
+                Dar feedback para alguém
+              </span>
+              <span className="block text-sm text-muted-foreground">
+                Envie um feedback livre para qualquer colega, a qualquer momento.
+              </span>
+            </span>
+          </Link>
+
           {/* O retrato do escritório, antes de qualquer detalhe. */}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Estatistica

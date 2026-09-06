@@ -91,6 +91,11 @@ class ExportJobOut(BaseModel):
         )
 
 
+class ParteDoHistoricoOut(BaseModel):
+    rotulo: str
+    texto: str
+
+
 class ItemDeHistoricoOut(BaseModel):
     tipo: str
     quando: datetime | None
@@ -99,6 +104,7 @@ class ItemDeHistoricoOut(BaseModel):
     titulo: str
     detalhe: str | None
     lido_em: datetime | None
+    partes: list[ParteDoHistoricoOut] = []
 
 
 class HistoricoDaEquipeOut(BaseModel):

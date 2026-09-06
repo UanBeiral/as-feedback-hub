@@ -97,6 +97,45 @@ export default function AdminAuditoria() {
   });
   const pico = Math.max(...catorzeDias.map((d) => d.normais + d.sensiveis), 1);
 
+/**
+ * Detalhe da auditoria em português, e não JSON cru.
+ *
+ * O JSON é o formato de quem grava; quem lê a tela quer saber o que mudou. Chave
+ * desconhecida cai no nome cru em vez de sumir — a auditoria não pode esconder o que
+ * registrou só porque a tela ainda não sabe nomear.
+ */
+  function legivel(detalhes: Record<string, unknown> | null): string {
+    if (!detalhes || Object.keys(detalhes).length === 0) return "—";
+
+    const rotulos: Record<string, string> = {
+      de: "de",
+      para: "para",
+      campo: "campo",
+      nome: "nome",
+      motivo: "motivo",
+      role: "papel",
+      member_id: "membro",
+      coordinator_id: "coordenador",
+      por: "por",
+      vinculo: "vínculo",
+    };
+    const valores: Record<string, string> = {
+      true: "sim",
+      false: "não",
+      manager: "liderança direta",
+      coordination: "coordenação",
+    };
+
+    return Object.entries(detalhes)
+      .map(([chave, valor]) => {
+        const texto = String(valor);
+        // uuid não diz nada a quem lê: quando é gente, o nome; senão, o valor.
+        const legivelValor = nomePor.get(texto) ?? valores[texto] ?? texto;
+        return `${rotulos[chave] ?? chave}: ${legivelValor}`;
+      })
+      .join(" · ");
+  }
+
   function quemFez(actorId: string | null): string {
     if (!actorId) return "sistema";
     return nomePor.get(actorId) ?? "(removido)";
@@ -122,6 +161,11 @@ export default function AdminAuditoria() {
   // O seletor lista só as ações presentes nesta página, e não o catálogo inteiro:
   // oferecer filtro que não devolve nada é pior que não oferecer filtro.
   const acoesPresentes = [...new Set((registros ?? []).map((r) => r.action))].sort();
+
+  // O legado tem uma seção "Usuários Removidos" separada da trilha. Aqui ela sai da
+  // própria trilha: quem foi removido tem uma linha `profile.soft_deleted`, e essa
+  // linha já carrega quem removeu e quando. Uma consulta a mais daria a mesma resposta.
+  const removidos = (registros ?? []).filter((r) => r.action === "profile.soft_deleted");
 
   function exportar() {
     exportarCsv(
@@ -162,7 +206,28 @@ export default function AdminAuditoria() {
             />
           </div>
 
-          <Cartao
+          {removidos.length > 0 && (
+        <Cartao
+          titulo={`Usuários removidos (${removidos.length})`}
+          descricao="O acesso caiu na hora; o histórico ficou (BR-MIGRAR-018)."
+          className="mb-6"
+        >
+          <ul className="divide-y divide-border">
+            {removidos.map((registro) => (
+              <li key={registro.id} className="flex items-center justify-between py-2.5 text-sm">
+                <span className="text-foreground">
+                  {registro.record_id ? (nomePor.get(registro.record_id) ?? "(já sem perfil)") : "—"}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  por {quemFez(registro.actor_id)} · {formatarDataHora(registro.created_at)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </Cartao>
+      )}
+
+      <Cartao
             titulo="Atividade — últimos 14 dias"
             className="mb-6"
             acao={
@@ -202,6 +267,27 @@ export default function AdminAuditoria() {
             </div>
           </Cartao>
         </>
+      )}
+
+      {removidos.length > 0 && (
+        <Cartao
+          titulo={`Usuários removidos (${removidos.length})`}
+          descricao="O acesso caiu na hora; o histórico ficou (BR-MIGRAR-018)."
+          className="mb-6"
+        >
+          <ul className="divide-y divide-border">
+            {removidos.map((registro) => (
+              <li key={registro.id} className="flex items-center justify-between py-2.5 text-sm">
+                <span className="text-foreground">
+                  {registro.record_id ? (nomePor.get(registro.record_id) ?? "(já sem perfil)") : "—"}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  por {quemFez(registro.actor_id)} · {formatarDataHora(registro.created_at)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </Cartao>
       )}
 
       <Cartao
@@ -278,11 +364,7 @@ export default function AdminAuditoria() {
                   </Selo>
                 </Celula>
                 <Celula className="text-xs text-muted-foreground">
-                  {registro.details ? (
-                    <code className="break-all">{JSON.stringify(registro.details)}</code>
-                  ) : (
-                    "—"
-                  )}
+                  {legivel(registro.details)}
                 </Celula>
               </Linha>
             ))}

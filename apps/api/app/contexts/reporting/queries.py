@@ -12,7 +12,7 @@ não na renderização: o ponto do limite é não trafegar o que ninguém vai ol
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date, datetime
 from uuid import UUID
 
@@ -241,6 +241,14 @@ class EngagementQuery(TenantScopedRepository[FeedbackRequest]):
 
 
 @dataclass(frozen=True, slots=True)
+class ParteDoHistorico:
+    """Um campo rotulado de um item do histórico."""
+
+    rotulo: str
+    texto: str
+
+
+@dataclass(frozen=True, slots=True)
 class ItemDeHistorico:
     """Uma linha do histórico, seja de que tipo for.
 
@@ -256,6 +264,9 @@ class ItemDeHistorico:
     titulo: str
     detalhe: str | None
     lido_em: datetime | None
+    # As mesmas informacoes de `detalhe`, mas separadas pelo rotulo que tinham no
+    # formulario. `detalhe` fica para busca e exportacao, onde uma linha so serve.
+    partes: list[ParteDoHistorico] = field(default_factory=list)
 
 
 class TeamHistoryQuery(TenantScopedRepository[FeedbackRequest]):
@@ -302,6 +313,11 @@ class TeamHistoryQuery(TenantScopedRepository[FeedbackRequest]):
                 sobre_nome=nome,
                 titulo="Feedback livre" + (" (anônimo)" if anonimo else ""),
                 detalhe=_juntar(positivos, melhorias, mensagem),
+                partes=_rotuladas(
+                    ("Pontos positivos", positivos),
+                    ("Pontos de melhoria", melhorias),
+                    ("Mensagem", mensagem),
+                ),
                 lido_em=lido,
             )
             for quando, pid, nome, anonimo, positivos, melhorias, mensagem, lido in linhas
@@ -392,6 +408,20 @@ def _juntar(*partes: str | None) -> str | None:
     """Junta o que existe, devolve `None` quando não sobra nada."""
     texto = " · ".join(parte.strip() for parte in partes if parte and parte.strip())
     return texto or None
+
+
+def _rotuladas(*pares: tuple[str, str | None]) -> list[ParteDoHistorico]:
+    """As partes com o rótulo que cada uma tem no formulário.
+
+    Concatenar elogio e crítica numa frase só apaga a distinção que o formulário faz
+    questão de manter: "explica bem" e "atropela quem fala mais baixo" viram a mesma
+    linha, e quem lê o histórico perde justamente o que o feedback separou.
+    """
+    return [
+        ParteDoHistorico(rotulo=rotulo, texto=texto.strip())
+        for rotulo, texto in pares
+        if texto and texto.strip()
+    ]
 
 
 class ExecutiveDataQuery(TenantScopedRepository[FeedbackRequest]):

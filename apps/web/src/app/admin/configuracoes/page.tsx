@@ -28,16 +28,53 @@ import type { Configuracao } from "@/lib/tipos";
 const ROTULOS: Record<string, string> = {
   company_name: "Nome do escritório",
   logo_url: "URL do logo",
-  client_feedback_motivations: "Motivações do formulário público (JSON)",
+  client_feedback_motivations: "Motivações da avaliação do cliente",
   whatsapp_message_template: "Template da mensagem de WhatsApp",
-  calendar_keywords: "Palavras-chave de calendário (JSON)",
+  calendar_keywords: "Palavras-chave de calendário",
   gestor_can_access_reports: "Gestor acessa relatórios",
   gestor_can_access_agenda: "Gestor acessa agenda",
   colaborador_can_generate_own_report: "Colaborador gera o próprio relatório",
   client_eval_spontaneous_enabled: "Avaliação espontânea de cliente",
-  client_eval_negative_keywords: "Palavras que sinalizam avaliação negativa (JSON)",
+  client_eval_negative_keywords: "Palavras que sinalizam avaliação negativa",
   client_eval_negative_rating_max: "Nota máxima considerada negativa",
 };
+
+/**
+ * Chaves que guardam JSON e que **não** devem ser editadas como JSON.
+ *
+ * Pedir `{"praise":true,...}` a um administrador de escritório é convite a erro de
+ * digitação que desliga um recurso em silêncio: uma vírgula a mais e a motivação some
+ * do formulário público sem ninguém entender por quê. As duas formas abaixo montam o
+ * JSON a partir de controles que não têm como sair errados.
+ */
+const MOTIVACOES: { chave: string; rotulo: string }[] = [
+  { chave: "praise", rotulo: "Quero elogiar" },
+  { chave: "evaluate", rotulo: "Quero avaliar o atendimento" },
+  { chave: "problem", rotulo: "Tive um problema" },
+  { chave: "other", rotulo: "Outro motivo" },
+];
+
+/** Guardam uma lista JSON de strings, editada aqui como texto separado por vírgula. */
+const LISTAS = new Set(["calendar_keywords", "client_eval_negative_keywords"]);
+
+/** Lê a lista com tolerância: config quebrada não pode travar a tela de config. */
+function listaDe(valor: string | undefined): string[] {
+  try {
+    const lido: unknown = JSON.parse(valor || "[]");
+    return Array.isArray(lido) ? lido.map(String) : [];
+  } catch {
+    return [];
+  }
+}
+
+function motivacoesDe(valor: string | undefined): Record<string, boolean> {
+  try {
+    const lido: unknown = JSON.parse(valor || "{}");
+    return typeof lido === "object" && lido !== null ? (lido as Record<string, boolean>) : {};
+  } catch {
+    return {};
+  }
+}
 
 const TOGGLES = new Set([
   "gestor_can_access_reports",
@@ -104,9 +141,11 @@ export default function AdminConfiguracoes() {
                   <Campo
                     rotulo={ROTULOS[item.key] ?? item.key}
                     dica={
-                      item.persisted
-                        ? `Alterado em ${formatarDataHora(item.updated_at)}`
-                        : "Ainda no valor padrão"
+                      LISTAS.has(item.key)
+                        ? "Separe por vírgula."
+                        : item.persisted
+                          ? `Última atualização: ${formatarDataHora(item.updated_at)}`
+                          : "Ainda no valor padrão"
                     }
                   >
                     {TOGGLES.has(item.key) ? (
@@ -117,6 +156,54 @@ export default function AdminConfiguracoes() {
                         <option value="false">Desligado</option>
                         <option value="true">Ligado</option>
                       </Selecao>
+                    ) : item.key === "client_feedback_motivations" ? (
+                      <span className="flex flex-wrap gap-4 pt-1">
+                        {MOTIVACOES.map((motivacao) => {
+                          const atual = motivacoesDe(rascunho[item.key]);
+                          // Chave ausente vale ligada: é o default do catálogo, e uma
+                          // config incompleta não pode esconder etapa do cliente.
+                          const ligada = atual[motivacao.chave] !== false;
+                          return (
+                            <label
+                              key={motivacao.chave}
+                              className="flex items-center gap-2 text-sm text-foreground"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={ligada}
+                                onChange={(e) =>
+                                  setRascunho({
+                                    ...rascunho,
+                                    [item.key]: JSON.stringify({
+                                      ...Object.fromEntries(
+                                        MOTIVACOES.map((m) => [m.chave, atual[m.chave] !== false]),
+                                      ),
+                                      [motivacao.chave]: e.target.checked,
+                                    }),
+                                  })
+                                }
+                              />
+                              {motivacao.rotulo}
+                            </label>
+                          );
+                        })}
+                      </span>
+                    ) : LISTAS.has(item.key) ? (
+                      <Entrada
+                        value={listaDe(rascunho[item.key]).join(", ")}
+                        placeholder="péssimo, demora, sem retorno"
+                        onChange={(e) =>
+                          setRascunho({
+                            ...rascunho,
+                            [item.key]: JSON.stringify(
+                              e.target.value
+                                .split(",")
+                                .map((palavra) => palavra.trim())
+                                .filter(Boolean),
+                            ),
+                          })
+                        }
+                      />
                     ) : (
                       <Entrada
                         value={rascunho[item.key] ?? ""}

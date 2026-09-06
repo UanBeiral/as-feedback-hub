@@ -148,8 +148,20 @@ function ItemDoHistorico({ item }: { item: ItemDeHistorico }) {
           <span>{item.sobre_nome}</span>
         </p>
         <p className="mt-1 text-sm text-foreground">{item.titulo}</p>
-        {item.detalhe && (
-          <p className="mt-1 text-sm text-muted-foreground">{item.detalhe}</p>
+        {/* Com rotulo, e nao numa frase corrida: elogio e critica sao coisas diferentes
+            no formulario, e junta-los apaga a distincao que quem escreveu fez questao de
+            manter. O `detalhe` continua existindo para busca e exportacao. */}
+        {item.partes.length > 0 ? (
+          <dl className="mt-1.5 space-y-1">
+            {item.partes.map((parte) => (
+              <div key={parte.rotulo}>
+                <dt className="text-xs font-medium text-muted-foreground">{parte.rotulo}</dt>
+                <dd className="whitespace-pre-wrap text-sm text-foreground">{parte.texto}</dd>
+              </div>
+            ))}
+          </dl>
+        ) : (
+          item.detalhe && <p className="mt-1 text-sm text-muted-foreground">{item.detalhe}</p>
         )}
       </div>
 
