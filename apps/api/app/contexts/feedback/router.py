@@ -82,7 +82,7 @@ from app.contexts.identity.admin_service import TeamMembershipService
 from app.contexts.identity.repository import CoordinatorMemberRepository, ProfileRepository
 from app.contexts.identity.service import TeamScopeService
 from app.core.di import SessionDep, TenantDep, require_role
-from app.core.errors import ValidationError
+from app.core.errors import NotFoundError, ValidationError
 from app.core.tenancy import TenantContext
 
 router = APIRouter(tags=["feedback"])
@@ -191,6 +191,21 @@ async def create_form(
     form = await service.create(name=payload.name, description=payload.description)
     await session.flush()
     await session.refresh(form)
+    return FormOut.model_validate(form)
+
+
+@router.put("/forms/{form_id}", response_model=FormOut)
+async def update_form(
+    form_id: UUID, payload: FormIn, tenant: AdminDep, session: SessionDep
+) -> FormOut:
+    """Renomeia e redescreve. PUT com o recurso inteiro: descricao ausente apaga."""
+    repo = FormRepository(session, tenant)
+    form = await repo.get(form_id)
+    if form is None:
+        raise NotFoundError("Formulario nao encontrado")
+    form.name = payload.name
+    form.description = payload.description
+    await session.flush()
     return FormOut.model_validate(form)
 
 
@@ -627,8 +642,6 @@ async def request_detail(
     requests = RequestRepository(session, tenant)
     request = await requests.get(request_id)
     if request is None or request.giver_id != tenant.user_id:
-        from app.core.errors import NotFoundError
-
         raise NotFoundError("Request não encontrado")
 
     perguntas = await QuestionRepository(session, tenant).list_by_form(request.form_id)

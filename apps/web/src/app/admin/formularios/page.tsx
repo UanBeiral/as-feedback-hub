@@ -46,7 +46,12 @@ export default function AdminFormularios() {
   const [aberto, setAberto] = useState<string | null>(null);
   const [perguntas, setPerguntas] = useState<Pergunta[]>([]);
   const [mensagem, setMensagem] = useState<{ tom: "erro" | "sucesso"; texto: string } | null>(null);
-  const [novoNome, setNovoNome] = useState("");
+  const [novo, setNovo] = useState({ nome: "", descricao: "" });
+  const [editandoForm, setEditandoForm] = useState<{
+    id: string;
+    nome: string;
+    descricao: string;
+  } | null>(null);
   const [novaPergunta, setNovaPergunta] = useState({
     question_text: "",
     question_type: "textarea",
@@ -80,13 +85,31 @@ export default function AdminFormularios() {
     try {
       const criado = await api<Formulario>("/forms", {
         method: "POST",
-        body: { name: novoNome },
+        body: { name: novo.nome, description: novo.descricao.trim() || null },
       });
-      setNovoNome("");
+      setNovo({ nome: "", descricao: "" });
       await carregar();
       setAberto(criado.id);
     } catch (falha) {
       relatar(falha, "Não foi possível criar o formulário.");
+    }
+  }
+
+  async function salvarFormulario() {
+    if (!editandoForm) return;
+    setMensagem(null);
+    try {
+      await api(`/forms/${editandoForm.id}`, {
+        method: "PUT",
+        body: {
+          name: editandoForm.nome,
+          description: editandoForm.descricao.trim() || null,
+        },
+      });
+      setEditandoForm(null);
+      await carregar();
+    } catch (falha) {
+      relatar(falha, "Não foi possível salvar o formulário.");
     }
   }
 
@@ -177,13 +200,22 @@ export default function AdminFormularios() {
 
         <Cartao titulo="Novo formulário">
           <form onSubmit={criarFormulario} className="flex flex-wrap items-end gap-3">
-            <div className="min-w-64 flex-1">
+            <div className="min-w-48 flex-1">
               <Campo rotulo="Nome" obrigatorio>
                 <Entrada
                   required
-                  value={novoNome}
-                  onChange={(e) => setNovoNome(e.target.value)}
+                  value={novo.nome}
+                  onChange={(e) => setNovo({ ...novo, nome: e.target.value })}
                   placeholder="Avaliação 360 — 2026"
+                />
+              </Campo>
+            </div>
+            <div className="min-w-64 flex-[2]">
+              <Campo rotulo="Descrição" dica="Opcional — explica para que serve o formulário.">
+                <Entrada
+                  value={novo.descricao}
+                  onChange={(e) => setNovo({ ...novo, descricao: e.target.value })}
+                  placeholder="Feedback 360 graus no modelo Do More / Do Less / Continue"
                 />
               </Campo>
             </div>
@@ -200,10 +232,36 @@ export default function AdminFormularios() {
               descricao="Um ciclo precisa de formulário para ser criado."
             />
           ) : (
-            <Tabela colunas={["Nome", "Situação", ""]}>
+            <Tabela colunas={["Nome", "Descrição", "Situação", ""]}>
               {formularios.map((formulario) => (
                 <Linha key={formulario.id}>
-                  <Celula className="font-medium">{formulario.name}</Celula>
+                  <Celula className="font-medium">
+                    {editandoForm?.id === formulario.id ? (
+                      <Entrada
+                        value={editandoForm.nome}
+                        onChange={(e) =>
+                          setEditandoForm({ ...editandoForm, nome: e.target.value })
+                        }
+                        className="h-8"
+                      />
+                    ) : (
+                      formulario.name
+                    )}
+                  </Celula>
+                  <Celula className="text-muted-foreground">
+                    {editandoForm?.id === formulario.id ? (
+                      <Entrada
+                        value={editandoForm.descricao}
+                        onChange={(e) =>
+                          setEditandoForm({ ...editandoForm, descricao: e.target.value })
+                        }
+                        placeholder="Sem descrição"
+                        className="h-8"
+                      />
+                    ) : (
+                      (formulario.description ?? "—")
+                    )}
+                  </Celula>
                   <Celula>
                     <Selo tom={formulario.archived_at ? "neutro" : "sucesso"}>
                       {formulario.archived_at ? "arquivado" : "ativo"}
@@ -211,6 +269,38 @@ export default function AdminFormularios() {
                   </Celula>
                   <Celula className="text-right">
                     <span className="flex justify-end gap-3">
+                      {editandoForm?.id === formulario.id ? (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => void salvarFormulario()}
+                            className="text-sm text-primary underline-offset-4 hover:underline"
+                          >
+                            Salvar
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditandoForm(null)}
+                            className="text-sm text-muted-foreground underline-offset-4 hover:underline"
+                          >
+                            Cancelar
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setEditandoForm({
+                              id: formulario.id,
+                              nome: formulario.name,
+                              descricao: formulario.description ?? "",
+                            })
+                          }
+                          className="text-sm text-primary underline-offset-4 hover:underline"
+                        >
+                          Editar
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={() => setAberto(aberto === formulario.id ? null : formulario.id)}

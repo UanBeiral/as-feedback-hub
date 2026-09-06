@@ -139,7 +139,7 @@ export default function AdminAuditoria() {
   return (
     <PaginaAutenticada
       titulo="Auditoria"
-      descricao="Registro permanente de ações sensíveis. Não pode ser editado nem apagado."
+      descricao="Registro completo de todas as ações realizadas no sistema. Não pode ser editado nem apagado."
     >
       {resumo && (
         <>

@@ -101,7 +101,7 @@ export default function Relatorios() {
   return (
     <PaginaAutenticada
       titulo="Relatórios"
-      descricao="Os mesmos números que aparecem nos painéis — calculados uma vez, no servidor."
+      descricao="Gere relatórios personalizados com filtros, escolha de colunas e exportação em CSV."
     >
       <div className="space-y-6">
         {mensagem && <Aviso tom={mensagem.tom}>{mensagem.texto}</Aviso>}

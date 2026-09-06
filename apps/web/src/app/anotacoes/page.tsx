@@ -20,6 +20,7 @@ import {
   Carregando,
   Cartao,
   EstadoVazio,
+  Estatistica,
   Selecao,
 } from "@/components/ui";
 import { ApiError, api, apiVoid } from "@/lib/api";
@@ -129,6 +130,14 @@ export default function Anotacoes() {
             <Botao tipo="submit">Salvar anotação</Botao>
           </form>
         </Cartao>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Estatistica rotulo="Total de anotações" valor={(anotacoes ?? []).length} />
+          <Estatistica
+            rotulo="Pessoas anotadas"
+            valor={new Set((anotacoes ?? []).map((a) => a.about_user_id)).size}
+          />
+        </div>
 
         <Cartao titulo="Anotações realizadas">
           {anotacoes === null ? (

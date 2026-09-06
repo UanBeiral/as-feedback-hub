@@ -89,7 +89,7 @@ export default function AdminConfiguracoes() {
   return (
     <PaginaAutenticada
       titulo="Configurações"
-      descricao="Valem para o escritório inteiro. Toggles nascem desligados."
+      descricao="Gerencie as configurações visuais e informações da empresa exibidas em todo o sistema."
     >
       <div className="space-y-4">
         {mensagem && <Aviso tom={mensagem.tom}>{mensagem.texto}</Aviso>}

@@ -432,6 +432,58 @@ O legado organiza as anotações **por ciclo e pessoa**; o novo lista em ordem c
 Com três anotações dá na mesma; com um ciclo inteiro, não. O formulário inline no lugar
 do modal "+ Nova Anotação" é o padrão já adotado em todo o sistema novo.
 
+## SCR-0034 · Avaliações de Clientes
+
+Rota `/avaliacoes-clientes` · oráculo `colaborador/screenshots/avaliacoes-clientes.png`
+
+| # | Divergência | Peso |
+|---|---|---|
+| 77 | Faltam os cartões **Pendentes** e **Respondidas** | conteúdo |
+| 78 | "Quem será avaliado" é um `select`; o legado tem **busca com resultado**, mostrando papel e um botão "Solicitar" por pessoa | ação — com 40 pessoas o select deixa de servir |
+| 79 | Falta a seção **"Filtrar avaliações"** (profissional, cliente, WhatsApp, status, período) | ação |
+| 80 | Falta a coluna **Profissional** — a lista não diz sobre quem é cada avaliação | conteúdo, **grave** |
+| 81 | Descrição diverge do legado | texto |
+
+A #80 é a mesma doença do BUG-03: uma lista de avaliações que não nomeia o avaliado.
+Aqui não chega a inutilizar a tela, porque o nome do cliente identifica a linha — mas o
+gestor não consegue ler "quantas avaliações a Bruna recebeu" sem abrir uma a uma.
+
+O WhatsApp aparece **completo** e isso está certo: BR-MIGRAR-022 manda mascarar para quem
+não é admin/RH, e a rota faz exatamente isso.
+
+## SCR-0016 · Relatórios — Dados e Filtros
+
+Rota `/relatorios` · oráculo `reports/screenshots/relatorios-dados-filtros.png`
+
+| # | Divergência | Peso |
+|---|---|---|
+| 82 | Falta a aba **Livres** — o legado tem quatro (Clientes, Livres, 360°, Engajamento) | conteúdo |
+| 83 | Faltam os filtros por aba (Nota, Motivação, Profissional, De, Até, Buscar cliente) | ação |
+| 84 | Falta o botão **Colunas** (escolher o que aparece) | ação |
+| 85 | Falta o **Preview** antes de exportar | ação |
+| 86 | Falta o contador "N resultados" | conteúdo |
+| 87 | Sem ordenação por coluna | ação |
+| 88 | Descrição: "Gere relatórios personalizados com filtros, escolha de colunas e exportação em CSV" → "Os mesmos números que aparecem nos painéis" | texto |
+
+## SCR-0002 · Meu Perfil
+
+Rota `/meu-perfil` · oráculo `auth/screenshots/meu-perfil.png`
+
+| # | Divergência | Peso |
+|---|---|---|
+| 89 | Falta o **Departamento** | conteúdo |
+| 90 | "Dados Pessoais" virou "Dados" | texto |
+
+O novo mostra WhatsApp e uma seção **Acesso** com as capacidades, que o legado não tem —
+adição, e boa: é a única tela onde a pessoa descobre o que pode fazer.
+
+## SCR-0004 · Anotações Realizadas
+
+Rota `/anotacoes` (seção inferior) · oráculo `admin/screenshots/anotacoes-realizadas.png`
+
+Sem divergência material além da #76, que vale para as duas seções. No legado eram duas
+entradas de menu; aqui é uma tela com as duas partes, como o roteiro previa.
+
 ---
 
 ## Resolvidas — telas de acompanhamento restauradas

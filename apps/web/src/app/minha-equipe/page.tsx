@@ -344,7 +344,7 @@ export default function MinhaEquipe() {
       titulo="Minha equipe"
       descricao={
         equipe?.cycle_name
-          ? `Como a sua equipe está indo no ciclo ${equipe.cycle_name}. Feedback livre e de clientes ficam no Histórico da equipe.`
+          ? `Acompanhe o progresso dos membros da sua equipe no ciclo ${equipe.cycle_name}. Feedbacks livres e de clientes são exibidos em outras seções.`
           : "Quem está no seu escopo — subordinados diretos e, se você coordena, também os membros coordenados."
       }
     >

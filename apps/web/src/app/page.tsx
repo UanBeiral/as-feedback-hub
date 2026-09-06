@@ -90,7 +90,13 @@ export default function PaginaInicial() {
 
   return (
     <PaginaAutenticada
-      titulo={`Olá, ${usuario?.full_name.split(" ")[0] ?? ""}`}
+      // Uma rota para todos os papéis, mas o cabeçalho é o de cada oráculo: o admin
+      // abre um "Painel Administrativo", e quem não administra é cumprimentado.
+      titulo={
+        usuario?.role === "admin" || usuario?.role === "rh"
+          ? "Painel Administrativo"
+          : `Olá, ${usuario?.full_name.split(" ")[0] ?? ""}!`
+      }
       descricao={dataPorExtenso()}
     >
       {carregando ? (

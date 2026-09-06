@@ -90,7 +90,7 @@ export default function MeusFeedbacks() {
   return (
     <PaginaAutenticada
       titulo="Meus feedbacks"
-      descricao="O que você precisa responder, o que já enviou e o que saiu da sua conta."
+      descricao="Gerencie seus feedbacks pendentes, enviados e abdicados."
     >
       {requisicoes !== null && requisicoes.length > 0 && (
         <div className="mb-6 grid gap-4 sm:grid-cols-3">

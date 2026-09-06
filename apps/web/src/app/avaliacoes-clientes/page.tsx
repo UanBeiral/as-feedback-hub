@@ -87,7 +87,7 @@ export default function AvaliacoesDeClientes() {
   return (
     <PaginaAutenticada
       titulo="Avaliações de clientes"
-      descricao="Gere o link, mande ao cliente e acompanhe as respostas."
+      descricao="Solicite avaliações de clientes externos para qualquer colaborador."
     >
       <div className="space-y-6">
         {mensagem && <Aviso tom={mensagem.tom}>{mensagem.texto}</Aviso>}

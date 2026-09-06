@@ -6435,6 +6435,65 @@
         ]
       }
     },
+    "/api/v1/forms/{form_id}": {
+      "put": {
+        "description": "Renomeia e redescreve. PUT com o recurso inteiro: descricao ausente apaga.",
+        "operationId": "update_form_api_v1_forms__form_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "form_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Form Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FormIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FormOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update Form",
+        "tags": [
+          "feedback"
+        ]
+      }
+    },
     "/api/v1/forms/{form_id}/archive": {
       "post": {
         "operationId": "archive_form_api_v1_forms__form_id__archive_post",
