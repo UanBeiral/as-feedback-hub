@@ -110,7 +110,7 @@ export default function PaginaInicial() {
               feedback fora do ciclo não tem gatilho nenhum — se não estiver à vista,
               ninguém lembra que pode. */}
           <Link
-            href="/minha-equipe"
+            href="/feedback-livre"
             className="flex items-start gap-3 rounded-lg border border-accent bg-accent/10 px-4 py-3 transition hover:bg-accent/20"
           >
             <span className="text-lg" aria-hidden="true">

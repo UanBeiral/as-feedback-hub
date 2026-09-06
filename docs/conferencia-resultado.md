@@ -726,42 +726,54 @@ altura definida no pai flex, as barras resolviam para zero e o gráfico ficava v
 
 ### O que continua faltando
 
-- **#37** — a seção "Usuários Removidos" da auditoria.
-- **#21** — o download por linha em Departamentos.
-- **#39, #40** — detalhes em JSON cru e o texto do cabeçalho.
+(Nada — #37, #21, #39 e #40 entraram nos lotes seguintes. Ver as seções
+"Resolvidas" no fim do documento.)
 
 ---
 
 ## O que fazer com isto
 
-Nada aqui foi decidido: divergência encontrada não é divergência aprovada. Cada linha
-acima termina em uma de três saídas, e quem decide é o cliente na homologação:
+Nada aqui foi decidido de véspera: divergência encontrada não é divergência aprovada.
+Cada linha acima terminou em uma de três saídas —
 
-1. **Implementar** — o legado tinha e faz falta (as seções do painel, as colunas e
-   filtros de Usuários, o revelar-senha do login).
-2. **Aprovar como deviation** — o novo é deliberadamente diferente; vai para
-   `screen_deviation_log.md` com o motivo.
-3. **Descartar** — o legado tinha e ninguém usava.
+1. **Implementada** — o legado tinha e fazia falta. É o caso de 87 das 90.
+2. **Desvio deliberado** — o novo é diferente de propósito, e o motivo está registrado na
+   seção "Resolvidas" correspondente: **#2** (logo no login), **#43** (a mensagem do Fale
+   Conosco aparece inline, sem o modal "Ver") e **#67** ("Ver Detalhes" no histórico, pelo
+   mesmo motivo).
+3. **Descartada** — nenhuma.
 
-As que já têm dono claro: a #5 do login entra junto com a SCR-0038, a #8 do painel junto
-com a SCR-0023, e a #45 dos formulários junto com a SCR-0043.
+**Quatro exigiam decisão de schema**, e as quatro foram tomadas em 06/09/2026 com o
+cliente:
 
-**Quatro não se resolvem no front** — mexem em schema, e por isso pedem decisão antes de
-qualquer implementação:
+- **#19** — `departments` ganhou `description` (migration `0006`).
+- **#25** — `archived` de `feedback_cycles` ganhou tela: arquivar, filtro e contagem.
+- **#35/#36** — `audit_logs` ganhou `is_sensitive`, gravado no INSERT a partir de um
+  catálogo em código (migration `0006`).
+- **#44** — `contact_messages.type` virou catálogo de duas opções.
 
-- **#19** — `departments` não tem `description`.
-- **#25** — `feedback_cycles.status` aceita `archived`, e nenhuma tela produz ou mostra
-  esse estado.
-- **#35/#36** — `audit_logs` não distingue ação sensível, então dois cards e a legenda do
-  gráfico não têm de onde sair.
-- **#44** — `contact_messages.type` é texto livre, sem catálogo.
+E o padrão que atravessava o bloco inteiro — **o legado exporta e filtra quase tudo, e o
+novo só exportava em Relatórios** — foi resolvido de uma vez com `lib/exportar.ts` e
+`lib/tabela.ts`, como previsto: fecharam #16, #20, #21, #30, #34 e os filtros de #15, #32
+e #42 com o mesmo par de peças.
 
-E um padrão atravessa o bloco inteiro, mais barato de resolver de uma vez do que tela a
-tela: **o legado exporta quase tudo** (Usuários, Departamentos, Permissões e Auditoria,
-todos com Exportar Excel ou CSV) e **filtra quase tudo**. O sistema novo tem exportação
-só em Relatórios. Se a decisão for implementar, um componente de exportação e outro de
-filtro resolvem sete das divergências acima de uma vez — #16, #20, #21, #30, #34 e os
-filtros de #15, #32 e #42.
+### Defeitos encontrados pelo caminho
+
+A conferência não era para achar bug, e achou oito. Todos corrigidos:
+
+| # | O que era |
+|---|---|
+| BUG-01 | recarregar a página deslogava — duas renovações simultâneas do mesmo refresh token |
+| BUG-02 | contagem do sino divergindo da lista |
+| BUG-03 | "Meus feedbacks" não dizia sobre quem era cada pedido |
+| BUG-04 | status do membro aparecia como `active` cru |
+| BUG-05 | o gestor entrava na lista da própria equipe |
+| BUG-06 | o histórico mostrava feedback sensível, que a rota de recebidos esconde |
+| BUG-07 | `can_view_team_history` decidia o menu sem que a rota a exigisse |
+| BUG-08 | "Usuários removidos" renderizava duas vezes na Auditoria |
+
+O BUG-01 e o BUG-07 são os que mais valeram a conferência: um derrubava a sessão de quem
+recarregava a página, o outro deixava uma capacidade valendo só no menu.
 
 ## Resolvidas — Relatórios
 
@@ -954,3 +966,31 @@ O logo no login exigiria um endpoint público que diga de quem é a instalação
 podia porque tinha um tenant só; aqui, estampar a marca antes do login é publicar o nome
 do cliente para quem só abriu a URL. O nome do produto fica; a marca do escritório aparece
 depois de entrar.
+
+## Resolvidas — o banner do Início e a tela de feedback livre (#8)
+
+06/09/2026, no fecho da conferência. A #8 estava marcada como "entra junto com a
+SCR-0023", e a SCR-0023 existia pela metade: o formulário morava em `/minha-equipe`, e o
+banner do Início apontava para lá.
+
+Só que ali só chega quem tem equipe. A API nunca pediu vínculo entre quem escreve e quem
+recebe — qualquer pessoa pode escrever para qualquer colega —, e prender a entrada na tela
+do gestor transformava um recurso de todo mundo num recurso de alguns. O colaborador via o
+banner, clicava, e caía numa tela que o menu nem lhe oferecia.
+
+Agora o formulário é `components/feedback-livre.tsx`, usado pelas duas telas, e
+`/feedback-livre` é a tela própria: busca por nome ou cargo e um botão por pessoa. Busca
+com resultado, e não `select`, pelo mesmo motivo da #78 — com quarenta nomes o seletor vira
+rolagem.
+
+`GET /colleagues` devolve **só nome e cargo**, e é aberta a qualquer autenticado. Não é
+`ProfileSummary`: ali vão e-mail, papel, capacidades e vínculo, que são assunto da
+administração. O que esta lista diz é o que qualquer pessoa do escritório já sabe olhando
+em volta. Quem pede sai da lista, porque a API recusa feedback para si mesmo e oferecer a
+opção seria montar um caminho que termina em erro.
+
+## Resolvidas — BUG-08
+
+"Usuários removidos" renderizava **duas vezes** na Auditoria: uma dentro do bloco do
+resumo e outra abaixo dele. Sobra de um lote anterior — a seção foi inserida no lugar novo
+sem a antiga sair.

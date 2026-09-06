@@ -495,6 +495,38 @@
         "title": "ClientQuestionUpdateIn",
         "type": "object"
       },
+      "ColleagueOut": {
+        "description": "Um colega, para escolher destinatário de feedback livre.\n\nSó nome e cargo. Não é `ProfileSummary` de propósito: ali vão e-mail, papel,\ncapacidades e vínculo, que são assunto da administração — esta lista é aberta a\nqualquer autenticado, e o que ela pode dizer é o que qualquer pessoa do escritório já\nsabe olhando em volta.",
+        "properties": {
+          "full_name": {
+            "title": "Full Name",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "job_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Title"
+          }
+        },
+        "required": [
+          "id",
+          "full_name",
+          "job_title"
+        ],
+        "title": "ColleagueOut",
+        "type": "object"
+      },
       "ConclusaoDoDepartamentoOut": {
         "properties": {
           "enviados": {
@@ -5712,6 +5744,37 @@
         "summary": "List Service Tags",
         "tags": [
           "client_eval"
+        ]
+      }
+    },
+    "/api/v1/colleagues": {
+      "get": {
+        "description": "As pessoas do escritório, para quem vai escrever um feedback livre (SCR-0023).\n\nAberta a qualquer autenticado, e não só a admin: dar feedback fora do ciclo é de todo\nmundo, e sem esta lista o formulário só serviria a quem tem equipe.\n\nQuem pede sai da lista — a API recusa feedback para si mesmo, e oferecer a opção seria\nmontar um caminho que termina em erro.",
+        "operationId": "list_colleagues_api_v1_colleagues_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ColleagueOut"
+                  },
+                  "title": "Response List Colleagues Api V1 Colleagues Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Colleagues",
+        "tags": [
+          "identity-admin"
         ]
       }
     },

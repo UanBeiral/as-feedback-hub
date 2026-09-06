@@ -62,6 +62,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
     { href: "/", rotulo: "Início", visivel: true },
     { href: "/meus-feedbacks", rotulo: "Meus feedbacks", visivel: true },
     { href: "/meu-historico", rotulo: "Meu histórico", visivel: true },
+    { href: "/feedback-livre", rotulo: "Dar feedback", visivel: true },
     { href: "/anotacoes", rotulo: "Anotações", visivel: temEquipe },
     { href: "/minha-equipe", rotulo: "Minha equipe", visivel: temEquipe },
     { href: "/feedbacks-pendentes", rotulo: "Feedbacks pendentes", visivel: temEquipe },

@@ -440,6 +440,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/colleagues": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Colleagues
+         * @description As pessoas do escritório, para quem vai escrever um feedback livre (SCR-0023).
+         *
+         *     Aberta a qualquer autenticado, e não só a admin: dar feedback fora do ciclo é de todo
+         *     mundo, e sem esta lista o formulário só serviria a quem tem equipe.
+         *
+         *     Quem pede sai da lista — a API recusa feedback para si mesmo, e oferecer a opção seria
+         *     montar um caminho que termina em erro.
+         */
+        get: operations["list_colleagues_api_v1_colleagues_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/contact-messages": {
         parameters: {
             query?: never;
@@ -2266,6 +2292,26 @@ export interface components {
             question_text: string;
             /** Question Type */
             question_type: string;
+        };
+        /**
+         * ColleagueOut
+         * @description Um colega, para escolher destinatário de feedback livre.
+         *
+         *     Só nome e cargo. Não é `ProfileSummary` de propósito: ali vão e-mail, papel,
+         *     capacidades e vínculo, que são assunto da administração — esta lista é aberta a
+         *     qualquer autenticado, e o que ela pode dizer é o que qualquer pessoa do escritório já
+         *     sabe olhando em volta.
+         */
+        ColleagueOut: {
+            /** Full Name */
+            full_name: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Job Title */
+            job_title: string | null;
         };
         /** ConclusaoDoDepartamentoOut */
         ConclusaoDoDepartamentoOut: {
@@ -4550,6 +4596,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ServiceTagOut"][];
+                };
+            };
+        };
+    };
+    list_colleagues_api_v1_colleagues_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ColleagueOut"][];
                 };
             };
         };

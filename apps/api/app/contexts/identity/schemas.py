@@ -62,6 +62,22 @@ class CurrentUser(BaseModel):
     flags: CapabilityFlags
 
 
+class ColleagueOut(BaseModel):
+    """Um colega, para escolher destinatário de feedback livre.
+
+    Só nome e cargo. Não é `ProfileSummary` de propósito: ali vão e-mail, papel,
+    capacidades e vínculo, que são assunto da administração — esta lista é aberta a
+    qualquer autenticado, e o que ela pode dizer é o que qualquer pessoa do escritório já
+    sabe olhando em volta.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    full_name: str
+    job_title: str | None
+
+
 class ProfileSummary(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

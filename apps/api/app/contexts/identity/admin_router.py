@@ -32,6 +32,7 @@ from app.contexts.identity.repository import (
     UserRepository,
 )
 from app.contexts.identity.schemas import (
+    ColleagueOut,
     CoordinatorIn,
     CoordinatorMemberIn,
     DepartmentIn,
@@ -94,6 +95,22 @@ CoordinatorServiceDep = Annotated[CoordinatorService, Depends(get_coordinator_se
 
 AdminDep = Annotated[TenantContext, Depends(require_role("admin", "rh"))]
 GestaoDep = Annotated[TenantContext, Depends(require_role("admin", "rh", "gestor"))]
+
+
+@router.get("/colleagues", response_model=list[ColleagueOut])
+async def list_colleagues(tenant: TenantDep, session: SessionDep) -> list[ColleagueOut]:
+    """As pessoas do escritório, para quem vai escrever um feedback livre (SCR-0023).
+
+    Aberta a qualquer autenticado, e não só a admin: dar feedback fora do ciclo é de todo
+    mundo, e sem esta lista o formulário só serviria a quem tem equipe.
+
+    Quem pede sai da lista — a API recusa feedback para si mesmo, e oferecer a opção seria
+    montar um caminho que termina em erro.
+    """
+    perfis = await ProfileRepository(session, tenant).list_active()
+    return [
+        ColleagueOut.model_validate(p) for p in perfis if p.id != tenant.user_id
+    ]
 
 
 @router.get("/profiles", response_model=list[ProfileSummary])

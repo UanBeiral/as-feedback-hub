@@ -15,6 +15,7 @@ export type UsuarioAtual = S["CurrentUser"];
 export type Perfil = S["ProfileSummary"];
 export type ParDeTokens = S["TokenPair"];
 export type Departamento = S["DepartmentOut"];
+export type Colega = S["ColleagueOut"];
 export type PedidoDeEquipe = S["TeamRequestOut"];
 export type AcompanhamentoDaEquipe = S["TeamProgressOut"];
 export type PendentesDaEquipe = S["PendentesDaEquipeOut"];

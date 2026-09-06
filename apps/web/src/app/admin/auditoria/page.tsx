@@ -206,28 +206,7 @@ export default function AdminAuditoria() {
             />
           </div>
 
-          {removidos.length > 0 && (
-        <Cartao
-          titulo={`Usuários removidos (${removidos.length})`}
-          descricao="O acesso caiu na hora; o histórico ficou (BR-MIGRAR-018)."
-          className="mb-6"
-        >
-          <ul className="divide-y divide-border">
-            {removidos.map((registro) => (
-              <li key={registro.id} className="flex items-center justify-between py-2.5 text-sm">
-                <span className="text-foreground">
-                  {registro.record_id ? (nomePor.get(registro.record_id) ?? "(já sem perfil)") : "—"}
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  por {quemFez(registro.actor_id)} · {formatarDataHora(registro.created_at)}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </Cartao>
-      )}
-
-      <Cartao
+          <Cartao
             titulo="Atividade — últimos 14 dias"
             className="mb-6"
             acao={

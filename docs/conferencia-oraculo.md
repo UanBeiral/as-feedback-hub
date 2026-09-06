@@ -174,16 +174,18 @@ Legenda: ✅ tela existe · ⚠️ existe parcialmente · ❌ não implementada
 
 ---
 
-## Resumo antes de começar
+## Resumo — conferência encerrada em 06/09/2026
 
 | | |
 |---|---|
 | Telas literais a conferir | 18 (uma, a Agenda, está fora do corte) |
-| Já conferidas | 17 — Administração inteira, e metade de Equipe/Feedback |
-| Faltam | variantes de coordenador e colaborador, anotações realizadas, Cliente/Relatórios |
-| Resultado até aqui | [`conferencia-resultado.md`](conferencia-resultado.md) — 76 divergências e 5 defeitos próprios |
-| Já sabidamente ausentes | SCR-0023 (Feedback Livre) — SCR-0021 foi implementada |
-| Parciais | SCR-0017 (Emitir Relatório), SCR-0022 (Caderno do Ciclo) |
+| Conferidas | 18 — todas |
+| Resultado | [`conferencia-resultado.md`](conferencia-resultado.md) — 90 divergências e 8 defeitos próprios |
+| Resolvidas | 87 implementadas, 3 registradas como desvio deliberado (#2, #43, #67) |
+| Defeitos próprios | 8, todos corrigidos |
+| Telas que nasceram da conferência | SCR-0021 (Meu Histórico), SCR-0027/0031 (Feedbacks Pendentes), SCR-0038 (Reset de Senha), SCR-0043 (Editor de Perguntas) |
+| Ainda ausentes | SCR-0023 só como entrada pelo banner do Início (#8); o formulário existe em `/minha-equipe` |
+| Parciais | SCR-0022 (Caderno do Ciclo) — falta o botão flutuante |
 | Divergência estrutural | nenhuma em aberto |
 
 As **8 telas modernizadas** (SCR-0036 a SCR-0044) não entram nesta conferência: por
