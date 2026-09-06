@@ -49,6 +49,7 @@ from app.contexts.feedback.schemas import (
     FormOut,
     FreeFeedbackIn,
     FreeFeedbackOut,
+    FreeFeedbackSentOut,
     LembreteOut,
     MembroDaEquipeOut,
     OpenCycleOut,
@@ -802,6 +803,25 @@ async def received_free_feedbacks(
     repo = FreeFeedbackRepository(session, tenant)
     recebidos = await repo.list_recebidos(tenant.user_id, gestao=tenant.has_role("admin", "rh"))
     return [FreeFeedbackOut.model_validate(f) for f in recebidos]
+
+
+@router.get("/free-feedbacks/sent", response_model=list[FreeFeedbackSentOut])
+async def sent_free_feedbacks(
+    tenant: TenantDep, session: SessionDep
+) -> list[FreeFeedbackSentOut]:
+    """O feedback livre que a pessoa enviou. O que ela mandou anônimo não aparece."""
+    enviados = await FreeFeedbackRepository(session, tenant).list_enviados(tenant.user_id)
+    perfis = await ProfileRepository(session, tenant).list_by_ids(
+        {f.receiver_id for f in enviados}
+    )
+    nomes = {p.id: p.full_name for p in perfis}
+    return [
+        FreeFeedbackSentOut(
+            **FreeFeedbackOut.model_validate(f).model_dump(),
+            receiver_name=nomes.get(f.receiver_id),
+        )
+        for f in enviados
+    ]
 
 
 @router.get("/free-feedbacks/sensitive", response_model=list[FreeFeedbackOut])

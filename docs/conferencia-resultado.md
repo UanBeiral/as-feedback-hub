@@ -816,3 +816,62 @@ ilegível, e omitir a caixa faria parecer que a coluna não existe.
 Achado ao ligar os filtros: `POST /reports/exports` guardava `desde` e `ate`, e o job de
 `client` os ignorava. O XLSX sairia com o relatório inteiro enquanto a tela mostrava o
 período escolhido — a discordância exata que o Preview existe para evitar.
+
+## Resolvidas — histórico, ciência e feedback livre enviado
+
+06/09/2026. Fecha #66, #67, #68 e #73, e implementa **SCR-0021 · Meu Histórico**, a única
+tela do oráculo que não existia no sistema novo.
+
+### Meu Histórico é o histórico da equipe com escopo de um
+
+`GET /reports/my-history` reusa `TeamHistoryQuery` com `{tenant.user_id}` no lugar do
+escopo resolvido. Um segundo jeito de montar as mesmas três seções seria um segundo jeito
+de elas discordarem — e discordar sobre o que uma pessoa recebeu é pior do que sobre um
+total.
+
+Na tela é o mesmo componente. O que existe só aqui é a **ciência** (#66): o botão aparece
+no item ainda não lido, e o servidor recusa a marca de quem não é o destinatário. Avaliação
+de cliente não tem botão — ela é *sobre* a pessoa, não *para* ela, e não há o que
+reconhecer.
+
+A marca agora diz **quem** deu ciência (`lido_por`, por `outerjoin` em `read_by`). Sem o
+nome, "ciente em 12/03" no histórico da equipe deixava no ar se quem leu foi a pessoa ou a
+administração.
+
+### O sensível não podia estar ali (BUG-06)
+
+Achado ao montar o Meu Histórico: `TeamHistoryQuery.livre` não filtrava `is_sensitive`. A
+rota de recebidos esconde o sensível do destinatário desde sempre — invariante do
+aggregate — e o histórico o mostrava, para o gestor e, se a tela existisse, para a própria
+pessoa. Agora o padrão é esconder, e team-history só inclui para **admin/RH**, exatamente
+como `/free-feedbacks/received`.
+
+### A capacidade que ninguém cobrava (BUG-07)
+
+`can_view_team_history` existia no perfil, aparecia na tela de usuários, decidia o menu — e
+a rota `/reports/team-history` não a exigia. Capacidade que o servidor não cobra é
+decoração: quem soubesse a URL entrava. Agora a rota exige (BR-MIGRAR-013/015), e o menu
+deixou de oferecer por "tem equipe" — oferecer o que o servidor recusa é pior do que não
+oferecer.
+
+### Ordenação e busca por seção (#68)
+
+Busca já existia; faltava a ordem. Agora há o alternador **Mais recentes / Mais antigos**, e
+item sem data vai para o fim nas duas direções — "sem data" no topo de "mais antigos
+primeiro" seria uma resposta errada para a pergunta que a ordem faz.
+
+### Feedback livre enviado por mim (#73)
+
+`GET /free-feedbacks/sent`, numa seção própria abaixo dos pedidos do ciclo. Separada
+porque é outra coisa: em cima está o que o ciclo cobra de mim, com prazo e status; aqui, o
+que escrevi por iniciativa própria e não tem pendência nenhuma. Junto, a soma "quanto
+falta" mentiria.
+
+**O que enviei anônimo não aparece**, e não é lacuna: anônimo não guarda autor (AMB-001), e
+listá-lo como meu exigiria guardar exatamente o vínculo que o anonimato existe para não
+guardar. A tela diz isso na descrição, em vez de deixar a pessoa contando os que faltam.
+
+### #67 fica como desvio deliberado
+
+"Ver Detalhes" abria um modal com o conteúdo que o novo já mostra inline, com os três
+campos rotulados. Um clique para revelar o que já está na tela não é ação, é obstáculo.

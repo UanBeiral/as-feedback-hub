@@ -530,6 +530,19 @@ class FreeFeedbackRepository(TenantScopedRepository[FreeFeedback]):
         )
         return list((await self._session.execute(stmt)).scalars().all())
 
+    async def list_enviados(self, profile_id: UUID) -> list[FreeFeedback]:
+        """O que a pessoa escreveu — o anônimo dela não entra.
+
+        Anônimo não guarda autor (AMB-001), então não há como reconhecê-lo como dela sem
+        guardar exatamente o vínculo que o anonimato existe para não guardar.
+        """
+        stmt = (
+            self._scoped()
+            .where(FreeFeedback.giver_id == profile_id)
+            .order_by(FreeFeedback.created_at.desc())
+        )
+        return list((await self._session.execute(stmt)).scalars().all())
+
     async def list_sensiveis(self) -> list[FreeFeedback]:
         stmt = (
             self._scoped()

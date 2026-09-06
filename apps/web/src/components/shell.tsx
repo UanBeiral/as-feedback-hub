@@ -61,13 +61,16 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const itens: ItemDeMenu[] = [
     { href: "/", rotulo: "Início", visivel: true },
     { href: "/meus-feedbacks", rotulo: "Meus feedbacks", visivel: true },
+    { href: "/meu-historico", rotulo: "Meu histórico", visivel: true },
     { href: "/anotacoes", rotulo: "Anotações", visivel: temEquipe },
     { href: "/minha-equipe", rotulo: "Minha equipe", visivel: temEquipe },
     { href: "/feedbacks-pendentes", rotulo: "Feedbacks pendentes", visivel: temEquipe },
     {
+      // Só a capacidade, e não "tem equipe": a rota a exige, e um menu que oferece o
+      // que o servidor recusa é pior do que não oferecer.
       href: "/historico-equipe",
       rotulo: "Histórico da equipe",
-      visivel: temEquipe || temCapacidade(usuario, "can_view_team_history"),
+      visivel: temCapacidade(usuario, "can_view_team_history"),
     },
     { href: "/avaliacoes-clientes", rotulo: "Avaliações de clientes", visivel: true },
     { href: "/relatorios", rotulo: "Relatórios", visivel: podeRelatorios },

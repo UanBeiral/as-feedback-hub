@@ -840,6 +840,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/free-feedbacks/sent": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Sent Free Feedbacks
+         * @description O feedback livre que a pessoa enviou. O que ela mandou anônimo não aparece.
+         */
+        get: operations["sent_free_feedbacks_api_v1_free_feedbacks_sent_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/free-feedbacks/{feedback_id}/read": {
         parameters: {
             query?: never;
@@ -1485,6 +1505,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/reports/my-history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Meu Historico
+         * @description O histórico da própria pessoa (SCR-0021).
+         *
+         *     Mesma consulta do histórico da equipe com escopo de um: quem já enxerga a si mesmo
+         *     não precisa passar pelo `TeamScopeService`, e um segundo jeito de montar as mesmas
+         *     três seções seria um segundo jeito de elas discordarem.
+         *
+         *     Sensível fica de fora sempre — aqui a pessoa é a destinatária, e o `admin` que abrir
+         *     a própria tela é destinatário como qualquer outro.
+         */
+        get: operations["meu_historico_api_v1_reports_my_history_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/reports/team-history": {
         parameters: {
             query?: never;
@@ -1495,6 +1542,11 @@ export interface paths {
         /**
          * Historico Da Equipe
          * @description Histórico dos três tipos de feedback, dentro do escopo de equipe.
+         *
+         *     A capacidade é exigida **aqui**, e não só no menu: capacidade que o servidor não
+         *     cobra é decoração, e quem sabe a URL entra do mesmo jeito (BR-MIGRAR-013/015). Ter
+         *     equipe não substitui a capacidade — o escopo decide *o que* aparece, a capacidade
+         *     decide *se* a tela responde.
          *
          *     O escopo sai do `TeamScopeService` e entra na query como lista de ids. Nenhum
          *     parâmetro desta rota amplia o que a pessoa enxerga — no máximo filtraria dentro
@@ -2619,6 +2671,46 @@ export interface components {
              */
             receiver_id: string;
         };
+        /**
+         * FreeFeedbackSentOut
+         * @description O que a pessoa enviou, com o nome de quem recebeu.
+         *
+         *     O nome não entra em `FreeFeedbackOut` porque lá a outra ponta é o autor, e autor de
+         *     anônimo é justamente o que não se conta.
+         */
+        FreeFeedbackSentOut: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Giver Id */
+            giver_id: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Improvements */
+            improvements: string | null;
+            /** Is Anonymous */
+            is_anonymous: boolean;
+            /** Is Sensitive */
+            is_sensitive: boolean;
+            /** Message */
+            message: string | null;
+            /** Positives */
+            positives: string | null;
+            /** Read At */
+            read_at: string | null;
+            /**
+             * Receiver Id
+             * Format: uuid
+             */
+            receiver_id: string;
+            /** Receiver Name */
+            receiver_name?: string | null;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -2640,8 +2732,15 @@ export interface components {
         ItemDeHistoricoOut: {
             /** Detalhe */
             detalhe: string | null;
+            /**
+             * Item Id
+             * Format: uuid
+             */
+            item_id: string;
             /** Lido Em */
             lido_em: string | null;
+            /** Lido Por */
+            lido_por?: string | null;
             /**
              * Partes
              * @default []
@@ -5195,6 +5294,26 @@ export interface operations {
             };
         };
     };
+    sent_free_feedbacks_api_v1_free_feedbacks_sent_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FreeFeedbackSentOut"][];
+                };
+            };
+        };
+    };
     read_free_feedback_api_v1_free_feedbacks__feedback_id__read_post: {
         parameters: {
             query?: never;
@@ -6308,6 +6427,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    meu_historico_api_v1_reports_my_history_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HistoricoDaEquipeOut"];
                 };
             };
         };

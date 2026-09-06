@@ -36,6 +36,7 @@ export type Pergunta = S["QuestionOut"];
 export type Formulario = S["FormOut"];
 export type PermissaoDeFeedback = S["PermissionOut"];
 export type FeedbackLivre = S["FreeFeedbackOut"];
+export type FeedbackLivreEnviado = S["FreeFeedbackSentOut"];
 export type AnotacaoDeCiclo = S["CycleNoteOut"];
 export type Painel = S["DashboardOut"];
 

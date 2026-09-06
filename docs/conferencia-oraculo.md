@@ -119,10 +119,11 @@ Legenda: ✅ tela existe · ⚠️ existe parcialmente · ❌ não implementada
       *Atenção*: no legado eram duas entradas de menu; aqui é uma tela com as duas
       partes.
 
-- [ ] **SCR-0021 · Meu Histórico** ❌ **não implementada**
+- [x] **SCR-0021 · Meu Histórico** ✅ `/meu-historico` — **implementada** em 06/09/2026
       `feedback/screenshots/meu-historico.png` · `meu-historico-colaborador.png` ·
       `meu-historico-gestor.png`
-      É o histórico da **própria pessoa** — existe o da equipe, não o individual.
+      Mesmo componente do histórico da equipe com escopo de um, mais a ação de dar
+      ciência — que é a única coisa que existe aqui e não lá.
 
 - [ ] **SCR-0022 · Caderno do Ciclo** ⚠️ parcial — `/anotacoes` cobre o conteúdo
       `feedback/screenshots/caderno-do-ciclo-painel.png` · `caderno-do-ciclo-widget.png`
@@ -181,7 +182,7 @@ Legenda: ✅ tela existe · ⚠️ existe parcialmente · ❌ não implementada
 | Já conferidas | 17 — Administração inteira, e metade de Equipe/Feedback |
 | Faltam | variantes de coordenador e colaborador, anotações realizadas, Cliente/Relatórios |
 | Resultado até aqui | [`conferencia-resultado.md`](conferencia-resultado.md) — 76 divergências e 5 defeitos próprios |
-| Já sabidamente ausentes | SCR-0021 (Meu Histórico), SCR-0023 (Feedback Livre) |
+| Já sabidamente ausentes | SCR-0023 (Feedback Livre) — SCR-0021 foi implementada |
 | Parciais | SCR-0017 (Emitir Relatório), SCR-0022 (Caderno do Ciclo) |
 | Divergência estrutural | nenhuma em aberto |
 

@@ -107,12 +107,14 @@ class ParteDoHistoricoOut(BaseModel):
 
 class ItemDeHistoricoOut(BaseModel):
     tipo: str
+    item_id: UUID
     quando: datetime | None
     sobre_id: UUID
     sobre_nome: str
     titulo: str
     detalhe: str | None
     lido_em: datetime | None
+    lido_por: str | None = None
     partes: list[ParteDoHistoricoOut] = []
 
 

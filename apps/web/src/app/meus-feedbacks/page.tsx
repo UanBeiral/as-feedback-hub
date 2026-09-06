@@ -22,7 +22,8 @@ import { api } from "@/lib/api";
 import { exportarCsv } from "@/lib/exportar";
 import { formatarData, ROTULO_DO_REQUEST } from "@/lib/formato";
 import { useTabela } from "@/lib/tabela";
-import type { Requisicao } from "@/lib/tipos";
+import { formatarDataHora } from "@/lib/formato";
+import type { FeedbackLivreEnviado, Requisicao } from "@/lib/tipos";
 
 const TOM_DO_STATUS = {
   pending: "alerta",
@@ -35,12 +36,16 @@ const TOM_DO_STATUS = {
 
 export default function MeusFeedbacks() {
   const [requisicoes, setRequisicoes] = useState<Requisicao[] | null>(null);
+  const [livres, setLivres] = useState<FeedbackLivreEnviado[] | null>(null);
   const [soPendentes, setSoPendentes] = useState(false);
 
   useEffect(() => {
     api<Requisicao[]>("/requests/mine", { query: { incluir_enviados: true } })
       .then(setRequisicoes)
       .catch(() => setRequisicoes([]));
+    api<FeedbackLivreEnviado[]>("/free-feedbacks/sent")
+      .then(setLivres)
+      .catch(() => setLivres([]));
   }, []);
 
   const hoje = new Date().toISOString().slice(0, 10);
@@ -209,6 +214,47 @@ export default function MeusFeedbacks() {
           </>
         )}
       </Cartao>
+
+      <FeedbackLivreEnviadoPorMim livres={livres} />
     </PaginaAutenticada>
+  );
+}
+
+/**
+ * O feedback livre que eu escrevi.
+ *
+ * Fora do card principal porque é outra coisa: o de cima é o que o ciclo pede de mim, com
+ * prazo e status; este é o que eu escrevi por iniciativa própria e não tem pendência
+ * nenhuma. Misturar os dois faria a soma "quanto falta" mentir.
+ *
+ * **O que enviei anônimo não aparece.** Anônimo não guarda autor (AMB-001), e reconhecê-lo
+ * como meu exigiria guardar exatamente o vínculo que o anonimato existe para não guardar.
+ */
+function FeedbackLivreEnviadoPorMim({ livres }: { livres: FeedbackLivreEnviado[] | null }) {
+  if (livres === null || livres.length === 0) return null;
+
+  return (
+    <div className="mt-6">
+      <Cartao
+        titulo={`Feedback livre — enviados por mim (${livres.length})`}
+        descricao="Fora do ciclo, por iniciativa sua. O que você enviou anônimo não fica listado."
+      >
+        <Tabela colunas={["Para", "Enviado em", "Situação"]}>
+          {livres.map((livre) => (
+            <Linha key={livre.id}>
+              <Celula className="font-medium">{livre.receiver_name ?? "—"}</Celula>
+              <Celula>{formatarDataHora(livre.created_at)}</Celula>
+              <Celula>
+                {livre.read_at ? (
+                  <Selo tom="sucesso">Ciente em {formatarDataHora(livre.read_at)}</Selo>
+                ) : (
+                  <Selo tom="neutro">Ainda não lido</Selo>
+                )}
+              </Celula>
+            </Linha>
+          ))}
+        </Tabela>
+      </Cartao>
+    </div>
   );
 }

@@ -17,6 +17,7 @@ from datetime import date, datetime
 from uuid import UUID
 
 from sqlalchemy import Select, and_, case, func, select
+from sqlalchemy.orm import aliased
 
 from app.contexts.client_eval.models import ClientEvaluation
 from app.contexts.feedback.models import (
@@ -339,12 +340,18 @@ class ItemDeHistorico:
     """
 
     tipo: str
+    # Id do registro de origem (feedback livre, avaliacao ou request). E o que permite
+    # marcar ciencia a partir do historico, e a chave estavel da lista na tela.
+    item_id: UUID
     quando: datetime | None
     sobre_id: UUID
     sobre_nome: str
     titulo: str
     detalhe: str | None
     lido_em: datetime | None
+    # Quem deu ciência. Nulo quando ninguém deu, ou quando o tipo não tem leitura —
+    # avaliação de cliente não é dirigida à pessoa, é sobre ela.
+    lido_por: str | None = None
     # As mesmas informacoes de `detalhe`, mas separadas pelo rotulo que tinham no
     # formulario. `detalhe` fica para busca e exportacao, onde uma linha so serve.
     partes: list[ParteDoHistorico] = field(default_factory=list)
@@ -361,12 +368,24 @@ class TeamHistoryQuery(TenantScopedRepository[FeedbackRequest]):
     model = FeedbackRequest
 
     async def livre(
-        self, visiveis: set[UUID], *, limite: int = LIMITE_TABELA
+        self,
+        visiveis: set[UUID],
+        *,
+        incluir_sensiveis: bool = False,
+        limite: int = LIMITE_TABELA,
     ) -> list[ItemDeHistorico]:
+        """Feedback livre recebido por quem está no escopo.
+
+        `incluir_sensiveis` é falso por padrão porque o sensível não chega ao
+        destinatário — é invariante do aggregate, e vale igual aqui: sem isso, a pessoa
+        leria no histórico o que a rota de recebidos esconde dela.
+        """
         if not visiveis:
             return []
+        leitor = aliased(Profile)
         stmt = (
             select(
+                FreeFeedback.id,
                 FreeFeedback.created_at,
                 Profile.id,
                 Profile.full_name,
@@ -375,9 +394,11 @@ class TeamHistoryQuery(TenantScopedRepository[FeedbackRequest]):
                 FreeFeedback.improvements,
                 FreeFeedback.message,
                 FreeFeedback.read_at,
+                leitor.full_name,
             )
             .select_from(FreeFeedback)
             .join(Profile, Profile.id == FreeFeedback.receiver_id)
+            .outerjoin(leitor, leitor.id == FreeFeedback.read_by)
             .where(
                 FreeFeedback.tenant_id == self.tenant_id,
                 FreeFeedback.receiver_id.in_(visiveis),
@@ -385,10 +406,13 @@ class TeamHistoryQuery(TenantScopedRepository[FeedbackRequest]):
             .order_by(FreeFeedback.created_at.desc())
             .limit(limite)
         )
+        if not incluir_sensiveis:
+            stmt = stmt.where(FreeFeedback.is_sensitive.is_(False))
         linhas = (await self._session.execute(stmt)).all()
         return [
             ItemDeHistorico(
                 tipo="livre",
+                item_id=item_id,
                 quando=quando,
                 sobre_id=pid,
                 sobre_nome=nome,
@@ -400,8 +424,20 @@ class TeamHistoryQuery(TenantScopedRepository[FeedbackRequest]):
                     ("Mensagem", mensagem),
                 ),
                 lido_em=lido,
+                lido_por=leitor_nome,
             )
-            for quando, pid, nome, anonimo, positivos, melhorias, mensagem, lido in linhas
+            for (
+                item_id,
+                quando,
+                pid,
+                nome,
+                anonimo,
+                positivos,
+                melhorias,
+                mensagem,
+                lido,
+                leitor_nome,
+            ) in linhas
         ]
 
     async def clientes(
@@ -411,6 +447,7 @@ class TeamHistoryQuery(TenantScopedRepository[FeedbackRequest]):
             return []
         stmt = (
             select(
+                ClientEvaluation.id,
                 ClientEvaluation.submitted_at,
                 Profile.id,
                 Profile.full_name,
@@ -432,6 +469,7 @@ class TeamHistoryQuery(TenantScopedRepository[FeedbackRequest]):
         return [
             ItemDeHistorico(
                 tipo="cliente",
+                item_id=item_id,
                 quando=quando,
                 sobre_id=pid,
                 sobre_nome=nome,
@@ -442,7 +480,7 @@ class TeamHistoryQuery(TenantScopedRepository[FeedbackRequest]):
                 ),
                 lido_em=None,
             )
-            for quando, pid, nome, cliente, nota, negativa in linhas
+            for item_id, quando, pid, nome, cliente, nota, negativa in linhas
         ]
 
     async def ciclos(
@@ -450,16 +488,20 @@ class TeamHistoryQuery(TenantScopedRepository[FeedbackRequest]):
     ) -> list[ItemDeHistorico]:
         if not visiveis:
             return []
+        leitor = aliased(Profile)
         stmt = (
             select(
+                FeedbackRequest.id,
                 FeedbackRequest.submitted_at,
                 Profile.id,
                 Profile.full_name,
                 FeedbackCycle.name,
                 FeedbackRequest.read_at,
+                leitor.full_name,
             )
             .select_from(FeedbackRequest)
             .join(Profile, Profile.id == FeedbackRequest.receiver_id)
+            .outerjoin(leitor, leitor.id == FeedbackRequest.read_by)
             .join(FeedbackCycle, FeedbackCycle.id == FeedbackRequest.cycle_id)
             .where(
                 FeedbackRequest.tenant_id == self.tenant_id,
@@ -473,6 +515,7 @@ class TeamHistoryQuery(TenantScopedRepository[FeedbackRequest]):
         return [
             ItemDeHistorico(
                 tipo="ciclo",
+                item_id=item_id,
                 quando=quando,
                 sobre_id=pid,
                 sobre_nome=nome,
@@ -480,8 +523,9 @@ class TeamHistoryQuery(TenantScopedRepository[FeedbackRequest]):
                 # Sem o autor, de propósito: quem avaliou não aparece no histórico.
                 detalhe=None,
                 lido_em=lido,
+                lido_por=leitor_nome,
             )
-            for quando, pid, nome, ciclo, lido in linhas
+            for item_id, quando, pid, nome, ciclo, lido, leitor_nome in linhas
         ]
 
 

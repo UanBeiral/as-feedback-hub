@@ -51,6 +51,9 @@ from app.core.tenancy import TenantContext
 router = APIRouter(prefix="/reports", tags=["reporting"])
 
 PodeRelatarDep = Annotated[TenantContext, Depends(require_flag("can_generate_reports"))]
+PodeVerHistoricoDep = Annotated[
+    TenantContext, Depends(require_flag("can_view_team_history"))
+]
 
 
 def get_report_service(session: SessionDep, tenant: TenantDep) -> ReportService:
@@ -177,8 +180,15 @@ async def relatorio_de_engajamento(
 
 
 @router.get("/team-history", response_model=HistoricoDaEquipeOut)
-async def historico_da_equipe(tenant: TenantDep, session: SessionDep) -> HistoricoDaEquipeOut:
+async def historico_da_equipe(
+    tenant: PodeVerHistoricoDep, session: SessionDep
+) -> HistoricoDaEquipeOut:
     """Histórico dos três tipos de feedback, dentro do escopo de equipe.
+
+    A capacidade é exigida **aqui**, e não só no menu: capacidade que o servidor não
+    cobra é decoração, e quem sabe a URL entra do mesmo jeito (BR-MIGRAR-013/015). Ter
+    equipe não substitui a capacidade — o escopo decide *o que* aparece, a capacidade
+    decide *se* a tela responde.
 
     O escopo sai do `TeamScopeService` e entra na query como lista de ids. Nenhum
     parâmetro desta rota amplia o que a pessoa enxerga — no máximo filtraria dentro
@@ -197,9 +207,37 @@ async def historico_da_equipe(tenant: TenantDep, session: SessionDep) -> Histori
         return [ItemDeHistoricoOut(**asdict(item)) for item in itens]
 
     return HistoricoDaEquipeOut(
-        livre=converter(await historico.livre(visiveis)),
+        # Sensível só para admin/RH, como na rota de recebidos: gestor e coordenador
+        # enxergam a equipe, e não a caixa de denúncia sobre ela.
+        livre=converter(
+            await historico.livre(visiveis, incluir_sensiveis=tenant.has_role("admin", "rh"))
+        ),
         clientes=converter(await historico.clientes(visiveis)),
         ciclos=converter(await historico.ciclos(visiveis)),
+    )
+
+
+@router.get("/my-history", response_model=HistoricoDaEquipeOut)
+async def meu_historico(tenant: TenantDep, session: SessionDep) -> HistoricoDaEquipeOut:
+    """O histórico da própria pessoa (SCR-0021).
+
+    Mesma consulta do histórico da equipe com escopo de um: quem já enxerga a si mesmo
+    não precisa passar pelo `TeamScopeService`, e um segundo jeito de montar as mesmas
+    três seções seria um segundo jeito de elas discordarem.
+
+    Sensível fica de fora sempre — aqui a pessoa é a destinatária, e o `admin` que abrir
+    a própria tela é destinatário como qualquer outro.
+    """
+    historico = TeamHistoryQuery(session, tenant)
+    eu = {tenant.user_id}
+
+    def converter(itens: list[Any]) -> list[ItemDeHistoricoOut]:
+        return [ItemDeHistoricoOut(**asdict(item)) for item in itens]
+
+    return HistoricoDaEquipeOut(
+        livre=converter(await historico.livre(eu)),
+        clientes=converter(await historico.clientes(eu)),
+        ciclos=converter(await historico.ciclos(eu)),
     )
 
 

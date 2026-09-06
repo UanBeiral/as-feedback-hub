@@ -352,6 +352,16 @@ class FreeFeedbackOut(BaseModel):
     created_at: datetime
 
 
+class FreeFeedbackSentOut(FreeFeedbackOut):
+    """O que a pessoa enviou, com o nome de quem recebeu.
+
+    O nome não entra em `FreeFeedbackOut` porque lá a outra ponta é o autor, e autor de
+    anônimo é justamente o que não se conta.
+    """
+
+    receiver_name: str | None = None
+
+
 class CycleNoteIn(BaseModel):
     cycle_id: UUID
     about_user_id: UUID

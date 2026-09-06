@@ -1893,6 +1893,116 @@
         "title": "FreeFeedbackOut",
         "type": "object"
       },
+      "FreeFeedbackSentOut": {
+        "description": "O que a pessoa enviou, com o nome de quem recebeu.\n\nO nome não entra em `FreeFeedbackOut` porque lá a outra ponta é o autor, e autor de\nanônimo é justamente o que não se conta.",
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "giver_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Giver Id"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "improvements": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Improvements"
+          },
+          "is_anonymous": {
+            "title": "Is Anonymous",
+            "type": "boolean"
+          },
+          "is_sensitive": {
+            "title": "Is Sensitive",
+            "type": "boolean"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "positives": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Positives"
+          },
+          "read_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Read At"
+          },
+          "receiver_id": {
+            "format": "uuid",
+            "title": "Receiver Id",
+            "type": "string"
+          },
+          "receiver_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Receiver Name"
+          }
+        },
+        "required": [
+          "id",
+          "giver_id",
+          "receiver_id",
+          "is_anonymous",
+          "is_sensitive",
+          "positives",
+          "improvements",
+          "message",
+          "read_at",
+          "created_at"
+        ],
+        "title": "FreeFeedbackSentOut",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -1952,6 +2062,11 @@
             ],
             "title": "Detalhe"
           },
+          "item_id": {
+            "format": "uuid",
+            "title": "Item Id",
+            "type": "string"
+          },
           "lido_em": {
             "anyOf": [
               {
@@ -1963,6 +2078,17 @@
               }
             ],
             "title": "Lido Em"
+          },
+          "lido_por": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lido Por"
           },
           "partes": {
             "default": [],
@@ -2004,6 +2130,7 @@
         },
         "required": [
           "tipo",
+          "item_id",
           "quando",
           "sobre_id",
           "sobre_nome",
@@ -6918,6 +7045,37 @@
         ]
       }
     },
+    "/api/v1/free-feedbacks/sent": {
+      "get": {
+        "description": "O feedback livre que a pessoa enviou. O que ela mandou anônimo não aparece.",
+        "operationId": "sent_free_feedbacks_api_v1_free_feedbacks_sent_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/FreeFeedbackSentOut"
+                  },
+                  "title": "Response Sent Free Feedbacks Api V1 Free Feedbacks Sent Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Sent Free Feedbacks",
+        "tags": [
+          "feedback"
+        ]
+      }
+    },
     "/api/v1/free-feedbacks/{feedback_id}/read": {
       "post": {
         "operationId": "read_free_feedback_api_v1_free_feedbacks__feedback_id__read_post",
@@ -8729,9 +8887,36 @@
         ]
       }
     },
+    "/api/v1/reports/my-history": {
+      "get": {
+        "description": "O histórico da própria pessoa (SCR-0021).\n\nMesma consulta do histórico da equipe com escopo de um: quem já enxerga a si mesmo\nnão precisa passar pelo `TeamScopeService`, e um segundo jeito de montar as mesmas\ntrês seções seria um segundo jeito de elas discordarem.\n\nSensível fica de fora sempre — aqui a pessoa é a destinatária, e o `admin` que abrir\na própria tela é destinatário como qualquer outro.",
+        "operationId": "meu_historico_api_v1_reports_my_history_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HistoricoDaEquipeOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Meu Historico",
+        "tags": [
+          "reporting"
+        ]
+      }
+    },
     "/api/v1/reports/team-history": {
       "get": {
-        "description": "Histórico dos três tipos de feedback, dentro do escopo de equipe.\n\nO escopo sai do `TeamScopeService` e entra na query como lista de ids. Nenhum\nparâmetro desta rota amplia o que a pessoa enxerga — no máximo filtraria dentro\n(PAR-05).",
+        "description": "Histórico dos três tipos de feedback, dentro do escopo de equipe.\n\nA capacidade é exigida **aqui**, e não só no menu: capacidade que o servidor não\ncobra é decoração, e quem sabe a URL entra do mesmo jeito (BR-MIGRAR-013/015). Ter\nequipe não substitui a capacidade — o escopo decide *o que* aparece, a capacidade\ndecide *se* a tela responde.\n\nO escopo sai do `TeamScopeService` e entra na query como lista de ids. Nenhum\nparâmetro desta rota amplia o que a pessoa enxerga — no máximo filtraria dentro\n(PAR-05).",
         "operationId": "historico_da_equipe_api_v1_reports_team_history_get",
         "responses": {
           "200": {
