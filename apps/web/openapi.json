@@ -682,6 +682,10 @@
       "CurrentUser": {
         "description": "O que o front precisa saber para montar a navegação — e nada além disso.",
         "properties": {
+          "active_role": {
+            "title": "Active Role",
+            "type": "string"
+          },
           "department_id": {
             "anyOf": [
               {
@@ -760,6 +764,7 @@
           "email",
           "full_name",
           "role",
+          "active_role",
           "job_title",
           "is_coordinator",
           "department_id",
@@ -6090,6 +6095,65 @@
         ]
       }
     },
+    "/api/v1/cycles/{cycle_id}": {
+      "put": {
+        "description": "Edita o rascunho. Ciclo aberto recusa — ver `CycleService.update`.",
+        "operationId": "update_cycle_api_v1_cycles__cycle_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cycle_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Cycle Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CycleIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CycleOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update Cycle",
+        "tags": [
+          "feedback"
+        ]
+      }
+    },
     "/api/v1/cycles/{cycle_id}/archive": {
       "post": {
         "operationId": "archive_cycle_api_v1_cycles__cycle_id__archive_post",
@@ -6933,6 +6997,55 @@
           }
         ],
         "summary": "Reorder Questions",
+        "tags": [
+          "feedback"
+        ]
+      }
+    },
+    "/api/v1/forms/{form_id}/unarchive": {
+      "post": {
+        "description": "O outro lado do \"Ativar/Desativar\" do legado — arquivar não é exclusão.",
+        "operationId": "unarchive_form_api_v1_forms__form_id__unarchive_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "form_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Form Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FormOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Unarchive Form",
         "tags": [
           "feedback"
         ]

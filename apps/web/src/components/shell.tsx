@@ -165,7 +165,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
             {temPapel(usuario, "admin", "rh", "gestor") && (
               <select
                 aria-label="Ver o sistema como"
-                value={usuario.role}
+                value={usuario.active_role}
                 onChange={(evento) => void trocarContexto(evento.target.value)}
                 className="rounded-md border border-input bg-card px-2 py-1.5 text-xs text-foreground"
               >
@@ -177,7 +177,11 @@ export function Shell({ children }: { children: React.ReactNode }) {
               </select>
             )}
 
-            <SeloDePapel papel={usuario.role} coordenador={usuario.is_coordinator} />
+            <SeloDePapel
+              papel={usuario.active_role}
+              papelReal={usuario.role}
+              coordenador={usuario.is_coordinator}
+            />
           </div>
         </header>
 

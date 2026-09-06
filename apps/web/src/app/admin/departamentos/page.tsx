@@ -85,6 +85,28 @@ export default function AdminDepartamentos() {
     return pessoas.filter((pessoa) => pessoa.department_id === departamentoId).length;
   }
 
+  /**
+   * O download por linha do legado: as **pessoas** daquele departamento.
+   *
+   * A exportação de cima lista os departamentos e quantos cabem em cada um; esta
+   * responde a outra pergunta — "quem está no Cível?" — e é a que se leva para uma
+   * reunião. Uma não substitui a outra.
+   */
+  function exportarPessoas(departamento: Departamento) {
+    exportarCsv(
+      `departamento-${departamento.name.toLowerCase().replace(/\s+/g, "-")}`,
+      ["Nome", "Cargo", "Papel", "Situação"],
+      pessoas
+        .filter((pessoa) => pessoa.department_id === departamento.id)
+        .map((pessoa) => [
+          pessoa.full_name,
+          pessoa.job_title ?? "",
+          pessoa.role,
+          pessoa.status,
+        ]),
+    );
+  }
+
   function exportar() {
     exportarCsv(
       "departamentos",
@@ -184,19 +206,39 @@ export default function AdminDepartamentos() {
                           </button>
                         </span>
                       ) : (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setEditando({
-                              id: departamento.id,
-                              nome: departamento.name,
-                              descricao: departamento.description ?? "",
-                            })
-                          }
-                          className="text-sm text-primary underline-offset-4 hover:underline"
-                        >
-                          Editar
-                        </button>
+                        <span className="flex justify-end gap-3">
+                          <button
+                            type="button"
+                            onClick={() => exportarPessoas(departamento)}
+                            disabled={quantas === 0}
+                            title={
+                              quantas === 0
+                                ? "Nenhuma pessoa neste departamento"
+                                : `Baixar as ${quantas} pessoas deste departamento`
+                            }
+                            className={
+                              "text-sm underline-offset-4 " +
+                              (quantas === 0
+                                ? "cursor-not-allowed text-muted-foreground"
+                                : "text-primary hover:underline")
+                            }
+                          >
+                            Baixar
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setEditando({
+                                id: departamento.id,
+                                nome: departamento.name,
+                                descricao: departamento.description ?? "",
+                              })
+                            }
+                            className="text-sm text-primary underline-offset-4 hover:underline"
+                          >
+                            Editar
+                          </button>
+                        </span>
                       )}
                     </Celula>
                   </Linha>

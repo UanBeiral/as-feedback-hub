@@ -50,7 +50,11 @@ class CurrentUser(BaseModel):
     tenant_id: UUID
     email: EmailStr
     full_name: str
+    # O papel **persistido** — o que autoriza (BR-MIGRAR-016). Nunca muda com a troca de
+    # contexto, e é ele que a tela mostra entre parênteses quando os dois divergem.
     role: str
+    # O papel que a pessoa escolheu enxergar. Igual a `role` quando não escolheu nada.
+    active_role: str
     job_title: str | None
     is_coordinator: bool
     department_id: UUID | None

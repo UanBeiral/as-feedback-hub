@@ -127,7 +127,7 @@ class AuthService:
         profile = await self._repo.get_profile_by_user(tenant.tenant_id, tenant.user_id)
         if user is None or profile is None:
             raise AuthenticationError("Sessão inválida")
-        return _to_current_user(user, profile)
+        return _to_current_user(user, profile, active_role=tenant.active_role)
 
     def _issue_pair(
         self,
@@ -156,7 +156,7 @@ class AuthService:
         return TokenPair(access_token=access, refresh_token=refresh.plain, expires_at=expires_at)
 
 
-def _to_current_user(user: User, profile: Profile) -> CurrentUser:
+def _to_current_user(user: User, profile: Profile, *, active_role: str = "") -> CurrentUser:
     return CurrentUser(
         user_id=user.id,
         profile_id=profile.id,
@@ -164,6 +164,7 @@ def _to_current_user(user: User, profile: Profile) -> CurrentUser:
         email=user.email,
         full_name=profile.full_name,
         role=profile.role,
+        active_role=active_role or profile.role,
         job_title=profile.job_title,
         is_coordinator=profile.is_coordinator,
         department_id=profile.department_id,

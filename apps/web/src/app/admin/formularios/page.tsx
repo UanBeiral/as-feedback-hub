@@ -150,16 +150,19 @@ export default function AdminFormularios() {
     }
   }
 
-  async function arquivar(formulario: Formulario) {
+  async function alternarArquivo(formulario: Formulario, acao: "archive" | "unarchive") {
     setMensagem(null);
     try {
-      await api(`/forms/${formulario.id}/archive`, { method: "POST" });
-      setMensagem({ tom: "sucesso", texto: `"${formulario.name}" arquivado.` });
-      if (aberto === formulario.id) setAberto(null);
+      await api(`/forms/${formulario.id}/${acao}`, { method: "POST" });
+      setMensagem({
+        tom: "sucesso",
+        texto: `"${formulario.name}" ${acao === "archive" ? "arquivado" : "reativado"}.`,
+      });
+      if (acao === "archive" && aberto === formulario.id) setAberto(null);
       await carregar();
     } catch (falha) {
       // 409 aqui é o guard de formulário em uso por ciclo vivo.
-      relatar(falha, "Não foi possível arquivar.");
+      relatar(falha, "Não foi possível salvar.");
     }
   }
 
@@ -308,10 +311,22 @@ export default function AdminFormularios() {
                       >
                         {aberto === formulario.id ? "Fechar" : "Perguntas"}
                       </button>
-                      {!formulario.archived_at && (
+                      {/* Arquivar tem volta: é tirar de circulação, não excluir. Sem
+                          o "Reativar", um clique errado obrigaria a recriar formulário e
+                          perguntas — e os ciclos antigos apontariam para um, os novos
+                          para outro de mesmo nome. */}
+                      {formulario.archived_at ? (
                         <button
                           type="button"
-                          onClick={() => void arquivar(formulario)}
+                          onClick={() => void alternarArquivo(formulario, "unarchive")}
+                          className="text-sm text-primary underline-offset-4 hover:underline"
+                        >
+                          Reativar
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => void alternarArquivo(formulario, "archive")}
                           className="text-sm text-destructive underline-offset-4 hover:underline"
                         >
                           Arquivar

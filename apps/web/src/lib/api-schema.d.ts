@@ -508,6 +508,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/cycles/{cycle_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Update Cycle
+         * @description Edita o rascunho. Ciclo aberto recusa — ver `CycleService.update`.
+         */
+        put: operations["update_cycle_api_v1_cycles__cycle_id__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/cycles/{cycle_id}/archive": {
         parameters: {
             query?: never;
@@ -780,6 +800,26 @@ export interface paths {
         /** Reorder Questions */
         put: operations["reorder_questions_api_v1_forms__form_id__questions_order_put"];
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/forms/{form_id}/unarchive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Unarchive Form
+         * @description O outro lado do "Ativar/Desativar" do legado — arquivar não é exclusão.
+         */
+        post: operations["unarchive_form_api_v1_forms__form_id__unarchive_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2234,6 +2274,8 @@ export interface components {
          * @description O que o front precisa saber para montar a navegação — e nada além disso.
          */
         CurrentUser: {
+            /** Active Role */
+            active_role: string;
             /** Department Id */
             department_id: string | null;
             /**
@@ -4674,6 +4716,41 @@ export interface operations {
             };
         };
     };
+    update_cycle_api_v1_cycles__cycle_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cycle_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CycleIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CycleOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     archive_cycle_api_v1_cycles__cycle_id__archive_post: {
         parameters: {
             query?: never;
@@ -5209,6 +5286,37 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    unarchive_form_api_v1_forms__form_id__unarchive_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                form_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FormOut"];
+                };
             };
             /** @description Validation Error */
             422: {

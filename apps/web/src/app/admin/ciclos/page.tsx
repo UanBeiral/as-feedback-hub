@@ -69,6 +69,9 @@ export default function AdminCiclos() {
     end_date: "",
     frequency: "",
   });
+  // Quando há id, o mesmo formulário salva em vez de criar. Um formulário só porque os
+  // campos são os mesmos, e dois divergiriam na primeira validação nova.
+  const [editando, setEditando] = useState<string | null>(null);
 
   const carregar = useCallback(async () => {
     const [lista, forms] = await Promise.all([
@@ -83,23 +86,45 @@ export default function AdminCiclos() {
     carregar().catch(() => setCiclos([]));
   }, [carregar]);
 
+  function limpar() {
+    setNovo({ name: "", form_id: "", start_date: "", end_date: "", frequency: "" });
+    setEditando(null);
+  }
+
   async function criar(evento: React.FormEvent) {
     evento.preventDefault();
     setMensagem(null);
     try {
-      await api("/cycles", {
-        method: "POST",
+      await api(editando ? `/cycles/${editando}` : "/cycles", {
+        method: editando ? "PUT" : "POST",
         body: { ...novo, frequency: novo.frequency || null },
       });
-      setNovo({ name: "", form_id: "", start_date: "", end_date: "", frequency: "" });
-      setMensagem({ tom: "sucesso", texto: "Ciclo criado como rascunho." });
+      limpar();
+      setMensagem({
+        tom: "sucesso",
+        texto: editando ? "Ciclo atualizado." : "Ciclo criado como rascunho.",
+      });
       await carregar();
     } catch (falha) {
       setMensagem({
         tom: "erro",
-        texto: falha instanceof ApiError ? falha.message : "Não foi possível criar o ciclo.",
+        texto: falha instanceof ApiError ? falha.message : "Não foi possível salvar o ciclo.",
       });
     }
+  }
+
+  function editar(ciclo: Ciclo) {
+    setEditando(ciclo.id);
+    setNovo({
+      name: ciclo.name,
+      form_id: ciclo.form_id,
+      start_date: ciclo.start_date,
+      end_date: ciclo.end_date,
+      frequency: ciclo.frequency ?? "",
+    });
+    // O formulário está no topo: sem isso, clicar em "Editar" numa linha do fim da
+    // tabela pareceria não ter feito nada.
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   async function executar(ciclo: Ciclo, rota: string) {
@@ -172,7 +197,7 @@ export default function AdminCiclos() {
       <div className="space-y-6">
         {mensagem && <Aviso tom={mensagem.tom}>{mensagem.texto}</Aviso>}
 
-        <Cartao titulo="Novo ciclo">
+        <Cartao titulo={editando ? "Editar ciclo" : "Novo ciclo"}>
           <form onSubmit={criar} className="grid gap-4 sm:grid-cols-2">
             <Campo rotulo="Nome" obrigatorio>
               <Entrada
@@ -226,8 +251,13 @@ export default function AdminCiclos() {
                 <option value="anual">Anual</option>
               </Selecao>
             </Campo>
-            <div className="flex items-end">
-              <Botao tipo="submit">Criar rascunho</Botao>
+            <div className="flex items-end gap-2">
+              <Botao tipo="submit">{editando ? "Salvar" : "Criar rascunho"}</Botao>
+              {editando && (
+                <Botao variante="fantasma" onClick={limpar}>
+                  Cancelar
+                </Botao>
+              )}
             </div>
           </form>
         </Cartao>
@@ -311,6 +341,14 @@ export default function AdminCiclos() {
                   </Celula>
                   <Celula>
                     <span className="flex flex-wrap gap-2">
+                      {/* Só rascunho: depois de aberto há requests apontando para o
+                          formulário e prazos que as pessoas já viram. Corrigir ciclo em
+                          curso é "estender", que é outra coisa. */}
+                      {ciclo.status === "draft" && (
+                        <Botao variante="fantasma" onClick={() => editar(ciclo)}>
+                          Editar
+                        </Botao>
+                      )}
                       {(ACOES[ciclo.status] ?? []).map((acao) => (
                         <Botao
                           key={acao.rota}

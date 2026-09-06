@@ -133,7 +133,22 @@ export function Selo({
 }
 
 /** Badge de papel com os tokens derivados de DEV-008. */
-export function SeloDePapel({ papel, coordenador }: { papel: string; coordenador?: boolean }) {
+/**
+ * O selo de papel.
+ *
+ * `papelReal` só aparece quando difere de `papel`: é a troca de contexto de
+ * BR-MIGRAR-016 em curso, e sem ela na tela a pessoa esquece que está vendo o sistema
+ * pelos olhos de outro papel — e conclui que perdeu acesso.
+ */
+export function SeloDePapel({
+  papel,
+  papelReal,
+  coordenador,
+}: {
+  papel: string;
+  papelReal?: string;
+  coordenador?: boolean;
+}) {
   if (coordenador) {
     return (
       <span className="inline-flex items-center rounded-full bg-role-coordinator px-2.5 py-0.5 text-xs font-semibold text-primary-foreground">
@@ -156,8 +171,14 @@ export function SeloDePapel({ papel, coordenador }: { papel: string; coordenador
   return (
     <span
       className={cn("inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold", classe)}
+      title={
+        papelReal && papelReal !== papel
+          ? `Vendo como ${rotulos[papel] ?? papel}. Seu papel é ${rotulos[papelReal] ?? papelReal}.`
+          : undefined
+      }
     >
       {rotulos[papel] ?? papel}
+      {papelReal && papelReal !== papel && ` (${rotulos[papelReal] ?? papelReal})`}
     </span>
   );
 }

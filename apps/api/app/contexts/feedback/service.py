@@ -143,6 +143,20 @@ class FormService:
         form.archived_at = datetime.now(UTC)
         return form
 
+    async def unarchive(self, form_id: UUID) -> FeedbackForm:
+        """Desarquivar. O legado chamava o par de "Ativar/Desativar".
+
+        Arquivar existe para tirar de circulação um formulário que ninguém deve escolher
+        de novo — não é exclusão, e por isso tem volta. Sem ela, um clique errado obriga
+        a recriar o formulário e as perguntas, e os ciclos antigos passam a apontar para
+        um formulário e os novos para outro com o mesmo nome.
+        """
+        form = await self._forms.get(form_id)
+        if form is None:
+            raise NotFoundError("Formulário não encontrado")
+        form.archived_at = None
+        return form
+
 
 class PermissionService:
     """Matriz de quem avalia quem (BR-MIGRAR-002)."""
@@ -281,6 +295,37 @@ class CycleService:
                 status="draft",
             )
         )
+
+    async def update(
+        self,
+        cycle_id: UUID,
+        *,
+        name: str,
+        form_id: UUID,
+        start_date: date,
+        end_date: date,
+        frequency: str | None,
+    ) -> FeedbackCycle:
+        """Edita o ciclo — **só enquanto rascunho**.
+
+        Depois de aberto existem requests apontando para o formulário e prazos que as
+        pessoas já viram: trocar o formulário aí mudaria as perguntas embaixo de quem
+        está respondendo, e mudar a data faria o atraso de BR-MIGRAR-007 mudar de
+        resposta para o passado. Corrigir um ciclo em curso é estender (`extend`), que
+        é outra operação e tem outro nome de propósito.
+        """
+        cycle = await self._exige_ciclo(cycle_id)
+        if cycle.status != "draft":
+            raise ValidationError("Só rascunho pode ser editado")
+        if end_date < start_date:
+            raise ValidationError("A data final não pode ser anterior à inicial")
+
+        cycle.name = name
+        cycle.form_id = form_id
+        cycle.start_date = start_date
+        cycle.end_date = end_date
+        cycle.frequency = frequency
+        return cycle
 
     async def open(self, cycle_id: UUID) -> ResultadoDaAbertura:
         """Abre o ciclo e gera os requests (BR-MIGRAR-001/010/011).

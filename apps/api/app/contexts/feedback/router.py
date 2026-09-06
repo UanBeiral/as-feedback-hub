@@ -255,6 +255,12 @@ async def archive_form(form_id: UUID, tenant: AdminDep, service: FormServiceDep)
     return FormOut.model_validate(await service.archive(form_id))
 
 
+@router.post("/forms/{form_id}/unarchive", response_model=FormOut)
+async def unarchive_form(form_id: UUID, tenant: AdminDep, service: FormServiceDep) -> FormOut:
+    """O outro lado do "Ativar/Desativar" do legado — arquivar não é exclusão."""
+    return FormOut.model_validate(await service.unarchive(form_id))
+
+
 # ---------------------------------------------------------------- permissões
 
 @router.get("/permissions/diagnostics", response_model=DiagnosticoOut)
@@ -426,6 +432,23 @@ async def create_cycle(
     await session.flush()
     await session.refresh(cycle)
     return CycleOut.model_validate(cycle)
+
+
+@router.put("/cycles/{cycle_id}", response_model=CycleOut)
+async def update_cycle(
+    cycle_id: UUID, payload: CycleIn, tenant: AdminDep, service: CycleServiceDep
+) -> CycleOut:
+    """Edita o rascunho. Ciclo aberto recusa — ver `CycleService.update`."""
+    return CycleOut.model_validate(
+        await service.update(
+            cycle_id,
+            name=payload.name,
+            form_id=payload.form_id,
+            start_date=payload.start_date,
+            end_date=payload.end_date,
+            frequency=payload.frequency,
+        )
+    )
 
 
 @router.post("/cycles/{cycle_id}/open", response_model=OpenCycleOut)

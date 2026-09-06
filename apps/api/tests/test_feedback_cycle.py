@@ -364,6 +364,52 @@ async def test_estender_periodo_avaliado() -> None:
     assert ciclo.prazo_final == novo_fim, "é o prazo que o fechamento automático observa"
 
 
+async def test_editar_rascunho_troca_formulario_e_datas() -> None:
+    ciclo = _ciclo()
+    service = _service(
+        FakeCycleRepository([ciclo]),
+        FakePermissionRepository(),
+        FakeRequestRepository(),
+        FakeOutbox(),
+        set(),
+    )
+    outro_form = uuid4()
+
+    await service.update(
+        ciclo.id,
+        name="Ciclo corrigido",
+        form_id=outro_form,
+        start_date=HOJE,
+        end_date=HOJE + timedelta(days=30),
+        frequency="mensal",
+    )
+
+    assert ciclo.name == "Ciclo corrigido"
+    assert ciclo.form_id == outro_form
+
+
+@pytest.mark.parametrize("status", ["open", "closed", "published", "archived"])
+async def test_so_rascunho_e_editavel(status: str) -> None:
+    """Depois de aberto há requests apontando para o formulário e prazos já vistos."""
+    ciclo = _ciclo(status=status)
+    service = _service(
+        FakeCycleRepository([ciclo]),
+        FakePermissionRepository(),
+        FakeRequestRepository(),
+        FakeOutbox(),
+        set(),
+    )
+    with pytest.raises(ValidationError):
+        await service.update(
+            ciclo.id,
+            name="tanto faz",
+            form_id=uuid4(),
+            start_date=HOJE,
+            end_date=HOJE + timedelta(days=30),
+            frequency=None,
+        )
+
+
 async def test_ciclo_fechado_nao_estende() -> None:
     ciclo = _ciclo(status="closed")
     service = _service(
