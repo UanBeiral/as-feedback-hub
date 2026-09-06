@@ -22,6 +22,7 @@ import {
   Celula,
   ContadorDeResultados,
   EstadoVazio,
+  Estatistica,
   FiltroSelecao,
   Linha,
   Selo,
@@ -31,7 +32,7 @@ import { api } from "@/lib/api";
 import { exportarCsv } from "@/lib/exportar";
 import { formatarDataHora } from "@/lib/formato";
 import { useTabela } from "@/lib/tabela";
-import type { Perfil, RegistroDeAuditoria } from "@/lib/tipos";
+import type { Perfil, RegistroDeAuditoria, ResumoDeAuditoria } from "@/lib/tipos";
 
 const POR_PAGINA = 50;
 
@@ -53,6 +54,7 @@ export default function AdminAuditoria() {
   const [registros, setRegistros] = useState<RegistroDeAuditoria[] | null>(null);
   const [pessoas, setPessoas] = useState<Perfil[]>([]);
   const [pagina, setPagina] = useState(0);
+  const [resumo, setResumo] = useState<ResumoDeAuditoria | null>(null);
 
   const carregar = useCallback(async (offset: number) => {
     const [linhas, perfis] = await Promise.all([
@@ -69,7 +71,31 @@ export default function AdminAuditoria() {
     carregar(pagina * POR_PAGINA).catch(() => setRegistros([]));
   }, [carregar, pagina]);
 
+  useEffect(() => {
+    // Fora do `carregar`: o resumo é do todo e não muda ao virar de página. Recarregá-lo
+    // a cada página seria recalcular os mesmos agregados por nada.
+    api<ResumoDeAuditoria>("/audit-logs/summary")
+      .then(setResumo)
+      .catch(() => setResumo(null));
+  }, []);
+
   const nomePor = new Map(pessoas.map((pessoa) => [pessoa.id, pessoa.full_name]));
+
+  // Os últimos 14 dias, inclusive os vazios: a API só manda os dias com atividade, e é a
+  // tela que preenche o silêncio. Gráfico com buracos mente sobre o ritmo.
+  const catorzeDias = Array.from({ length: 14 }, (_, i) => {
+    const data = new Date();
+    data.setDate(data.getDate() - (13 - i));
+    const dia = data.toISOString().slice(0, 10);
+    const registro = resumo?.atividade.find((a) => a.dia === dia);
+    return {
+      dia,
+      rotulo: `${dia.slice(8, 10)}/${dia.slice(5, 7)}`,
+      normais: registro?.normais ?? 0,
+      sensiveis: registro?.sensiveis ?? 0,
+    };
+  });
+  const pico = Math.max(...catorzeDias.map((d) => d.normais + d.sensiveis), 1);
 
   function quemFez(actorId: string | null): string {
     if (!actorId) return "sistema";
@@ -115,6 +141,69 @@ export default function AdminAuditoria() {
       titulo="Auditoria"
       descricao="Registro permanente de ações sensíveis. Não pode ser editado nem apagado."
     >
+      {resumo && (
+        <>
+          <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <Estatistica rotulo="Ações hoje" valor={resumo.hoje} />
+            <Estatistica rotulo="Últimos 7 dias" valor={resumo.sete_dias} />
+            <Estatistica
+              rotulo="Ações sensíveis (7d)"
+              valor={resumo.sensiveis_sete_dias}
+              detalhe={
+                resumo.sensiveis_sete_dias === 0
+                  ? "nada a revisar"
+                  : "mudaram poder ou apagaram trabalho"
+              }
+            />
+            <Estatistica
+              rotulo={resumo.mais_ativo_nome ?? "Ninguém agiu"}
+              valor={resumo.mais_ativo_acoes}
+              detalhe="ações nos últimos 7 dias"
+            />
+          </div>
+
+          <Cartao
+            titulo="Atividade — últimos 14 dias"
+            className="mb-6"
+            acao={
+              <span className="flex items-center gap-4 text-xs text-muted-foreground">
+                <span className="flex items-center gap-1.5">
+                  <span className="h-2.5 w-2.5 rounded-sm bg-primary" /> Normal
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="h-2.5 w-2.5 rounded-sm bg-destructive" /> Sensível
+                </span>
+              </span>
+            }
+          >
+            {/* `items-stretch` (o padrão) e `h-full` na coluna: sem altura definida no
+                pai, a altura em porcentagem das barras resolve para zero e o gráfico
+                aparece vazio mesmo com dados. */}
+            <div className="flex h-40 gap-1.5">
+              {catorzeDias.map((dia) => (
+                <div key={dia.dia} className="flex h-full flex-1 flex-col items-center gap-1">
+                  <span className="flex w-full flex-1 flex-col justify-end">
+                    {/* Empilhado, e não lado a lado: a altura total é a atividade do dia,
+                        e a fatia vermelha é a parte dela que pede olho. */}
+                    <span
+                      className="w-full rounded-t-sm bg-destructive"
+                      style={{ height: `${(dia.sensiveis / pico) * 100}%` }}
+                      title={`${dia.sensiveis} sensível(is)`}
+                    />
+                    <span
+                      className="w-full bg-primary"
+                      style={{ height: `${(dia.normais / pico) * 100}%` }}
+                      title={`${dia.normais} normal(is)`}
+                    />
+                  </span>
+                  <span className="text-[10px] text-muted-foreground">{dia.rotulo}</span>
+                </div>
+              ))}
+            </div>
+          </Cartao>
+        </>
+      )}
+
       <Cartao
         acao={
           <span className="flex gap-2">

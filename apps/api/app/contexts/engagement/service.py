@@ -129,6 +129,32 @@ class NotificationService:
         return await self._notifications.mark_all_read(tenant.user_id)
 
 
+# O que a tela de Auditoria conta como "ação sensível" nos cartões e no gráfico.
+#
+# A régua: **eleva ou remove poder, ou apaga trabalho já esperado.** Trocar papel,
+# mexer em capacidades e redefinir a senha de outra pessoa mudam o que alguém pode
+# fazer; remover perfil corta acesso; cancelar pedido apaga trabalho que o ciclo
+# esperava.
+#
+# Fora ficam as ações que também mexem em gente mas são o fluxo cotidiano do escritório:
+# cadastrar alguém, a pessoa trocar a própria senha, reativar quem voltou, e as
+# movimentações de equipe. Elas entram na trilha do mesmo jeito — só não disparam o
+# alerta. É a mesma razão pela qual o Diagnóstico deixa desequilíbrio de carga fora dos
+# "pontos de atenção": quando tudo é urgente, nada é.
+#
+# Mudar esta lista **não reclassifica o passado**, e isso é de propósito: a coluna é
+# gravada no INSERT. Ver `alembic/versions/0006_descricao_e_sensibilidade.py`.
+ACOES_SENSIVEIS = frozenset(
+    {
+        "profile.role_changed",
+        "profile.flags_changed",
+        "profile.soft_deleted",
+        "user.password_reset",
+        "request.cancelled",
+    }
+)
+
+
 class AuditService:
     """Registro de ações sensíveis (BR-MIGRAR-026).
 
@@ -160,6 +186,7 @@ class AuditService:
             table_name=table_name,
             record_id=record_id,
             details=details,
+            is_sensitive=action in ACOES_SENSIVEIS,
         )
         # "…e tenta notificar envolvidos" (BR-MIGRAR-026). Tenta é a palavra certa: a
         # notificação vira mensagem de outbox e a auditoria não depende do sucesso dela.

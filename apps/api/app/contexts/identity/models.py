@@ -124,6 +124,10 @@ class Department(UUIDPrimaryKeyMixin, TenantScopedMixin, TimestampMixin, Base):
         PgUUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True
     )
     name: Mapped[str] = mapped_column(Text, nullable=False)
+    # Coluna do legado que o DDL alvo esqueceu (#19 da conferência). Nulável: os
+    # departamentos que já existem não têm descrição, e exigir uma agora obrigaria a
+    # inventar texto para dados migrados.
+    description: Mapped[str | None] = mapped_column(Text)
 
     __table_args__ = (UniqueConstraint("tenant_id", "name", name="uq_departments_tenant_name"),)
 

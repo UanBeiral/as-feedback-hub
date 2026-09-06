@@ -238,18 +238,22 @@ async def create_department(
     payload: DepartmentIn, tenant: AdminDep, session: SessionDep
 ) -> DepartmentOut:
     service = DepartmentService(DepartmentRepository(session, tenant))
-    departamento = await service.create(name=payload.name)
+    departamento = await service.create(name=payload.name, description=payload.description)
     await session.flush()
     await session.refresh(departamento)
     return DepartmentOut.model_validate(departamento)
 
 
 @router.put("/departments/{department_id}", response_model=DepartmentOut)
-async def rename_department(
+async def update_department(
     department_id: UUID, payload: DepartmentIn, tenant: AdminDep, session: SessionDep
 ) -> DepartmentOut:
+    """PUT e não PATCH: o corpo é o departamento inteiro, e `description` ausente
+    significa "sem descrição" — não "mantenha a que estava"."""
     service = DepartmentService(DepartmentRepository(session, tenant))
-    return DepartmentOut.model_validate(await service.rename(department_id, name=payload.name))
+    return DepartmentOut.model_validate(
+        await service.update(department_id, name=payload.name, description=payload.description)
+    )
 
 
 # ---------------------------------------------------------------- equipe

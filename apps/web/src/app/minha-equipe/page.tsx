@@ -42,7 +42,6 @@ import {
 import { ApiError, api } from "@/lib/api";
 import { exportarCsv } from "@/lib/exportar";
 import { ROTULO_DO_STATUS_DE_PESSOA } from "@/lib/formato";
-import { useSessao } from "@/lib/sessao";
 import { useTabela } from "@/lib/tabela";
 import type { AcompanhamentoDaEquipe, PedidoDeEquipe } from "@/lib/tipos";
 
@@ -209,18 +208,12 @@ const SEM_EQUIPE: AcompanhamentoDaEquipe = {
 type Membro = AcompanhamentoDaEquipe["membros"][number];
 
 export default function MinhaEquipe() {
-  const { usuario } = useSessao();
   const [equipe, setEquipe] = useState<AcompanhamentoDaEquipe | null>(null);
   const [pedidos, setPedidos] = useState<PedidoDeEquipe[]>([]);
   const [aviso, setAviso] = useState<{ tom: "erro" | "sucesso"; texto: string } | null>(null);
   const [feedbackPara, setFeedbackPara] = useState<Membro | null>(null);
   const [lembrando, setLembrando] = useState<string | null>(null);
 
-  // Remover da equipe muda a hierarquia, e no sistema novo isso é ato de admin/RH: são
-  // eles que respondem por `PUT /profiles/{id}/manager`. O legado mostrava o X ao
-  // gestor; ampliar essa autorização é decisão do cliente, não consequência de copiar
-  // um ícone (ver #59 em docs/conferencia-resultado.md).
-  const podeRemover = usuario?.role === "admin" || usuario?.role === "rh";
 
   async function carregar() {
     setEquipe(await api<AcompanhamentoDaEquipe>("/team/progress"));
@@ -315,14 +308,27 @@ export default function MinhaEquipe() {
 
   async function removerDaEquipe(membro: Membro) {
     setAviso(null);
+    // Confirmação porque a ação some com a pessoa da tela e ninguém a desfaz daqui: para
+    // voltar, é a administração que refaz o vínculo. Não é destrutiva — só é de mão única
+    // para quem clicou.
+    if (
+      !window.confirm(
+        `Tirar ${membro.full_name} da sua equipe?
+
+` +
+          "A pessoa continua no escritório, com histórico e acesso intactos — você é que " +
+          "deixa de acompanhá-la. Para desfazer, a administração precisa refazer o vínculo.",
+      )
+    ) {
+      return;
+    }
     try {
-      await api(`/profiles/${membro.profile_id}/manager`, {
-        method: "PUT",
-        body: { manager_id: null },
-      });
+      // `DELETE /team/{id}`, e não a rota de admin: quem decide é o vínculo, não o papel.
+      // O servidor recusa se quem pede não for o gestor direto nem o coordenador.
+      await api(`/team/${membro.profile_id}`, { method: "DELETE" });
       setAviso({
         tom: "sucesso",
-        texto: `${membro.full_name} saiu da equipe. A pessoa continua no escritório.`,
+        texto: `${membro.full_name} saiu da sua equipe. A pessoa continua no escritório.`,
       });
       await carregar();
     } catch (falha) {
@@ -485,11 +491,9 @@ export default function MinhaEquipe() {
                             {lembrando === membro.profile_id ? "Lembrando…" : "Lembrar"}
                           </AcaoDeLinha>
                         )}
-                        {podeRemover && (
-                          <AcaoDeLinha perigo onClick={() => void removerDaEquipe(membro)}>
-                            Remover
-                          </AcaoDeLinha>
-                        )}
+                        <AcaoDeLinha perigo onClick={() => void removerDaEquipe(membro)}>
+                          Remover
+                        </AcaoDeLinha>
                       </span>
                     </Celula>
                   </Linha>

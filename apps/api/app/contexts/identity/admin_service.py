@@ -345,16 +345,83 @@ class ProfileService:
             )
 
 
+class TeamMembershipService:
+    """Tirar alguém da própria equipe — ação do gestor e do coordenador.
+
+    Decidido com o cliente em 06/09/2026 (#59 da conferência): o legado oferecia o X ao
+    gestor, e o sistema novo passa a oferecer também. A autorização não vira "gestor pode
+    tudo", e é isso que esta classe protege: **só quem é de fato o gestor direto, ou o
+    coordenador do vínculo, remove.** Ver alguém não dá direito de remover — um
+    coordenador enxerga os liderados do próprio gestor e não tem nada a decidir sobre
+    eles.
+
+    Também não é exclusão: quem sai da equipe continua no escritório, com histórico e
+    acesso intactos. Desligar gente é `soft_delete`, que segue sendo de admin/RH.
+    """
+
+    def __init__(
+        self,
+        profiles: ProfileRepository,
+        coordinators: CoordinatorMemberRepository,
+        audit: AuditService | None = None,
+    ) -> None:
+        self._profiles = profiles
+        self._coordinators = coordinators
+        self._audit = audit
+
+    async def remove_from_my_team(self, tenant: TenantContext, member_id: UUID) -> None:
+        if member_id == tenant.user_id:
+            raise ValidationError("Você não pode se remover da própria equipe.")
+
+        membro = await self._profiles.get(member_id)
+        if membro is None:
+            raise NotFoundError("Perfil não encontrado")
+
+        # A ordem importa: liderança direta primeiro, coordenação depois. Quem é as duas
+        # coisas perde o vínculo mais forte, e continuaria coordenado se sobrasse — que
+        # é o oposto do que "remover da minha equipe" quer dizer.
+        if membro.manager_id == tenant.user_id:
+            membro.manager_id = None
+            await self._registrar(tenant, member_id, "manager")
+            return
+
+        vinculo = await self._coordinators.get_vinculo(tenant.user_id, member_id)
+        if vinculo is not None:
+            await self._coordinators.remove(vinculo)
+            await self._registrar(tenant, member_id, "coordination")
+            return
+
+        # 404 e não 403: quem não é dono do vínculo não precisa descobrir, pelo erro, que
+        # ele existe — a mesma regra do detalhe de request.
+        raise NotFoundError("Esta pessoa não está na sua equipe")
+
+    async def _registrar(self, tenant: TenantContext, member_id: UUID, vinculo: str) -> None:
+        if self._audit is None:
+            return
+        await self._audit.record(
+            tenant,
+            action="team.member_removed",
+            table_name="profiles",
+            record_id=member_id,
+            details={"por": str(tenant.user_id), "vinculo": vinculo},
+            # Os dois lados são avisados: quem saiu descobre pela notificação, e não pela
+            # equipe ter sumido da tela sem explicação.
+            notificar=[member_id, tenant.user_id],
+        )
+
+
 class DepartmentService:
     def __init__(self, departments: DepartmentRepository) -> None:
         self._departments = departments
 
-    async def create(self, *, name: str) -> Department:
+    async def create(self, *, name: str, description: str | None = None) -> Department:
         if await self._departments.get_por_nome(name) is not None:
             raise ConflictError("Já existe departamento com este nome", details={"name": name})
-        return self._departments.add(Department(name=name))
+        return self._departments.add(Department(name=name, description=description))
 
-    async def rename(self, department_id: UUID, *, name: str) -> Department:
+    async def update(
+        self, department_id: UUID, *, name: str, description: str | None = None
+    ) -> Department:
         departamento = await self._departments.get(department_id)
         if departamento is None:
             raise NotFoundError("Departamento não encontrado")
@@ -362,6 +429,7 @@ class DepartmentService:
         if existente is not None and existente.id != department_id:
             raise ConflictError("Já existe departamento com este nome")
         departamento.name = name
+        departamento.description = description
         return departamento
 
 

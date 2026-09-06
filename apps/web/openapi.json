@@ -203,6 +203,10 @@
             "title": "Id",
             "type": "string"
           },
+          "is_sensitive": {
+            "title": "Is Sensitive",
+            "type": "boolean"
+          },
           "record_id": {
             "anyOf": [
               {
@@ -234,6 +238,7 @@
           "table_name",
           "record_id",
           "details",
+          "is_sensitive",
           "created_at"
         ],
         "title": "AuditLogOut",
@@ -1053,6 +1058,17 @@
       },
       "DepartmentIn": {
         "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
           "name": {
             "minLength": 1,
             "title": "Name",
@@ -1067,6 +1083,17 @@
       },
       "DepartmentOut": {
         "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -1079,7 +1106,8 @@
         },
         "required": [
           "id",
-          "name"
+          "name",
+          "description"
         ],
         "title": "DepartmentOut",
         "type": "object"
@@ -1096,6 +1124,30 @@
           }
         },
         "title": "DepartmentsIn",
+        "type": "object"
+      },
+      "DiaDeAuditoriaOut": {
+        "properties": {
+          "dia": {
+            "format": "date",
+            "title": "Dia",
+            "type": "string"
+          },
+          "normais": {
+            "title": "Normais",
+            "type": "integer"
+          },
+          "sensiveis": {
+            "title": "Sensiveis",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "dia",
+          "normais",
+          "sensiveis"
+        ],
+        "title": "DiaDeAuditoriaOut",
         "type": "object"
       },
       "DiagnosticoOut": {
@@ -3693,6 +3745,60 @@
         "title": "RequestOut",
         "type": "object"
       },
+      "ResumoDeAuditoriaOut": {
+        "description": "Os cartões e o gráfico do painel de auditoria (#34 a #37 da conferência).",
+        "properties": {
+          "atividade": {
+            "items": {
+              "$ref": "#/components/schemas/DiaDeAuditoriaOut"
+            },
+            "title": "Atividade",
+            "type": "array"
+          },
+          "hoje": {
+            "title": "Hoje",
+            "type": "integer"
+          },
+          "mais_ativo_acoes": {
+            "title": "Mais Ativo Acoes",
+            "type": "integer"
+          },
+          "mais_ativo_nome": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mais Ativo Nome"
+          },
+          "sensiveis_sete_dias": {
+            "title": "Sensiveis Sete Dias",
+            "type": "integer"
+          },
+          "sete_dias": {
+            "title": "Sete Dias",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total",
+          "hoje",
+          "sete_dias",
+          "sensiveis_sete_dias",
+          "mais_ativo_nome",
+          "mais_ativo_acoes",
+          "atividade"
+        ],
+        "title": "ResumoDeAuditoriaOut",
+        "type": "object"
+      },
       "RoleIn": {
         "properties": {
           "role": {
@@ -4110,6 +4216,33 @@
           }
         ],
         "summary": "List Audit Logs",
+        "tags": [
+          "engagement"
+        ]
+      }
+    },
+    "/api/v1/audit-logs/summary": {
+      "get": {
+        "description": "Cartões e gráfico do painel de auditoria.\n\nRota separada da listagem porque responde outra pergunta: a listagem pagina o\ndetalhe, esta agrega o todo. Juntar as duas obrigaria a recalcular os agregados a\ncada página virada.",
+        "operationId": "audit_summary_api_v1_audit_logs_summary_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResumoDeAuditoriaOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Audit Summary",
         "tags": [
           "engagement"
         ]
@@ -5703,7 +5836,8 @@
     },
     "/api/v1/departments/{department_id}": {
       "put": {
-        "operationId": "rename_department_api_v1_departments__department_id__put",
+        "description": "PUT e não PATCH: o corpo é o departamento inteiro, e `description` ausente\nsignifica \"sem descrição\" — não \"mantenha a que estava\".",
+        "operationId": "update_department_api_v1_departments__department_id__put",
         "parameters": [
           {
             "in": "path",
@@ -5753,7 +5887,7 @@
             "HTTPBearer": []
           }
         ],
-        "summary": "Rename Department",
+        "summary": "Update Department",
         "tags": [
           "identity-admin"
         ]
@@ -8613,6 +8747,48 @@
           }
         ],
         "summary": "Team Progress",
+        "tags": [
+          "feedback"
+        ]
+      }
+    },
+    "/api/v1/team/{profile_id}": {
+      "delete": {
+        "description": "Tira alguém da própria equipe (#59, decidido com o cliente em 06/09/2026).\n\nAberta a qualquer sessão porque a autorização é do **vínculo**, não do papel: o\nserviço só remove se quem pede for o gestor direto ou o coordenador daquela pessoa.\nUm `require_role(\"gestor\")` seria mais frouxo, não mais rígido — deixaria um gestor\nmexer na equipe de outro.\n\nNão é exclusão: quem sai continua no escritório. Desligar é `DELETE /profiles/{id}`,\nque segue sendo de admin/RH.",
+        "operationId": "remove_from_my_team_api_v1_team__profile_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "profile_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Profile Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Remove From My Team",
         "tags": [
           "feedback"
         ]

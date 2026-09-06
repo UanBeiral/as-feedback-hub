@@ -165,11 +165,18 @@ class AuditLog(UUIDPrimaryKeyMixin, TenantScopedMixin, Base):
     table_name: Mapped[str | None] = mapped_column(Text)
     record_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True))
     details: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    # Gravado no INSERT a partir do catálogo em `service.ACOES_SENSIVEIS`. É coluna e não
+    # derivação de propósito: derivar na consulta faria toda mudança futura no catálogo
+    # reescrever a classificação do passado, e trilha append-only não reescreve o passado.
+    is_sensitive: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
 
-    __table_args__ = (Index("ix_audit_logs_tenant_tempo", "tenant_id", "created_at"),)
+    __table_args__ = (
+        Index("ix_audit_logs_tenant_tempo", "tenant_id", "created_at"),
+        Index("ix_audit_logs_sensiveis", "tenant_id", "is_sensitive", "created_at"),
+    )
 
 
 class TenantSetting(UUIDPrimaryKeyMixin, TenantScopedMixin, Base):

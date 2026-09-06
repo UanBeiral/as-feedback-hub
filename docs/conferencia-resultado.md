@@ -17,7 +17,7 @@
 | Conferidas | 17 de 35 |
 | Defeitos próprios encontrados | 5 (um bloqueava a conferência; todos corrigidos) |
 | Divergências contra o oráculo | 76 registradas abaixo |
-| **Já resolvidas** | **28** — acompanhamento (15) e exportação/filtros (12), mais a SCR-0023 de tabela |
+| **Já resolvidas** | **35** — acompanhamento (15), exportação/filtros (12) e as três decisões do cliente (8) |
 
 O bloco de **Administração** está fechado (SCR-0003, 0007, 0008, 0009, 0010, 0011, 0012,
 0013, 0015, 0018 e 0024) e o de **Equipe/Feedback** está a meio caminho (SCR-0029, 0030,
@@ -577,6 +577,77 @@ ganharam busca, filtro, ordenação e exportação na mesma medida. Dois detalhe
   seguem sem o total, como no legado ("Logs de Auditoria (500)").
 - **#60** — Adicionar Membro em Minha equipe. Depende de a decisão sobre remoção sair.
 - **#73** — a seção "Feedback Livre — Enviados por mim" em Meus feedbacks.
+
+---
+
+## Resolvidas — as três decisões do cliente
+
+Decididas em 06/09/2026, quando a conferência tinha isolado o que não se resolvia no
+front. Fecham #19, #22, #34, #35, #36, #37, #38 e #59, e mexem em schema — daí a
+migration `0006`.
+
+### O gestor pode remover da própria equipe (#59)
+
+**Sim**, e a autorização é do **vínculo, não do papel**. `DELETE /team/{profile_id}`
+está aberta a qualquer sessão, e o serviço só remove se quem pede for o gestor direto ou
+o coordenador daquela pessoa. Um `require_role("gestor")` seria mais frouxo, não mais
+rígido: deixaria um gestor mexer na equipe de outro.
+
+Ver alguém não dá direito de remover — um coordenador enxerga os liderados do próprio
+gestor, porque o escopo é união (BR-MIGRAR-017), e não tem nada a decidir sobre eles.
+Quem não é dono do vínculo recebe **404 e não 403**, pela mesma razão do detalhe de
+request: o erro não confirma que o vínculo existe.
+
+Quem é liderado **e** coordenado perde primeiro a liderança. Se sobrasse a coordenação, a
+pessoa continuaria na equipe depois de "sair dela".
+
+E não é exclusão: quem sai continua no escritório, com histórico e acesso intactos.
+Desligar segue sendo `DELETE /profiles/{id}`, de admin/RH. A tela confirma antes, não
+porque a ação seja destrutiva, mas porque é de mão única para quem clicou — desfazer
+depende da administração refazer o vínculo.
+
+### Departamento tem descrição (#19)
+
+Coluna nova em `departments`, nulável: os departamentos migrados do legado não têm
+descrição, e exigir uma agora obrigaria a inventar texto para dado que já existe. Entra
+na tabela, no formulário de criação, na edição inline e na exportação.
+
+O `PUT` manda o recurso inteiro, e descrição em branco **apaga** a anterior — não
+"mantém a que estava". Tratar como "mantém" faria a única forma de apagar uma descrição
+ser um `UPDATE` direto no banco.
+
+### A auditoria distingue ação sensível (#34 a #38)
+
+Coluna `is_sensitive`, **gravada no INSERT** a partir de um catálogo em código. Não é
+derivação na consulta, e a diferença importa: derivar faria toda mudança futura no
+catálogo reescrever a classificação do passado, e trilha append-only não reescreve o
+passado.
+
+A régua é **eleva ou remove poder, ou apaga trabalho já esperado**: trocar papel, mexer
+em capacidades, redefinir a senha de outra pessoa, remover perfil e cancelar pedido. Fora
+ficam cadastrar alguém, a pessoa trocar a própria senha, reativar quem voltou e as
+movimentações de equipe — mexem em gente, mas são o fluxo cotidiano do escritório. É a
+mesma razão pela qual o Diagnóstico deixa desequilíbrio de carga fora dos "pontos de
+atenção": quando tudo é urgente, nada é.
+
+A migration duplica o catálogo de propósito — migration não importa código de aplicação,
+que muda embaixo dela — e o preço da duplicação é um teste que compara as duas listas.
+Sem ele o backfill classificaria o passado com uma régua e o presente com outra.
+
+Com isso a tela ganhou os quatro cartões (hoje, 7 dias, sensíveis em 7 dias, quem mais
+agiu), o gráfico de 14 dias com as barras empilhadas e a legenda Normal/Sensível, e o
+`GET /audit-logs/summary`, que é rota separada da listagem porque responde outra
+pergunta: a listagem pagina o detalhe, o resumo agrega o todo.
+
+O gráfico teve um defeito que só apareceu rodando: com altura em porcentagem e nenhuma
+altura definida no pai flex, as barras resolviam para zero e o gráfico ficava vazio
+**com dados**. Corrigido com `h-full` na coluna do dia.
+
+### O que continua faltando
+
+- **#37** — a seção "Usuários Removidos" da auditoria.
+- **#21** — o download por linha em Departamentos.
+- **#39, #40** — detalhes em JSON cru e o texto do cabeçalho.
 
 ---
 

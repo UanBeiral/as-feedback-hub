@@ -21,6 +21,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/audit-logs/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Audit Summary
+         * @description Cartões e gráfico do painel de auditoria.
+         *
+         *     Rota separada da listagem porque responde outra pergunta: a listagem pagina o
+         *     detalhe, esta agrega o todo. Juntar as duas obrigaria a recalcular os agregados a
+         *     cada página virada.
+         */
+        get: operations["audit_summary_api_v1_audit_logs_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/active-role": {
         parameters: {
             query?: never;
@@ -580,8 +604,12 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** Rename Department */
-        put: operations["rename_department_api_v1_departments__department_id__put"];
+        /**
+         * Update Department
+         * @description PUT e não PATCH: o corpo é o departamento inteiro, e `description` ausente
+         *     significa "sem descrição" — não "mantenha a que estava".
+         */
+        put: operations["update_department_api_v1_departments__department_id__put"];
         post?: never;
         delete?: never;
         options?: never;
@@ -1616,6 +1644,34 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/team/{profile_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Remove From My Team
+         * @description Tira alguém da própria equipe (#59, decidido com o cliente em 06/09/2026).
+         *
+         *     Aberta a qualquer sessão porque a autorização é do **vínculo**, não do papel: o
+         *     serviço só remove se quem pede for o gestor direto ou o coordenador daquela pessoa.
+         *     Um `require_role("gestor")` seria mais frouxo, não mais rígido — deixaria um gestor
+         *     mexer na equipe de outro.
+         *
+         *     Não é exclusão: quem sai continua no escritório. Desligar é `DELETE /profiles/{id}`,
+         *     que segue sendo de admin/RH.
+         */
+        delete: operations["remove_from_my_team_api_v1_team__profile_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/team/{profile_id}/reminder": {
         parameters: {
             query?: never;
@@ -1745,6 +1801,8 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            /** Is Sensitive */
+            is_sensitive: boolean;
             /** Record Id */
             record_id: string | null;
             /** Table Name */
@@ -2104,11 +2162,15 @@ export interface components {
         };
         /** DepartmentIn */
         DepartmentIn: {
+            /** Description */
+            description?: string | null;
             /** Name */
             name: string;
         };
         /** DepartmentOut */
         DepartmentOut: {
+            /** Description */
+            description: string | null;
             /**
              * Id
              * Format: uuid
@@ -2121,6 +2183,18 @@ export interface components {
         DepartmentsIn: {
             /** Department Ids */
             department_ids?: string[];
+        };
+        /** DiaDeAuditoriaOut */
+        DiaDeAuditoriaOut: {
+            /**
+             * Dia
+             * Format: date
+             */
+            dia: string;
+            /** Normais */
+            normais: number;
+            /** Sensiveis */
+            sensiveis: number;
         };
         /**
          * DiagnosticoOut
@@ -3065,6 +3139,26 @@ export interface components {
             /** Submitted At */
             submitted_at: string | null;
         };
+        /**
+         * ResumoDeAuditoriaOut
+         * @description Os cartões e o gráfico do painel de auditoria (#34 a #37 da conferência).
+         */
+        ResumoDeAuditoriaOut: {
+            /** Atividade */
+            atividade: components["schemas"]["DiaDeAuditoriaOut"][];
+            /** Hoje */
+            hoje: number;
+            /** Mais Ativo Acoes */
+            mais_ativo_acoes: number;
+            /** Mais Ativo Nome */
+            mais_ativo_nome: string | null;
+            /** Sensiveis Sete Dias */
+            sensiveis_sete_dias: number;
+            /** Sete Dias */
+            sete_dias: number;
+            /** Total */
+            total: number;
+        };
         /** RoleIn */
         RoleIn: {
             /** Role */
@@ -3232,6 +3326,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    audit_summary_api_v1_audit_logs_summary_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResumoDeAuditoriaOut"];
                 };
             };
         };
@@ -4295,7 +4409,7 @@ export interface operations {
             };
         };
     };
-    rename_department_api_v1_departments__department_id__put: {
+    update_department_api_v1_departments__department_id__put: {
         parameters: {
             query?: never;
             header?: never;
@@ -6125,6 +6239,35 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TeamProgressOut"];
+                };
+            };
+        };
+    };
+    remove_from_my_team_api_v1_team__profile_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                profile_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

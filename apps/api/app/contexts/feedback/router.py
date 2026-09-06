@@ -75,6 +75,7 @@ from app.contexts.feedback.service import (
     RequestService,
     TeamProgressService,
 )
+from app.contexts.identity.admin_service import TeamMembershipService
 from app.contexts.identity.repository import CoordinatorMemberRepository, ProfileRepository
 from app.contexts.identity.service import TeamScopeService
 from app.core.di import SessionDep, TenantDep, require_role
@@ -495,6 +496,33 @@ async def team_progress(
         esperados=acompanhamento.esperados,
         percentual=acompanhamento.percentual,
     )
+
+
+@router.delete("/team/{profile_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def remove_from_my_team(
+    profile_id: UUID,
+    tenant: TenantDep,
+    session: SessionDep,
+) -> None:
+    """Tira alguém da própria equipe (#59, decidido com o cliente em 06/09/2026).
+
+    Aberta a qualquer sessão porque a autorização é do **vínculo**, não do papel: o
+    serviço só remove se quem pede for o gestor direto ou o coordenador daquela pessoa.
+    Um `require_role("gestor")` seria mais frouxo, não mais rígido — deixaria um gestor
+    mexer na equipe de outro.
+
+    Não é exclusão: quem sai continua no escritório. Desligar é `DELETE /profiles/{id}`,
+    que segue sendo de admin/RH.
+    """
+    service = TeamMembershipService(
+        profiles=ProfileRepository(session, tenant),
+        coordinators=CoordinatorMemberRepository(session, tenant),
+        audit=AuditService(
+            AuditLogRepository(session, tenant),
+            OutboxService(OutboxRepository(session, tenant)),
+        ),
+    )
+    await service.remove_from_my_team(tenant, profile_id)
 
 
 @router.post("/team/{profile_id}/reminder", response_model=LembreteOut)

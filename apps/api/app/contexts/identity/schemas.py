@@ -133,6 +133,9 @@ class PasswordResetIn(BaseModel):
 
 class DepartmentIn(BaseModel):
     name: str = Field(min_length=1)
+    # Opcional: os departamentos migrados do legado podem não ter uma, e obrigar texto
+    # aqui forçaria a inventar descrição para dado que já existe.
+    description: str | None = None
 
 
 class DepartmentOut(BaseModel):
@@ -140,6 +143,7 @@ class DepartmentOut(BaseModel):
 
     id: UUID
     name: str
+    description: str | None
 
 
 class CoordinatorMemberIn(BaseModel):

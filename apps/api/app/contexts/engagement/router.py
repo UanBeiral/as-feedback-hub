@@ -8,6 +8,7 @@ papel; o que é configuração ou triagem do escritório é de admin/RH.
 
 from __future__ import annotations
 
+from datetime import UTC, date, datetime, timedelta
 from typing import Annotated
 from uuid import UUID
 
@@ -26,9 +27,11 @@ from app.contexts.engagement.schemas import (
     ContactMessageIn,
     ContactMessageOut,
     ContactStatusUpdate,
+    DiaDeAuditoriaOut,
     NotificationFeed,
     PlatformUpdateIn,
     PlatformUpdateOut,
+    ResumoDeAuditoriaOut,
     SettingOut,
     SettingUpdate,
 )
@@ -213,6 +216,48 @@ async def change_contact_status(
 
 
 # ---------------------------------------------------------------- auditoria
+
+@router.get("/audit-logs/summary", response_model=ResumoDeAuditoriaOut)
+async def audit_summary(tenant: AdminDep, session: SessionDep) -> ResumoDeAuditoriaOut:
+    """Cartões e gráfico do painel de auditoria.
+
+    Rota separada da listagem porque responde outra pergunta: a listagem pagina o
+    detalhe, esta agrega o todo. Juntar as duas obrigaria a recalcular os agregados a
+    cada página virada.
+    """
+    repo = AuditLogRepository(session, tenant)
+    agora = datetime.now(UTC)
+    desde_7d = agora - timedelta(days=7)
+
+    numeros = await repo.resumo(hoje=agora.date(), desde_7d=desde_7d)
+    ativo = await repo.mais_ativo(desde=desde_7d)
+    por_dia = await repo.contagem_por_dia(desde=agora - timedelta(days=14))
+
+    nome = None
+    if ativo is not None:
+        perfil = await ProfileRepository(session, tenant).get(ativo[0])
+        # Ator removido: a linha de auditoria sobrevive ao perfil de propósito
+        # (`actor_id` é ON DELETE SET NULL), então o cartão diz isso em vez de sumir.
+        nome = perfil.full_name if perfil else "Alguém que saiu"
+
+    dias: dict[date, dict[str, int]] = {}
+    for dia, sensivel, total in por_dia:
+        entrada = dias.setdefault(dia, {"normais": 0, "sensiveis": 0})
+        entrada["sensiveis" if sensivel else "normais"] += total
+
+    return ResumoDeAuditoriaOut(
+        total=numeros["total"],
+        hoje=numeros["hoje"],
+        sete_dias=numeros["sete_dias"],
+        sensiveis_sete_dias=numeros["sensiveis_sete_dias"],
+        mais_ativo_nome=nome,
+        mais_ativo_acoes=ativo[1] if ativo else 0,
+        atividade=[
+            DiaDeAuditoriaOut(dia=dia, normais=v["normais"], sensiveis=v["sensiveis"])
+            for dia, v in sorted(dias.items())
+        ],
+    )
+
 
 @router.get("/audit-logs", response_model=list[AuditLogOut])
 async def list_audit_logs(

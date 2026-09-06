@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
@@ -101,4 +101,26 @@ class AuditLogOut(BaseModel):
     table_name: str | None
     record_id: UUID | None
     details: dict | None
+    is_sensitive: bool
     created_at: datetime
+
+
+class DiaDeAuditoriaOut(BaseModel):
+    dia: date
+    normais: int
+    sensiveis: int
+
+
+class ResumoDeAuditoriaOut(BaseModel):
+    """Os cartões e o gráfico do painel de auditoria (#34 a #37 da conferência)."""
+
+    total: int
+    hoje: int
+    sete_dias: int
+    sensiveis_sete_dias: int
+    mais_ativo_nome: str | None
+    mais_ativo_acoes: int
+    # Uma entrada por dia com atividade nos últimos 14. Dias vazios não vêm: quem desenha
+    # o gráfico sabe o intervalo e preenche o que falta — mandar zeros pela rede é gastar
+    # bytes para dizer "nada aconteceu".
+    atividade: list[DiaDeAuditoriaOut]

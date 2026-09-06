@@ -17,6 +17,7 @@ export type ParDeTokens = S["TokenPair"];
 export type Departamento = S["DepartmentOut"];
 export type PedidoDeEquipe = S["TeamRequestOut"];
 export type AcompanhamentoDaEquipe = S["TeamProgressOut"];
+export type ResumoDeAuditoria = S["ResumoDeAuditoriaOut"];
 export type MembroDaEquipe = S["MembroDaEquipeOut"];
 
 export type Notificacao = S["NotificationOut"];

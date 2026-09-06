@@ -24,8 +24,12 @@ import type { Departamento, Perfil } from "@/lib/tipos";
 export default function AdminDepartamentos() {
   const [departamentos, setDepartamentos] = useState<Departamento[] | null>(null);
   const [pessoas, setPessoas] = useState<Perfil[]>([]);
-  const [novo, setNovo] = useState("");
-  const [editando, setEditando] = useState<{ id: string; nome: string } | null>(null);
+  const [novo, setNovo] = useState({ nome: "", descricao: "" });
+  const [editando, setEditando] = useState<{
+    id: string;
+    nome: string;
+    descricao: string;
+  } | null>(null);
   const [mensagem, setMensagem] = useState<{ tom: "erro" | "sucesso"; texto: string } | null>(null);
 
   const carregar = useCallback(async () => {
@@ -49,26 +53,31 @@ export default function AdminDepartamentos() {
     evento.preventDefault();
     setMensagem(null);
     try {
-      await api("/departments", { method: "POST", body: { name: novo } });
-      setNovo("");
+      await api("/departments", {
+        method: "POST",
+        body: { name: novo.nome, description: novo.descricao.trim() || null },
+      });
+      setNovo({ nome: "", descricao: "" });
       await carregar();
     } catch (falha) {
       relatar(falha, "Não foi possível criar.");
     }
   }
 
-  async function renomear() {
+  async function salvarEdicao() {
     if (!editando) return;
     setMensagem(null);
     try {
+      // PUT manda o recurso inteiro: descrição em branco significa apagá-la, e não
+      // "mantenha a que estava" — é o contrato do endpoint.
       await api(`/departments/${editando.id}`, {
         method: "PUT",
-        body: { name: editando.nome },
+        body: { name: editando.nome, description: editando.descricao.trim() || null },
       });
       setEditando(null);
       await carregar();
     } catch (falha) {
-      relatar(falha, "Não foi possível renomear.");
+      relatar(falha, "Não foi possível salvar.");
     }
   }
 
@@ -79,8 +88,8 @@ export default function AdminDepartamentos() {
   function exportar() {
     exportarCsv(
       "departamentos",
-      ["Nome", "Pessoas"],
-      (departamentos ?? []).map((d) => [d.name, quantasPessoas(d.id)]),
+      ["Nome", "Descrição", "Pessoas"],
+      (departamentos ?? []).map((d) => [d.name, d.description ?? "", quantasPessoas(d.id)]),
     );
   }
 
@@ -94,13 +103,22 @@ export default function AdminDepartamentos() {
 
         <Cartao titulo="Novo departamento">
           <form onSubmit={criar} className="flex flex-wrap items-end gap-3">
-            <div className="min-w-64 flex-1">
+            <div className="min-w-48 flex-1">
               <Campo rotulo="Nome" obrigatorio>
                 <Entrada
                   required
-                  value={novo}
-                  onChange={(e) => setNovo(e.target.value)}
+                  value={novo.nome}
+                  onChange={(e) => setNovo({ ...novo, nome: e.target.value })}
                   placeholder="Cível"
+                />
+              </Campo>
+            </div>
+            <div className="min-w-64 flex-[2]">
+              <Campo rotulo="Descrição" dica="Opcional — ajuda quem não conhece a sigla.">
+                <Entrada
+                  value={novo.descricao}
+                  onChange={(e) => setNovo({ ...novo, descricao: e.target.value })}
+                  placeholder="Contencioso cível e execuções"
                 />
               </Campo>
             </div>
@@ -118,7 +136,7 @@ export default function AdminDepartamentos() {
             <BarraDeFiltros
               acoes={<BotaoDeExportar quantidade={departamentos.length} onClick={exportar} />}
             />
-            <Tabela colunas={["Nome", "Pessoas", ""]}>
+            <Tabela colunas={["Nome", "Descrição", "Pessoas", ""]}>
               {departamentos.map((departamento) => {
                 const quantas = quantasPessoas(departamento.id);
                 return (
@@ -134,13 +152,25 @@ export default function AdminDepartamentos() {
                         departamento.name
                       )}
                     </Celula>
+                    <Celula className="text-muted-foreground">
+                      {editando?.id === departamento.id ? (
+                        <Entrada
+                          value={editando.descricao}
+                          onChange={(e) => setEditando({ ...editando, descricao: e.target.value })}
+                          placeholder="Sem descrição"
+                          className="h-8"
+                        />
+                      ) : (
+                        (departamento.description ?? "—")
+                      )}
+                    </Celula>
                     <Celula className="text-muted-foreground">{quantas}</Celula>
                     <Celula className="text-right">
                       {editando?.id === departamento.id ? (
                         <span className="flex justify-end gap-3">
                           <button
                             type="button"
-                            onClick={() => void renomear()}
+                            onClick={() => void salvarEdicao()}
                             className="text-sm text-primary underline-offset-4 hover:underline"
                           >
                             Salvar
@@ -157,7 +187,11 @@ export default function AdminDepartamentos() {
                         <button
                           type="button"
                           onClick={() =>
-                            setEditando({ id: departamento.id, nome: departamento.name })
+                            setEditando({
+                              id: departamento.id,
+                              nome: departamento.name,
+                              descricao: departamento.description ?? "",
+                            })
                           }
                           className="text-sm text-primary underline-offset-4 hover:underline"
                         >
