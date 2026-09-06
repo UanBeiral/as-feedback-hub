@@ -98,8 +98,16 @@ GestaoDep = Annotated[TenantContext, Depends(require_role("admin", "rh", "gestor
 
 @router.get("/profiles", response_model=list[ProfileSummary])
 async def list_profiles(tenant: AdminDep, session: SessionDep) -> list[ProfileSummary]:
+    """A tabela de usuários do admin, com o e-mail que mora em `users`."""
     repo = ProfileRepository(session, tenant)
-    return [ProfileSummary.model_validate(p) for p in await repo.list_active()]
+    perfis = await repo.list_active()
+    emails = await repo.emails_por_id({p.id for p in perfis})
+    saida = []
+    for perfil in perfis:
+        resumo = ProfileSummary.model_validate(perfil)
+        resumo.email = emails.get(perfil.id)
+        saida.append(resumo)
+    return saida
 
 
 @router.post("/profiles", response_model=ProfileSummary, status_code=status.HTTP_201_CREATED)

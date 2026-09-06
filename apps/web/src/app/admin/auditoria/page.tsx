@@ -14,17 +14,23 @@ import { useCallback, useEffect, useState } from "react";
 
 import { PaginaAutenticada } from "@/components/pagina";
 import {
+  BarraDeFiltros,
   Botao,
+  BotaoDeExportar,
   Carregando,
   Cartao,
   Celula,
+  ContadorDeResultados,
   EstadoVazio,
+  FiltroSelecao,
   Linha,
   Selo,
   Tabela,
 } from "@/components/ui";
 import { api } from "@/lib/api";
+import { exportarCsv } from "@/lib/exportar";
 import { formatarDataHora } from "@/lib/formato";
+import { useTabela } from "@/lib/tabela";
 import type { Perfil, RegistroDeAuditoria } from "@/lib/tipos";
 
 const POR_PAGINA = 50;
@@ -65,6 +71,45 @@ export default function AdminAuditoria() {
 
   const nomePor = new Map(pessoas.map((pessoa) => [pessoa.id, pessoa.full_name]));
 
+  function quemFez(actorId: string | null): string {
+    if (!actorId) return "sistema";
+    return nomePor.get(actorId) ?? "(removido)";
+  }
+
+  const tabela = useTabela(registros ?? [], {
+    busca: (r) => [
+      quemFez(r.actor_id),
+      ROTULO_DA_ACAO[r.action] ?? r.action,
+      r.details ? JSON.stringify(r.details) : null,
+    ],
+    campos: {
+      quando: (r) => r.created_at,
+      quem: (r) => quemFez(r.actor_id),
+      acao: (r) => ROTULO_DA_ACAO[r.action] ?? r.action,
+    },
+    // O mais recente primeiro: numa auditoria é sempre o que se procura antes.
+    inicial: { campo: "quando", direcao: "desc" },
+  });
+  const porAcao = tabela.filtro("acao", (r, valor) => r.action === valor);
+  const visiveis = tabela.visiveis([porAcao]);
+
+  // O seletor lista só as ações presentes nesta página, e não o catálogo inteiro:
+  // oferecer filtro que não devolve nada é pior que não oferecer filtro.
+  const acoesPresentes = [...new Set((registros ?? []).map((r) => r.action))].sort();
+
+  function exportar() {
+    exportarCsv(
+      "auditoria",
+      ["Quando", "Quem fez", "Ação", "Detalhes"],
+      visiveis.map((r) => [
+        formatarDataHora(r.created_at),
+        quemFez(r.actor_id),
+        ROTULO_DA_ACAO[r.action] ?? r.action,
+        r.details ? JSON.stringify(r.details) : "",
+      ]),
+    );
+  }
+
   return (
     <PaginaAutenticada
       titulo="Auditoria"
@@ -98,17 +143,46 @@ export default function AdminAuditoria() {
             descricao="Ações sensíveis aparecem aqui assim que acontecem."
           />
         ) : (
-          <Tabela colunas={["Quando", "Quem fez", "Ação", "Detalhes"]}>
-            {registros.map((registro) => (
+          <>
+          <BarraDeFiltros
+            busca={tabela.busca}
+            aoBuscar={tabela.setBusca}
+            placeholder="Buscar por pessoa, ação ou detalhe…"
+            acoes={
+              <>
+                <ContadorDeResultados mostrando={visiveis.length} total={registros.length} />
+                <BotaoDeExportar quantidade={visiveis.length} onClick={exportar} />
+              </>
+            }
+          >
+            <FiltroSelecao
+              rotuloDeTodos="Todas as ações"
+              valor={porAcao.valor}
+              aoMudar={porAcao.aoMudar}
+              opcoes={acoesPresentes.map((acao) => ({
+                valor: acao,
+                rotulo: ROTULO_DA_ACAO[acao] ?? acao,
+              }))}
+            />
+          </BarraDeFiltros>
+
+          <Tabela
+            ordenacao={tabela.ordenacao}
+            vazio={visiveis.length === 0}
+            vazioTexto="Nenhum registro com esses filtros nesta página."
+            colunas={[
+              { rotulo: "Quando", campo: "quando" },
+              { rotulo: "Quem fez", campo: "quem" },
+              { rotulo: "Ação", campo: "acao" },
+              "Detalhes",
+            ]}
+          >
+            {visiveis.map((registro) => (
               <Linha key={registro.id}>
                 <Celula className="whitespace-nowrap text-muted-foreground">
                   {formatarDataHora(registro.created_at)}
                 </Celula>
-                <Celula className="font-medium">
-                  {registro.actor_id
-                    ? (nomePor.get(registro.actor_id) ?? "(removido)")
-                    : "sistema"}
-                </Celula>
+                <Celula className="font-medium">{quemFez(registro.actor_id)}</Celula>
                 <Celula>
                   <Selo tom="neutro">
                     {ROTULO_DA_ACAO[registro.action] ?? registro.action}
@@ -124,6 +198,7 @@ export default function AdminAuditoria() {
               </Linha>
             ))}
           </Tabela>
+          </>
         )}
       </Cartao>
     </PaginaAutenticada>

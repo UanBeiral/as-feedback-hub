@@ -69,6 +69,10 @@ class ProfileSummary(BaseModel):
     is_coordinator: bool
     department_id: UUID | None
     manager_id: UUID | None
+    # O e-mail mora em `users`, não em `profiles`, e por isso é opcional aqui: só as
+    # rotas que fazem a junção o preenchem. A tabela de usuários do admin mostra a
+    # coluna (o oráculo confirma), e sem ela não há como distinguir dois homônimos.
+    email: str | None = None
 
 
 class RegisterUserIn(BaseModel):

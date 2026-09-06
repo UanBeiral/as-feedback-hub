@@ -23,12 +23,16 @@ import { PaginaAutenticada } from "@/components/pagina";
 import {
   AreaDeTexto,
   Aviso,
+  BarraDeFiltros,
   Botao,
+  BotaoDeExportar,
   Campo,
   Carregando,
   Cartao,
   Celula,
+  ContadorDeResultados,
   EstadoVazio,
+  FiltroSelecao,
   Linha,
   Progresso,
   Selo,
@@ -36,8 +40,10 @@ import {
   Tabela,
 } from "@/components/ui";
 import { ApiError, api } from "@/lib/api";
+import { exportarCsv } from "@/lib/exportar";
 import { ROTULO_DO_STATUS_DE_PESSOA } from "@/lib/formato";
 import { useSessao } from "@/lib/sessao";
+import { useTabela } from "@/lib/tabela";
 import type { AcompanhamentoDaEquipe, PedidoDeEquipe } from "@/lib/tipos";
 
 /** Ação textual dentro de uma linha de tabela. Botão cheio aqui pesaria a tabela. */
@@ -271,6 +277,42 @@ export default function MinhaEquipe() {
     }
   }
 
+  const tabela = useTabela(equipe?.membros ?? [], {
+    busca: (m) => [m.full_name, m.job_title],
+    campos: {
+      nome: (m) => m.full_name,
+      cargo: (m) => m.job_title,
+      status: (m) => m.status,
+      aEnviar: (m) => m.pendentes_de_enviar,
+      enviados: (m) => m.enviados,
+      aLer: (m) => m.pendentes_de_leitura,
+      progresso: (m) => m.percentual,
+    },
+    inicial: { campo: "nome" },
+  });
+  const porPendencia = tabela.filtro("pendencia", (m, valor) => {
+    if (valor === "devendo") return m.pendentes_de_enviar > 0;
+    if (valor === "sem-ler") return m.pendentes_de_leitura > 0;
+    return m.pendentes_de_enviar === 0 && m.pendentes_de_leitura === 0;
+  });
+  const visiveis = tabela.visiveis([porPendencia]);
+
+  function exportar() {
+    exportarCsv(
+      "minha-equipe",
+      ["Nome", "Cargo", "Status", "A enviar", "Enviados", "A ler", "Progresso (%)"],
+      visiveis.map((m) => [
+        m.full_name,
+        m.job_title ?? "",
+        ROTULO_DO_STATUS_DE_PESSOA[m.status] ?? m.status,
+        m.pendentes_de_enviar,
+        m.enviados,
+        m.pendentes_de_leitura,
+        m.enviados + m.pendentes_de_enviar === 0 ? "" : m.percentual,
+      ]),
+    );
+  }
+
   async function removerDaEquipe(membro: Membro) {
     setAviso(null);
     try {
@@ -350,19 +392,48 @@ export default function MinhaEquipe() {
                 </p>
               )}
 
+              <BarraDeFiltros
+                busca={tabela.busca}
+                aoBuscar={tabela.setBusca}
+                placeholder="Buscar por nome ou cargo…"
+                acoes={
+                  <>
+                    <ContadorDeResultados
+                      mostrando={visiveis.length}
+                      total={equipe.membros.length}
+                    />
+                    <BotaoDeExportar quantidade={visiveis.length} onClick={exportar} />
+                  </>
+                }
+              >
+                <FiltroSelecao
+                  rotuloDeTodos="Todo mundo"
+                  valor={porPendencia.valor}
+                  aoMudar={porPendencia.aoMudar}
+                  opcoes={[
+                    { valor: "devendo", rotulo: "Com feedback a enviar" },
+                    { valor: "sem-ler", rotulo: "Com feedback a ler" },
+                    { valor: "em-dia", rotulo: "Em dia" },
+                  ]}
+                />
+              </BarraDeFiltros>
+
               <Tabela
+                ordenacao={tabela.ordenacao}
+                vazio={visiveis.length === 0}
+                vazioTexto="Ninguém com esses filtros."
                 colunas={[
-                  "Nome",
-                  "Cargo",
-                  "Status",
-                  "A enviar",
-                  "Enviados",
-                  "A ler",
-                  "Progresso",
+                  { rotulo: "Nome", campo: "nome" },
+                  { rotulo: "Cargo", campo: "cargo" },
+                  { rotulo: "Status", campo: "status" },
+                  { rotulo: "A enviar", campo: "aEnviar" },
+                  { rotulo: "Enviados", campo: "enviados" },
+                  { rotulo: "A ler", campo: "aLer" },
+                  { rotulo: "Progresso", campo: "progresso" },
                   "Ações",
                 ]}
               >
-                {equipe.membros.map((membro) => (
+                {visiveis.map((membro) => (
                   <Linha key={membro.profile_id}>
                     <Celula className="font-medium">
                       <span className="flex items-center gap-2">

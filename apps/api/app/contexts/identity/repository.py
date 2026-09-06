@@ -129,6 +129,19 @@ class ProfileRepository(TenantScopedRepository[Profile]):
         result = await self._session.execute(stmt)
         return list(result.scalars().all())
 
+    async def emails_por_id(self, profile_ids: set[UUID]) -> dict[UUID, str]:
+        """`profiles.id` **é** `users.id` (DEV-A03), então a junção é pelo próprio id.
+
+        Uma consulta para a lista toda: buscar o usuário de cada perfil dentro do laço
+        seria N+1 numa tabela que a tela sempre carrega inteira.
+        """
+        if not profile_ids:
+            return {}
+        stmt = select(User.id, User.email).where(
+            User.tenant_id == self.tenant_id, User.id.in_(profile_ids)
+        )
+        return {uid: str(email) for uid, email in (await self._session.execute(stmt)).all()}
+
     async def contagem_por_status(self) -> dict[str, int]:
         """Quantas pessoas em cada estado — o "Status dos Usuários" do painel.
 

@@ -17,7 +17,7 @@
 | Conferidas | 17 de 35 |
 | Defeitos próprios encontrados | 5 (um bloqueava a conferência; todos corrigidos) |
 | Divergências contra o oráculo | 76 registradas abaixo |
-| **Já resolvidas** | **15** — a frente das telas de acompanhamento, mais a SCR-0023 de tabela |
+| **Já resolvidas** | **28** — acompanhamento (15) e exportação/filtros (12), mais a SCR-0023 de tabela |
 
 O bloco de **Administração** está fechado (SCR-0003, 0007, 0008, 0009, 0010, 0011, 0012,
 0013, 0015, 0018 e 0024) e o de **Equipe/Feedback** está a meio caminho (SCR-0029, 0030,
@@ -504,6 +504,79 @@ admin e RH — e some para os demais.
 - **#8** — o banner "Dar Feedback para alguém" no Início. O formulário já existe; falta
   a porta de entrada para quem não tem equipe.
 - **Decisão do cliente**: o gestor deve poder remover alguém da própria equipe?
+
+---
+
+## Resolvidas — exportação e filtros
+
+Segunda frente, 06/09/2026. O legado exporta e filtra em quase toda tabela, e o sistema
+novo só exportava em Relatórios. Fecha #14, #15, #16, #17, #20, #30, #31, #32, #42, #60,
+#71 e #72 — doze divergências espalhadas por seis telas, com o mesmo par de peças.
+
+### As peças
+
+`lib/exportar.ts` monta o CSV e `lib/tabela.ts` guarda busca, filtros e ordenação num
+hook. Três decisões dentro delas valem registro.
+
+**A exportação é no navegador**, não no servidor. As exportações pesadas seguem sendo job
+do worker (AD-07), porque montam dados que a tela não tem; estas são o oposto — a tabela
+já está carregada, e mandá-la de volta para receber o que o navegador tem em memória seria
+viagem sem propósito. E há um ganho que não é de latência: exportar da tela garante que o
+arquivo é **o que a pessoa está vendo**, com os filtros aplicados. É o `reflects_filters`
+que `target_screens.md` pede, e é o que um relatório gerado no servidor "com os mesmos
+filtros" erra na primeira divergência entre as duas implementações.
+
+**Célula que começa com `=`, `+`, `-` ou `@` é prefixada com aspa simples.** Excel e
+LibreOffice tratam isso como fórmula: um departamento chamado "-Jurídico" viraria erro de
+cálculo na planilha, e um campo livre viraria injeção de fórmula. Junto vai o BOM, sem o
+qual o Excel em português abre o arquivo em Latin-1 e todo acento quebra.
+
+**A ordenação usa `localeCompare` em pt-BR**, com `sensitivity: "base"` — é o que faz
+"Ávila" cair entre "Avila" e "Azevedo" em vez de ir para o fim, que é onde a comparação
+por código de caractere o coloca. Nulos vão sempre para o fim, nas duas direções: "sem
+cargo" no topo da lista ordenada por cargo não ajuda ninguém.
+
+**Filtrar no cliente não é o padrão para tudo.** Estas telas carregam a lista inteira
+porque o escritório tem dezenas de pessoas, não milhares. Relatórios pagina no servidor
+porque lá o volume é outro, e o dia em que uma destas tabelas passar de alguns milhares
+de linhas, o certo é mover o filtro para a API — não aumentar o limite da consulta. Está
+escrito no topo de `lib/tabela.ts`, onde quem for mexer vai ler.
+
+### O que mudou em cada tela
+
+**Usuários** ganhou as três colunas que faltavam — E-mail, Departamento e Status —, mais
+os três filtros do oráculo, ordenação em seis colunas e exportação. Sem Status o
+soft-delete de BR-MIGRAR-018 era invisível na tela; agora tem selo.
+
+O e-mail exigiu mexer no contrato: mora em `users`, não em `profiles`. `ProfileSummary`
+ganhou o campo, preenchido por uma junção pelo próprio id (`profiles.id` **é**
+`users.id`, DEV-A03) numa consulta só para a lista toda.
+
+**Permissões** trocou o campo de busca solto pelos três filtros do legado — tipo, situação
+e ciclo —, com ordenação e exportação. Não resolve a #28 (o agrupamento por avaliador,
+que é outra tela), mas torna a tabela plana navegável enquanto essa decisão não vem.
+
+**Auditoria**, **Fale conosco**, **Departamentos**, **Minha equipe** e **Meus feedbacks**
+ganharam busca, filtro, ordenação e exportação na mesma medida. Dois detalhes:
+
+- Em Auditoria e Fale conosco o seletor lista **só os valores presentes**, não um catálogo
+  fixo. Em Fale conosco isso é consequência direta da #44 — `type` é texto livre, não há
+  catálogo de onde tirar as opções —, e oferecer filtro que não devolve nada é pior que
+  não oferecer.
+- Em Meus feedbacks o **"Só pendentes"** ficou como caixa própria, e não como mais uma
+  opção do seletor de status: é a pergunta que a pessoa faz toda vez que abre a tela, e o
+  oráculo também lhe dá um controle separado.
+
+### O que continua faltando nestas telas
+
+- **#21** — o download por linha em Departamentos. Um CSV de uma linha só; a exportação
+  da tabela cobre o caso.
+- **#28** — o agrupamento por avaliador em Permissões. É reescrever a tela, não filtrá-la.
+- **#29** — Importar em Massa de permissões.
+- **#34** — o botão traz a contagem (`Exportar CSV (3)`), mas os títulos das seções
+  seguem sem o total, como no legado ("Logs de Auditoria (500)").
+- **#60** — Adicionar Membro em Minha equipe. Depende de a decisão sobre remoção sair.
+- **#73** — a seção "Feedback Livre — Enviados por mim" em Meus feedbacks.
 
 ---
 

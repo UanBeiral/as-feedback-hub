@@ -13,15 +13,26 @@ import { useCallback, useEffect, useState } from "react";
 import { PaginaAutenticada } from "@/components/pagina";
 import {
   Aviso,
+  BarraDeFiltros,
   Botao,
+  BotaoDeExportar,
   Carregando,
   Cartao,
+  ContadorDeResultados,
   EstadoVazio,
+  FiltroSelecao,
   Selo,
 } from "@/components/ui";
+import { contemTexto, exportarCsv } from "@/lib/exportar";
 import { ApiError, api } from "@/lib/api";
 import { formatarDataHora } from "@/lib/formato";
 import type { MensagemDeContato } from "@/lib/tipos";
+
+/** Os dois tipos que o oráculo mostra. Fora deles, o valor cru — o schema é livre. */
+const ROTULO_DO_TIPO: Record<string, string> = {
+  sugestao: "Sugestão",
+  critica: "Crítica",
+};
 
 const TOM = {
   novo: "alerta",
@@ -48,6 +59,8 @@ const PROXIMOS: Record<string, { status: string; rotulo: string }[]> = {
 export default function AdminContatos() {
   const [mensagens, setMensagens] = useState<MensagemDeContato[] | null>(null);
   const [filtro, setFiltro] = useState<string>("");
+  const [busca, setBusca] = useState("");
+  const [tipo, setTipo] = useState("");
   const [aviso, setAviso] = useState<{ tom: "erro" | "sucesso"; texto: string } | null>(null);
 
   const carregar = useCallback(async (status: string) => {
@@ -73,6 +86,34 @@ export default function AdminContatos() {
         texto: falha instanceof ApiError ? falha.message : "Não foi possível atualizar.",
       });
     }
+  }
+
+  const visiveis = (mensagens ?? []).filter(
+    (m) =>
+      (!tipo || m.type === tipo) &&
+      [m.contact_name, m.email, m.message, m.company].some((campo) => contemTexto(campo, busca)),
+  );
+
+  // Só os tipos que aparecem na lista: `contact_messages.type` é texto livre no schema
+  // (ver #44 em docs/conferencia-resultado.md), então não há catálogo de onde tirar as
+  // opções — e oferecer um filtro que não devolve nada é pior que não oferecer.
+  const tiposPresentes = [...new Set((mensagens ?? []).map((m) => m.type))].sort();
+
+  function exportar() {
+    exportarCsv(
+      "fale-conosco",
+      ["Data", "Contato", "E-mail", "Telefone", "Empresa", "Tipo", "Status", "Mensagem"],
+      visiveis.map((m) => [
+        formatarDataHora(m.created_at),
+        m.contact_name,
+        m.email,
+        m.phone ?? "",
+        m.company ?? "",
+        ROTULO_DO_TIPO[m.type] ?? m.type,
+        ROTULO[m.status as keyof typeof ROTULO] ?? m.status,
+        m.message,
+      ]),
+    );
   }
 
   return (
@@ -113,8 +154,31 @@ export default function AdminContatos() {
           ) : mensagens.length === 0 ? (
             <EstadoVazio titulo="Nenhuma mensagem" />
           ) : (
+            <>
+            <BarraDeFiltros
+              busca={busca}
+              aoBuscar={setBusca}
+              placeholder="Buscar por pessoa, e-mail ou texto…"
+              acoes={
+                <>
+                  <ContadorDeResultados mostrando={visiveis.length} total={mensagens.length} />
+                  <BotaoDeExportar quantidade={visiveis.length} onClick={exportar} />
+                </>
+              }
+            >
+              <FiltroSelecao
+                rotuloDeTodos="Todos os tipos"
+                valor={tipo}
+                aoMudar={setTipo}
+                opcoes={tiposPresentes.map((t) => ({ valor: t, rotulo: ROTULO_DO_TIPO[t] ?? t }))}
+              />
+            </BarraDeFiltros>
+
+            {visiveis.length === 0 ? (
+              <EstadoVazio titulo="Nenhuma mensagem com esses filtros" />
+            ) : (
             <ul className="divide-y divide-border">
-              {mensagens.map((mensagem) => (
+              {visiveis.map((mensagem) => (
                 <li key={mensagem.id} className="py-4">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0">
@@ -124,7 +188,7 @@ export default function AdminContatos() {
                           {ROTULO[mensagem.status as keyof typeof ROTULO] ?? mensagem.status}
                         </Selo>
                         <span className="text-xs font-normal text-muted-foreground">
-                          {mensagem.type}
+                          {ROTULO_DO_TIPO[mensagem.type] ?? mensagem.type}
                         </span>
                       </p>
                       <p className="mt-1 whitespace-pre-wrap text-sm text-foreground">
@@ -152,6 +216,8 @@ export default function AdminContatos() {
                 </li>
               ))}
             </ul>
+            )}
+            </>
           )}
         </Cartao>
       </div>

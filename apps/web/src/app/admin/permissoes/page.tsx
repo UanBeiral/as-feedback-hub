@@ -18,18 +18,24 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { PaginaAutenticada } from "@/components/pagina";
 import {
   Aviso,
+  BarraDeFiltros,
   Botao,
+  BotaoDeExportar,
   Campo,
   Carregando,
   Cartao,
   Celula,
+  ContadorDeResultados,
   EstadoVazio,
+  FiltroSelecao,
   Linha,
   Selecao,
   Selo,
   Tabela,
 } from "@/components/ui";
 import { ApiError, api } from "@/lib/api";
+import { exportarCsv } from "@/lib/exportar";
+import { useTabela } from "@/lib/tabela";
 import type { Ciclo, Perfil, PermissaoDeFeedback } from "@/lib/tipos";
 
 const TIPOS: { valor: string; rotulo: string; explicacao: string }[] = [
@@ -52,7 +58,6 @@ export default function AdminPermissoes() {
   const [pessoas, setPessoas] = useState<Perfil[]>([]);
   const [ciclos, setCiclos] = useState<Ciclo[]>([]);
   const [mensagem, setMensagem] = useState<{ tom: "erro" | "sucesso"; texto: string } | null>(null);
-  const [filtro, setFiltro] = useState("");
   const [nova, setNova] = useState({
     reviewer_id: "",
     reviewee_id: "",
@@ -124,13 +129,50 @@ export default function AdminPermissoes() {
     }
   }
 
-  const visiveis = (permissoes ?? []).filter((regra) => {
-    if (!filtro.trim()) return true;
-    const alvo = `${nomePor.get(regra.reviewer_id) ?? ""} ${nomePor.get(regra.reviewee_id) ?? ""}`;
-    return alvo.toLowerCase().includes(filtro.toLowerCase());
+  function nomeDoCiclo(cycleId: string | null): string {
+    if (!cycleId) return "permanente";
+    return ciclos.find((c) => c.id === cycleId)?.name ?? "ciclo específico";
+  }
+
+  function rotuloDoTipo(tipo: string): string {
+    return TIPOS.find((t) => t.valor === tipo)?.rotulo ?? tipo;
+  }
+
+  const tabela = useTabela(permissoes ?? [], {
+    busca: (regra) => [nomePor.get(regra.reviewer_id), nomePor.get(regra.reviewee_id)],
+    campos: {
+      avaliador: (regra) => nomePor.get(regra.reviewer_id),
+      avaliado: (regra) => nomePor.get(regra.reviewee_id),
+      tipo: (regra) => rotuloDoTipo(regra.permission_type),
+      alcance: (regra) => nomeDoCiclo(regra.cycle_id),
+      situacao: (regra) => (regra.active ? "ativa" : "inativa"),
+    },
+    inicial: { campo: "avaliador" },
   });
+  const porTipo = tabela.filtro("tipo", (regra, valor) => regra.permission_type === valor);
+  const porSituacao = tabela.filtro("situacao", (regra, valor) =>
+    valor === "ativa" ? regra.active : !regra.active,
+  );
+  const porCiclo = tabela.filtro("ciclo", (regra, valor) =>
+    valor === "permanente" ? regra.cycle_id === null : regra.cycle_id === valor,
+  );
+  const visiveis = tabela.visiveis([porTipo, porSituacao, porCiclo]);
 
   const ativas = (permissoes ?? []).filter((regra) => regra.active).length;
+
+  function exportar() {
+    exportarCsv(
+      "permissoes",
+      ["Avaliador", "Avaliado", "Tipo", "Alcance", "Situação"],
+      visiveis.map((regra) => [
+        nomePor.get(regra.reviewer_id) ?? "",
+        nomePor.get(regra.reviewee_id) ?? "",
+        rotuloDoTipo(regra.permission_type),
+        nomeDoCiclo(regra.cycle_id),
+        regra.active ? "ativa" : "inativa",
+      ]),
+    );
+  }
 
   return (
     <PaginaAutenticada
@@ -208,27 +250,66 @@ export default function AdminPermissoes() {
           </form>
         </Cartao>
 
-        <Cartao
-          titulo={`Matriz (${ativas} ativa${ativas === 1 ? "" : "s"})`}
-          acao={
-            <input
-              type="search"
-              placeholder="Filtrar por nome"
-              value={filtro}
-              onChange={(e) => setFiltro(e.target.value)}
-              className="h-9 rounded-md border border-input bg-card px-3 text-sm text-foreground placeholder:text-muted-foreground"
-            />
-          }
-        >
+        <Cartao titulo={`Matriz (${ativas} ativa${ativas === 1 ? "" : "s"})`}>
           {permissoes === null ? (
             <Carregando />
-          ) : visiveis.length === 0 ? (
+          ) : permissoes.length === 0 ? (
             <EstadoVazio
               titulo="Nenhuma permissão"
               descricao="Sem permissões ativas, abrir um ciclo não gera pedido nenhum."
             />
           ) : (
-            <Tabela colunas={["Avaliador", "Avaliado", "Tipo", "Alcance", "Situação", ""]}>
+            <>
+            <BarraDeFiltros
+              busca={tabela.busca}
+              aoBuscar={tabela.setBusca}
+              placeholder="Buscar por nome…"
+              acoes={
+                <>
+                  <ContadorDeResultados mostrando={visiveis.length} total={permissoes.length} />
+                  <BotaoDeExportar quantidade={visiveis.length} onClick={exportar} />
+                </>
+              }
+            >
+              <FiltroSelecao
+                rotuloDeTodos="Todos os tipos"
+                valor={porTipo.valor}
+                aoMudar={porTipo.aoMudar}
+                opcoes={TIPOS.map((t) => ({ valor: t.valor, rotulo: t.rotulo }))}
+              />
+              <FiltroSelecao
+                rotuloDeTodos="Todas as situações"
+                valor={porSituacao.valor}
+                aoMudar={porSituacao.aoMudar}
+                opcoes={[
+                  { valor: "ativa", rotulo: "Ativas" },
+                  { valor: "inativa", rotulo: "Inativas" },
+                ]}
+              />
+              <FiltroSelecao
+                rotuloDeTodos="Todos os ciclos"
+                valor={porCiclo.valor}
+                aoMudar={porCiclo.aoMudar}
+                opcoes={[
+                  { valor: "permanente", rotulo: "Permanentes" },
+                  ...ciclos.map((c) => ({ valor: c.id, rotulo: c.name })),
+                ]}
+              />
+            </BarraDeFiltros>
+
+            <Tabela
+              ordenacao={tabela.ordenacao}
+              vazio={visiveis.length === 0}
+              vazioTexto="Nenhuma permissão com esses filtros."
+              colunas={[
+                { rotulo: "Avaliador", campo: "avaliador" },
+                { rotulo: "Avaliado", campo: "avaliado" },
+                { rotulo: "Tipo", campo: "tipo" },
+                { rotulo: "Alcance", campo: "alcance" },
+                { rotulo: "Situação", campo: "situacao" },
+                "",
+              ]}
+            >
               {visiveis.map((regra) => (
                 <Linha key={regra.id}>
                   <Celula className="font-medium">
@@ -236,14 +317,9 @@ export default function AdminPermissoes() {
                   </Celula>
                   <Celula>{nomePor.get(regra.reviewee_id) ?? "—"}</Celula>
                   <Celula>
-                    {TIPOS.find((t) => t.valor === regra.permission_type)?.rotulo ??
-                      regra.permission_type}
+                    {rotuloDoTipo(regra.permission_type)}
                   </Celula>
-                  <Celula className="text-muted-foreground">
-                    {regra.cycle_id
-                      ? (ciclos.find((c) => c.id === regra.cycle_id)?.name ?? "ciclo específico")
-                      : "permanente"}
-                  </Celula>
+                  <Celula className="text-muted-foreground">{nomeDoCiclo(regra.cycle_id)}</Celula>
                   <Celula>
                     <Selo tom={regra.active ? "sucesso" : "neutro"}>
                       {regra.active ? "ativa" : "inativa"}
@@ -261,6 +337,7 @@ export default function AdminPermissoes() {
                 </Linha>
               ))}
             </Tabela>
+            </>
           )}
         </Cartao>
       </div>

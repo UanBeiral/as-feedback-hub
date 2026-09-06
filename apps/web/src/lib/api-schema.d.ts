@@ -900,7 +900,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List Profiles */
+        /**
+         * List Profiles
+         * @description A tabela de usuários do admin, com o e-mail que mora em `users`.
+         */
         get: operations["list_profiles_api_v1_profiles_get"];
         put?: never;
         /**
@@ -2682,6 +2685,8 @@ export interface components {
         ProfileSummary: {
             /** Department Id */
             department_id: string | null;
+            /** Email */
+            email?: string | null;
             /** Full Name */
             full_name: string;
             /**

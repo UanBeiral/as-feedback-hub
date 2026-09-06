@@ -5,7 +5,9 @@ import { useCallback, useEffect, useState } from "react";
 import { PaginaAutenticada } from "@/components/pagina";
 import {
   Aviso,
+  BarraDeFiltros,
   Botao,
+  BotaoDeExportar,
   Campo,
   Carregando,
   Cartao,
@@ -15,6 +17,7 @@ import {
   Linha,
   Tabela,
 } from "@/components/ui";
+import { exportarCsv } from "@/lib/exportar";
 import { ApiError, api } from "@/lib/api";
 import type { Departamento, Perfil } from "@/lib/tipos";
 
@@ -69,6 +72,18 @@ export default function AdminDepartamentos() {
     }
   }
 
+  function quantasPessoas(departamentoId: string): number {
+    return pessoas.filter((pessoa) => pessoa.department_id === departamentoId).length;
+  }
+
+  function exportar() {
+    exportarCsv(
+      "departamentos",
+      ["Nome", "Pessoas"],
+      (departamentos ?? []).map((d) => [d.name, quantasPessoas(d.id)]),
+    );
+  }
+
   return (
     <PaginaAutenticada
       titulo="Departamentos"
@@ -99,11 +114,13 @@ export default function AdminDepartamentos() {
           ) : departamentos.length === 0 ? (
             <EstadoVazio titulo="Nenhum departamento" />
           ) : (
+            <>
+            <BarraDeFiltros
+              acoes={<BotaoDeExportar quantidade={departamentos.length} onClick={exportar} />}
+            />
             <Tabela colunas={["Nome", "Pessoas", ""]}>
               {departamentos.map((departamento) => {
-                const quantas = pessoas.filter(
-                  (pessoa) => pessoa.department_id === departamento.id,
-                ).length;
+                const quantas = quantasPessoas(departamento.id);
                 return (
                   <Linha key={departamento.id}>
                     <Celula className="font-medium">
@@ -152,6 +169,7 @@ export default function AdminDepartamentos() {
                 );
               })}
             </Tabela>
+            </>
           )}
         </Cartao>
       </div>

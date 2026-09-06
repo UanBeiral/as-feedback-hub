@@ -2614,6 +2614,17 @@
             ],
             "title": "Department Id"
           },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
           "full_name": {
             "title": "Full Name",
             "type": "string"
@@ -6581,6 +6592,7 @@
     },
     "/api/v1/profiles": {
       "get": {
+        "description": "A tabela de usuários do admin, com o e-mail que mora em `users`.",
         "operationId": "list_profiles_api_v1_profiles_get",
         "responses": {
           "200": {

@@ -5,17 +5,23 @@ import { useEffect, useState } from "react";
 
 import { PaginaAutenticada } from "@/components/pagina";
 import {
+  BarraDeFiltros,
+  BotaoDeExportar,
   Carregando,
   Cartao,
   Celula,
+  ContadorDeResultados,
   EstadoVazio,
   Estatistica,
+  FiltroSelecao,
   Linha,
   Selo,
   Tabela,
 } from "@/components/ui";
 import { api } from "@/lib/api";
+import { exportarCsv } from "@/lib/exportar";
 import { formatarData, ROTULO_DO_REQUEST } from "@/lib/formato";
+import { useTabela } from "@/lib/tabela";
 import type { Requisicao } from "@/lib/tipos";
 
 const TOM_DO_STATUS = {
@@ -29,6 +35,7 @@ const TOM_DO_STATUS = {
 
 export default function MeusFeedbacks() {
   const [requisicoes, setRequisicoes] = useState<Requisicao[] | null>(null);
+  const [soPendentes, setSoPendentes] = useState(false);
 
   useEffect(() => {
     api<Requisicao[]>("/requests/mine", { query: { incluir_enviados: true } })
@@ -51,6 +58,34 @@ export default function MeusFeedbacks() {
     abdicados: (requisicoes ?? []).filter((r) => ["waived", "cancelled"].includes(r.status))
       .length,
   };
+
+  const tabela = useTabela(requisicoes ?? [], {
+    busca: (r) => [r.receiver_name],
+    campos: {
+      avaliado: (r) => r.receiver_name,
+      status: (r) => ROTULO_DO_REQUEST[r.status] ?? r.status,
+      prazo: (r) => r.due_date,
+      enviado: (r) => r.submitted_at,
+    },
+    inicial: { campo: "prazo" },
+  });
+  const porStatus = tabela.filtro("status", (r, valor) => r.status === valor);
+  const visiveis = tabela
+    .visiveis([porStatus])
+    .filter((r) => !soPendentes || ["pending", "draft"].includes(r.status));
+
+  function exportar() {
+    exportarCsv(
+      "meus-feedbacks",
+      ["Avaliado", "Status", "Prazo", "Enviado em"],
+      visiveis.map((r) => [
+        r.receiver_name ?? "",
+        ROTULO_DO_REQUEST[r.status] ?? r.status,
+        formatarData(r.due_date),
+        formatarData(r.submitted_at?.slice(0, 10) ?? null),
+      ]),
+    );
+  }
 
   return (
     <PaginaAutenticada
@@ -82,8 +117,52 @@ export default function MeusFeedbacks() {
             descricao="Quando um ciclo abrir com você entre os avaliadores, os pedidos aparecem aqui."
           />
         ) : (
-          <Tabela colunas={["Avaliado", "Status", "Prazo", "Enviado em", ""]}>
-            {requisicoes.map((requisicao) => {
+          <>
+          <BarraDeFiltros
+            busca={tabela.busca}
+            aoBuscar={tabela.setBusca}
+            placeholder="Buscar avaliado…"
+            acoes={
+              <>
+                <ContadorDeResultados mostrando={visiveis.length} total={requisicoes.length} />
+                <BotaoDeExportar quantidade={visiveis.length} onClick={exportar} />
+              </>
+            }
+          >
+            <FiltroSelecao
+              rotuloDeTodos="Todos os status"
+              valor={porStatus.valor}
+              aoMudar={porStatus.aoMudar}
+              opcoes={Object.entries(ROTULO_DO_REQUEST).map(([valor, rotulo]) => ({
+                valor,
+                rotulo,
+              }))}
+            />
+            {/* "Só pendentes" é o filtro que o oráculo destaca com um toggle próprio:
+                é a pergunta que a pessoa faz toda vez que abre a tela. */}
+            <label className="flex items-center gap-2 text-sm text-foreground">
+              <input
+                type="checkbox"
+                checked={soPendentes}
+                onChange={(e) => setSoPendentes(e.target.checked)}
+              />
+              Só pendentes
+            </label>
+          </BarraDeFiltros>
+
+          <Tabela
+            ordenacao={tabela.ordenacao}
+            vazio={visiveis.length === 0}
+            vazioTexto="Nenhum feedback com esses filtros."
+            colunas={[
+              { rotulo: "Avaliado", campo: "avaliado" },
+              { rotulo: "Status", campo: "status" },
+              { rotulo: "Prazo", campo: "prazo" },
+              { rotulo: "Enviado em", campo: "enviado" },
+              "",
+            ]}
+          >
+            {visiveis.map((requisicao) => {
               const atrasado =
                 requisicao.due_date !== null &&
                 requisicao.due_date < hoje &&
@@ -127,6 +206,7 @@ export default function MeusFeedbacks() {
               );
             })}
           </Tabela>
+          </>
         )}
       </Cartao>
     </PaginaAutenticada>

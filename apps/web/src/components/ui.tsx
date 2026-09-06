@@ -202,32 +202,81 @@ export function Selecao(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
   return <select {...props} className={cn(CLASSE_ENTRADA, props.className)} />;
 }
 
+/**
+ * Ordenação da tabela. `campo` é a chave que a página usa para saber por onde ordenar;
+ * `null` significa "sem ordenação escolhida", e a tabela fica na ordem que a API mandou.
+ */
+export type Ordenacao = {
+  campo: string | null;
+  direcao: "asc" | "desc";
+  aoOrdenar: (campo: string) => void;
+};
+
+/**
+ * Uma coluna. Passe `string` para coluna simples, ou `{ rotulo, campo }` para a coluna
+ * ser clicável — `campo` é o que volta em `aoOrdenar`.
+ */
+export type Coluna = string | { rotulo: string; campo: string };
+
 export function Tabela({
   colunas,
   children,
   vazio,
+  ordenacao,
+  vazioTexto = "Nada por aqui ainda.",
 }: {
-  colunas: string[];
+  colunas: Coluna[];
   children: ReactNode;
   vazio?: boolean;
+  ordenacao?: Ordenacao;
+  vazioTexto?: string;
 }) {
   return (
     <div className="overflow-x-auto">
       <table className="w-full border-collapse text-sm">
         <thead>
           <tr className="border-b border-border text-left">
-            {colunas.map((coluna) => (
-              <th key={coluna} className="px-3 py-2 font-medium text-muted-foreground">
-                {coluna}
-              </th>
-            ))}
+            {colunas.map((coluna) => {
+              const rotulo = typeof coluna === "string" ? coluna : coluna.rotulo;
+              const campo = typeof coluna === "string" ? null : coluna.campo;
+              const ativa = campo !== null && ordenacao?.campo === campo;
+
+              return (
+                <th
+                  key={rotulo}
+                  className="px-3 py-2 font-medium text-muted-foreground"
+                  // `aria-sort` é atributo da célula de cabeçalho, não do botão dentro
+                  // dela: é o `th` que o leitor de tela anuncia como coluna ordenada.
+                  aria-sort={
+                    ativa ? (ordenacao?.direcao === "asc" ? "ascending" : "descending") : undefined
+                  }
+                >
+                  {campo && ordenacao ? (
+                    <button
+                      type="button"
+                      onClick={() => ordenacao.aoOrdenar(campo)}
+                      className="inline-flex items-center gap-1 hover:text-foreground"
+                    >
+                      {rotulo}
+                      {/* A seta some quando a coluna não é a ordenada. Deixar uma seta
+                          neutra em todas faria a ordenada desaparecer no meio delas. */}
+                      <span className="text-xs" aria-hidden="true">
+                        {ativa ? (ordenacao.direcao === "asc" ? "↑" : "↓") : "↕"}
+                      </span>
+                    </button>
+                  ) : (
+                    rotulo
+                  )}
+                </th>
+              );
+            })}
           </tr>
         </thead>
         <tbody>
           {vazio ? (
             <tr>
               <td colSpan={colunas.length} className="px-3 py-8 text-center text-muted-foreground">
-                Nada por aqui ainda.
+                {vazioTexto}
               </td>
             </tr>
           ) : (
@@ -256,6 +305,123 @@ export function Progresso({ valor }: { valor: number }) {
       </div>
       <span className="w-12 shrink-0 text-right text-xs text-muted-foreground">{seguro}%</span>
     </div>
+  );
+}
+
+/**
+ * Barra de filtros acima de uma tabela: busca à esquerda, seletores no meio, ações à
+ * direita.
+ *
+ * Uma peça só, e não cada tela montando a sua, porque o legado filtra em quase toda
+ * tabela e a conferência mostrou o custo de não ter isso: seis telas sem filtro nenhum.
+ */
+export function BarraDeFiltros({
+  busca,
+  aoBuscar,
+  placeholder = "Buscar…",
+  children,
+  acoes,
+}: {
+  busca?: string;
+  aoBuscar?: (valor: string) => void;
+  placeholder?: string;
+  children?: ReactNode;
+  acoes?: ReactNode;
+}) {
+  return (
+    <div className="mb-4 flex flex-wrap items-center gap-3">
+      {aoBuscar && (
+        <input
+          type="search"
+          value={busca ?? ""}
+          onChange={(e) => aoBuscar(e.target.value)}
+          placeholder={placeholder}
+          className={
+            "h-9 w-full max-w-xs rounded-md border border-input bg-card px-3 text-sm " +
+            "text-foreground placeholder:text-muted-foreground focus-visible:outline-none " +
+            "focus-visible:ring-2 focus-visible:ring-ring"
+          }
+        />
+      )}
+      {children}
+      {acoes && <span className="ml-auto flex items-center gap-2">{acoes}</span>}
+    </div>
+  );
+}
+
+/** Seletor de filtro. A primeira opção é sempre o "todos", com valor vazio. */
+export function FiltroSelecao({
+  valor,
+  aoMudar,
+  opcoes,
+  rotuloDeTodos,
+}: {
+  valor: string;
+  aoMudar: (valor: string) => void;
+  opcoes: { valor: string; rotulo: string }[];
+  rotuloDeTodos: string;
+}) {
+  return (
+    <select
+      value={valor}
+      onChange={(e) => aoMudar(e.target.value)}
+      // Sem `CLASSE_ENTRADA`: ela carrega `w-full`, e `w-auto` depois não vence de
+      // forma confiável — a ordem no CSS gerado é que decide, não a da string. Um
+      // seletor de filtro esticado empilha a barra inteira.
+      className={
+        "h-9 rounded-md border border-input bg-card px-3 text-sm text-foreground " +
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      }
+      aria-label={rotuloDeTodos}
+    >
+      <option value="">{rotuloDeTodos}</option>
+      {opcoes.map((opcao) => (
+        <option key={opcao.valor} value={opcao.valor}>
+          {opcao.rotulo}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+/**
+ * Botão de exportar CSV.
+ *
+ * Desabilitado quando não há linha: exportar um arquivo vazio é o tipo de coisa que a
+ * pessoa só descobre depois de abrir a planilha.
+ */
+export function BotaoDeExportar({
+  onClick,
+  quantidade,
+}: {
+  onClick: () => void;
+  quantidade: number;
+}) {
+  return (
+    <Botao variante="secundario" onClick={onClick} desabilitado={quantidade === 0}>
+      Exportar CSV{quantidade > 0 && ` (${quantidade})`}
+    </Botao>
+  );
+}
+
+/**
+ * Contador do que a filtragem deixou passar.
+ *
+ * Existe para o caso em que o filtro esconde tudo: sem ele, a tabela vazia parece
+ * sistema sem dados, e não busca que não achou nada.
+ */
+export function ContadorDeResultados({ mostrando, total }: { mostrando: number; total: number }) {
+  if (mostrando === total) {
+    return (
+      <span className="text-sm text-muted-foreground">
+        {total} {total === 1 ? "resultado" : "resultados"}
+      </span>
+    );
+  }
+  return (
+    <span className="text-sm text-muted-foreground">
+      {mostrando} de {total}
+    </span>
   );
 }
 
