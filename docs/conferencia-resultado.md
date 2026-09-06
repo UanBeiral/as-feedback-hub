@@ -14,12 +14,14 @@
 
 | | |
 |---|---|
-| Conferidas | 11 de 35 — todo o bloco de Administração, mais SCR-0035 e SCR-0001 |
-| Defeitos próprios encontrados | 2 (um deles bloqueava a conferência; ambos corrigidos) |
-| Divergências contra o oráculo | 53 registradas abaixo |
+| Conferidas | 17 de 35 |
+| Defeitos próprios encontrados | 5 (um bloqueava a conferência; todos corrigidos) |
+| Divergências contra o oráculo | 76 registradas abaixo |
 
-O bloco de Administração está **fechado**: SCR-0003, 0007, 0008, 0009, 0010, 0011, 0012,
-0013, 0015, 0018 e 0024. Faltam os blocos de Equipe, Feedback e Cliente/Relatórios.
+O bloco de **Administração** está fechado (SCR-0003, 0007, 0008, 0009, 0010, 0011, 0012,
+0013, 0015, 0018 e 0024) e o de **Equipe/Feedback** está a meio caminho (SCR-0029, 0030,
+0032, 0020, 0027/0031 e 0019). Faltam o histórico e o início dos outros papéis, as
+anotações realizadas, e o bloco de Cliente/Relatórios.
 
 O ambiente usado é o do `deploy/seed_demo.py`: sem dados de verdade a conferência
 marcaria caixa sem provar nada — tabela vazia esconde coluna, filtro e badge.
@@ -68,6 +70,36 @@ renovações concorrentes: `200` e `401`, onde antes eram `200` e `200`).
 `/admin/usuarios`, cartão "Pessoas": a descrição era
 `${departamentos.length} departamento(s) cadastrado(s).` — texto de outra tela, colado
 sobre a lista de gente. Passou a contar pessoas.
+
+### BUG-03 — "Meus Feedbacks" não dizia sobre quem era cada pedido ⛔ *corrigido*
+
+A tabela tinha Status, Prazo e "Enviado em". Nada mais. Com quatro pedidos do mesmo ciclo
+a tela mostrava **quatro linhas idênticas**, e a pessoa não tinha como saber qual
+responder — a tela era inutilizável, não incompleta. O mesmo valia no Início, onde cada
+pendência aparecia como "Feedback sobre um colega".
+
+A raiz estava no contrato: `RequestOut` devolvia `giver_id` e `receiver_id` como UUID e
+nenhum nome. O front não tinha o dado para mostrar, e a saída óbvia — pedir `/profiles`
+inteiro só para traduzir uuid em nome — é pior que resolver na origem.
+
+`RequestOut` ganhou `giver_name` e `receiver_name`, resolvidos por **uma** consulta para
+a lista toda (o conjunto de ids colapsa as repetições antes de ir ao banco). A tabela
+ganhou a coluna **Avaliado**, como primeira; o Início passou a dizer o nome.
+
+Que o oráculo tem uma busca chamada **"Buscar avaliado…"** é a confirmação de que o
+legado sempre mostrou esse nome.
+
+### BUG-04 — status cru, em inglês, na tela de Minha Equipe
+
+`/minha-equipe` mostra a coluna Status com o valor do banco: `active`, minúsculo e em
+inglês, numa tela em português onde todo o resto é traduzido. O legado usa um badge
+"Ativo". Registrado junto da divergência #58, que reescreve a coluna de qualquer jeito.
+
+### BUG-05 — o gestor aparece na própria equipe
+
+`/minha-equipe` lista Marina Duarte entre os membros da equipe de Marina Duarte. No
+oráculo o gestor não aparece na própria lista, e o rodapé "Total de membros na equipe"
+conta sem ele. Registrado junto de #58.
 
 ---
 
@@ -271,6 +303,106 @@ Rota `/admin/configuracoes` · oráculo `company-settings/screenshots/configurac
 A #50 não é questão de fidelidade e sim de quem usa a tela: pedir JSON válido a um
 administrador de escritório é convite a erro de digitação que desliga um recurso em
 silêncio. As três chaves extras de DEV-A09 aparecem como esperado.
+
+## SCR-0029 · Início (Gestor)
+
+Rota `/` como gestor · oráculo `gestor/screenshots/inicio.png`
+
+| # | Divergência | Peso |
+|---|---|---|
+| 54 | Falta a **data por extenso** sob a saudação ("Sexta-Feira, 28 De Agosto De 2026") | texto |
+| 55 | Falta o cartão **"Minhas Anotações"**, com "+ Anotar" e estado vazio próprio, direto no Início | conteúdo |
+| 56 | Cards: legado tem **Membros da Equipe, Pendências, Taxa de Conclusão, Ciclo Atual**; novo repete os quatro do painel admin | conteúdo — a mesma troca de pergunta da #9 |
+| 57 | Badge de papel: legado mostra **"Gestor (Admin)"**, o papel efetivo e o real juntos; o novo mostra só "Gestor" | texto |
+
+O banner "Dar Feedback para alguém" também falta aqui — é a mesma #8, e aparece em todo
+Início do legado, não só no do admin.
+
+A #57 tem consequência prática: o seletor "Ver como…" troca o papel ativo (BR-MIGRAR-016)
+e nada na tela lembra qual é o papel de verdade da pessoa.
+
+## SCR-0030 · Minha Equipe (Gestor)
+
+Rota `/minha-equipe` · oráculo `gestor/screenshots/minha-equipe.png`
+
+**Divergência estrutural.** No legado esta tela é um **painel de acompanhamento do ciclo**;
+no novo é uma listagem de pessoas.
+
+| # | Divergência | Peso |
+|---|---|---|
+| 58 | Faltam as colunas **Pendentes de Enviar**, **Enviados**, **Pendentes de Leitura** e **Progresso** (barra + %) | conteúdo — é o miolo da tela |
+| 59 | Faltam as três ações por membro: dar feedback, enviar lembrete, remover | ação |
+| 60 | Sem **Exportar Excel** e sem **+ Adicionar Membro** | ação |
+| 61 | Falta o rodapé: "Progresso geral da equipe", "N de M feedbacks enviados (%)" e "Total de membros na equipe: N" | conteúdo |
+| 62 | Status aparece como `active` cru, sem badge (BUG-04) | texto |
+| 63 | O próprio gestor entra na lista da própria equipe (BUG-05) | conteúdo |
+| 64 | Descrição: o legado explica o recorte ("…no ciclo de feedback 360° atual. Feedbacks livres e de clientes são exibidos em outras seções") | texto |
+
+O **lembrete por membro** (#59) é a única ação do legado sem correspondente em lugar
+nenhum do sistema novo — as outras duas existem noutras telas.
+
+## SCR-0032 · Histórico da Equipe (Gestor)
+
+Rota `/historico-equipe` · oráculo `gestor/screenshots/historico-equipe.png`
+
+| # | Divergência | Peso |
+|---|---|---|
+| 65 | O feedback livre aparece com os três campos **concatenados por " · "** numa linha; o legado rotula **Pontos Positivos**, **Pontos de Melhoria** e **Mensagem** separadamente | conteúdo |
+| 66 | Falta a marca de leitura: **"✅ Ciente em {data} por {pessoa}"** | conteúdo — `read_at`/`read_by` existem no schema e nenhum endpoint os preenche |
+| 67 | Falta a ação **Ver Detalhes** | ação |
+| 68 | Faltam a ordenação por data e a busca dentro de cada seção | ação |
+| 69 | Seções colapsáveis por tipo → abas com contagem | posicionamento — equivalente, e o novo é mais direto |
+
+A #65 apaga uma distinção que o formulário faz questão de manter: elogio e crítica viram
+a mesma frase corrida. A #66 é a ponta visível de uma lacuna já registrada em
+`estado-do-projeto.md` — o destinatário não tem como marcar ciência.
+
+## SCR-0020 · Meus Feedbacks
+
+Rota `/meus-feedbacks` · oráculo `feedback/screenshots/meus-feedbacks-gestor.png`
+
+| # | Divergência | Peso |
+|---|---|---|
+| 70 | Faltam os 3 cards: **Precisam da sua atenção**, **Enviados com sucesso**, **Abdicados** | conteúdo |
+| 71 | Falta **"Buscar avaliado…"**, o filtro de status e o toggle **"Só pendentes"** | ação |
+| 72 | Faltam a ordenação **A-Z** / **Data** e o botão **"Mostrar cancelados"** | ação — e o novo já traz os cancelados misturados, sem como escondê-los |
+| 73 | Falta a seção **"Feedback Livre — Enviados por mim (N)"** | conteúdo |
+| 74 | Descrição: "Gerencie seus feedbacks pendentes, enviados e abdicados" → "O que você precisa responder e o que já enviou neste ciclo" | texto |
+
+A coluna do avaliado, que faltava, virou BUG-03 e já está corrigida — não entra como
+divergência porque não era escolha, era defeito.
+
+## SCR-0027 / SCR-0031 · Feedbacks Pendentes (coordenador / gestor)
+
+Oráculo `gestor/screenshots/feedbacks-pendentes.png`
+
+**O roteiro aponta a rota errada.** Ele manda conferir em `/meus-feedbacks`, mas o legado
+diz, na própria descrição da tela: *"Feedbacks que **sua equipe** ainda precisa enviar no
+ciclo atual."* É a visão do gestor **sobre a equipe**, não sobre si — outra tela, outro
+escopo.
+
+| # | Divergência | Peso |
+|---|---|---|
+| 75 | A tela **não existe** no sistema novo: nada mostra o que a equipe deve ao ciclo | conteúdo, **grave** |
+
+Some junto com a #58: as duas eram como o gestor acompanhava quem estava atrasado. Sem
+elas, o gestor sabe o que *ele* deve e não o que a equipe dele deve — e o lembrete da #59
+perde o lugar de onde era disparado.
+
+Corrigir o roteiro faz parte do resultado: `conferencia-oraculo.md` passou a apontar que
+a rota não existe, em vez de mandar conferir a errada.
+
+## SCR-0019 · Minhas Anotações
+
+Rota `/anotacoes` · oráculo `feedback/screenshots/minhas-anotacoes.png`
+
+| # | Divergência | Peso |
+|---|---|---|
+| 76 | Faltam os cards **Total de anotações** e **Pessoas anotadas**, e a **busca por nome** | conteúdo |
+
+O legado organiza as anotações **por ciclo e pessoa**; o novo lista em ordem cronológica.
+Com três anotações dá na mesma; com um ciclo inteiro, não. O formulário inline no lugar
+do modal "+ Nova Anotação" é o padrão já adotado em todo o sistema novo.
 
 ---
 

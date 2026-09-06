@@ -43,7 +43,7 @@ export default function MeusFeedbacks() {
             descricao="Quando um ciclo abrir com você entre os avaliadores, os pedidos aparecem aqui."
           />
         ) : (
-          <Tabela colunas={["Status", "Prazo", "Enviado em", ""]}>
+          <Tabela colunas={["Avaliado", "Status", "Prazo", "Enviado em", ""]}>
             {requisicoes.map((requisicao) => {
               const atrasado =
                 requisicao.due_date !== null &&
@@ -52,6 +52,12 @@ export default function MeusFeedbacks() {
 
               return (
                 <Linha key={requisicao.id}>
+                  {/* Primeira coluna, e não a última: sem o nome de quem será avaliado a
+                      lista vira um punhado de linhas idênticas — mesmo status, mesmo
+                      prazo — e a pessoa não descobre qual pedido responder. */}
+                  <Celula className="font-medium">
+                    {requisicao.receiver_name ?? "—"}
+                  </Celula>
                   <Celula>
                     <Selo tom={TOM_DO_STATUS[requisicao.status as keyof typeof TOM_DO_STATUS]}>
                       {ROTULO_DO_REQUEST[requisicao.status] ?? requisicao.status}

@@ -2790,6 +2790,8 @@ export interface components {
              * Format: uuid
              */
             giver_id: string;
+            /** Giver Name */
+            giver_name?: string | null;
             /**
              * Id
              * Format: uuid
@@ -2802,6 +2804,8 @@ export interface components {
              * Format: uuid
              */
             receiver_id: string;
+            /** Receiver Name */
+            receiver_name?: string | null;
             /** Status */
             status: string;
             /** Submitted At */
@@ -2851,7 +2855,16 @@ export interface components {
              */
             token_expires_at: string;
         };
-        /** RequestOut */
+        /**
+         * RequestOut
+         * @description Pedido de feedback, com os nomes das duas pontas resolvidos.
+         *
+         *     Os nomes não são enfeite: sem eles a lista "Meus Feedbacks" vira um punhado de
+         *     linhas idênticas — mesmo status, mesmo prazo — e quem responde não descobre sobre
+         *     quem é cada uma. Resolver do lado da API é o caminho barato: o repositório já traz
+         *     os perfis pelo join, e a alternativa seria o front pedir `/profiles` inteiro só para
+         *     traduzir uuid em nome.
+         */
         RequestOut: {
             /** Cancel Justification */
             cancel_justification: string | null;
@@ -2872,6 +2885,8 @@ export interface components {
              * Format: uuid
              */
             giver_id: string;
+            /** Giver Name */
+            giver_name?: string | null;
             /**
              * Id
              * Format: uuid
@@ -2882,6 +2897,8 @@ export interface components {
              * Format: uuid
              */
             receiver_id: string;
+            /** Receiver Name */
+            receiver_name?: string | null;
             /** Status */
             status: string;
             /** Submitted At */

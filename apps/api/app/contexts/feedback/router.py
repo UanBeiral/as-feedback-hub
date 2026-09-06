@@ -363,6 +363,21 @@ async def cycle_progress(
 
 # ---------------------------------------------------------------- requests
 
+async def _nomes_dos_envolvidos(
+    session: SessionDep, tenant: TenantDep, requests: list
+) -> dict[UUID, str]:
+    """Resolve uuid → nome para as duas pontas dos pedidos, numa consulta só.
+
+    Uma consulta, e não uma por pedido: a lista costuma repetir as mesmas pessoas, e o
+    conjunto colapsa isso antes de ir ao banco.
+    """
+    ids = {r.giver_id for r in requests} | {r.receiver_id for r in requests}
+    if not ids:
+        return {}
+    perfis = await ProfileRepository(session, tenant).list_by_ids(ids)
+    return {p.id: p.full_name for p in perfis}
+
+
 @router.get("/requests/mine", response_model=list[RequestOut])
 async def my_requests(
     tenant: TenantDep,
@@ -371,10 +386,9 @@ async def my_requests(
 ) -> list[RequestOut]:
     repo = RequestRepository(session, tenant)
     status_alvo = ("pending", "draft", "submitted") if incluir_enviados else ("pending", "draft")
-    return [
-        RequestOut.model_validate(r)
-        for r in await repo.list_para_avaliador(tenant.user_id, status=status_alvo)
-    ]
+    pedidos = await repo.list_para_avaliador(tenant.user_id, status=status_alvo)
+    nomes = await _nomes_dos_envolvidos(session, tenant, pedidos)
+    return [RequestOut.de_modelo(r, nomes) for r in pedidos]
 
 
 @router.get("/requests/{request_id}", response_model=RequestDetailOut)
@@ -391,8 +405,9 @@ async def request_detail(
 
     perguntas = await QuestionRepository(session, tenant).list_by_form(request.form_id)
     respostas = await AnswerRepository(session, tenant).list_do_request(request_id)
+    nomes = await _nomes_dos_envolvidos(session, tenant, [request])
     return RequestDetailOut(
-        **RequestOut.model_validate(request).model_dump(),
+        **RequestOut.de_modelo(request, nomes).model_dump(),
         questions=[QuestionOut.model_validate(q) for q in perguntas],
         answers=[AnswerOut.model_validate(a) for a in respostas],
     )
@@ -402,7 +417,9 @@ async def request_detail(
 async def received_requests(tenant: TenantDep, session: SessionDep) -> list[RequestOut]:
     """Feedbacks que a pessoa recebeu. `read_at` nulo é o que o sino conta."""
     repo = RequestRepository(session, tenant)
-    return [RequestOut.model_validate(r) for r in await repo.list_recebidos(tenant.user_id)]
+    recebidos = await repo.list_recebidos(tenant.user_id)
+    nomes = await _nomes_dos_envolvidos(session, tenant, recebidos)
+    return [RequestOut.de_modelo(r, nomes) for r in recebidos]
 
 
 @router.post("/requests/{request_id}/read", status_code=status.HTTP_204_NO_CONTENT)

@@ -78,31 +78,38 @@ Legenda: ✅ tela existe · ⚠️ existe parcialmente · ❌ não implementada
       `admin/screenshots/historico-equipe.png` (+ `-2`)
       *Atenção*: confira as **três seções** (livre, clientes, 360) e os filtros.
 
-- [ ] **SCR-0026 / 0030 · Minha Equipe (coordenador / gestor)** ✅ `/minha-equipe`
+- [x] **SCR-0030 · Minha Equipe (gestor)** ✅ `/minha-equipe` — **conferida**,
+      7 divergências (a tela era um painel de acompanhamento e virou listagem)
+      Falta ainda conferir a variante do coordenador (SCR-0026).
       `coordenador/screenshots/minha-equipe.png` · `gestor/screenshots/minha-equipe.png`
       *Atenção*: é a mesma rota do admin, com escopo diferente. Entre com um gestor para
       conferir — o conteúdo muda, o layout não.
 
-- [ ] **SCR-0028 / 0032 · Histórico (coordenador / gestor)** ✅ `/historico-equipe`
+- [x] **SCR-0032 · Histórico (gestor)** ✅ `/historico-equipe` — **conferida**,
+      5 divergências. Falta a variante do coordenador (SCR-0028).
       `coordenador/screenshots/historico-equipe.png` ·
       `gestor/screenshots/historico-equipe.png` (+ `-2`)
 
-- [ ] **SCR-0027 / 0031 · Feedbacks Pendentes (coordenador / gestor)** ✅ `/meus-feedbacks`
+- [x] **SCR-0027 / 0031 · Feedbacks Pendentes (coordenador / gestor)** ❌ **não existe**
       `coordenador/screenshots/feedbacks-pendentes.png` ·
       `gestor/screenshots/feedbacks-pendentes.png`
+      *Correção do roteiro*: esta tela **não** é `/meus-feedbacks`. O legado diz
+      "Feedbacks que **sua equipe** ainda precisa enviar no ciclo atual" — é a visão do
+      gestor sobre a equipe, e o sistema novo não tem nada equivalente.
 
-- [ ] **SCR-0025 / 0029 / 0033 · Início (coordenador / gestor / colaborador)** ✅ `/`
+- [x] **SCR-0029 · Início (gestor)** ✅ `/` — **conferida**, 4 divergências.
+      Faltam as variantes de coordenador (SCR-0025) e colaborador (SCR-0033).
       `coordenador/screenshots/inicio.png` · `gestor/screenshots/inicio.png` (+ `-2`) ·
       `colaborador/screenshots/inicio.png` (+ `-2`, `-3`)
       *Atenção*: quatro telas do legado viraram uma. Entre com cada papel.
 
 ## Feedback
 
-- [ ] **SCR-0020 · Meus Feedbacks** ✅ `/meus-feedbacks`
+- [x] **SCR-0020 · Meus Feedbacks** ✅ `/meus-feedbacks` — **conferida**, 5 divergências
       `feedback/screenshots/meus-feedbacks.png` · `meus-feedbacks-colaborador.png` ·
       `meus-feedbacks-gestor.png`
 
-- [ ] **SCR-0019 · Minhas Anotações** ✅ `/anotacoes`
+- [x] **SCR-0019 · Minhas Anotações** ✅ `/anotacoes` — **conferida**, 1 divergência
       `feedback/screenshots/minhas-anotacoes.png`
 
 - [ ] **SCR-0004 · Anotações Realizadas** ✅ `/anotacoes` (seção inferior)
@@ -166,10 +173,10 @@ Legenda: ✅ tela existe · ⚠️ existe parcialmente · ❌ não implementada
 
 | | |
 |---|---|
-| Telas literais a conferir | 24 (uma, a Agenda, está fora do corte) |
-| Já conferidas | 11 — todo o bloco de Administração, mais SCR-0035 e SCR-0001 |
-| Faltam | os blocos de Equipe, Feedback e Cliente/Relatórios |
-| Resultado até aqui | [`conferencia-resultado.md`](conferencia-resultado.md) — 53 divergências e 2 defeitos próprios |
+| Telas literais a conferir | 18 (uma, a Agenda, está fora do corte) |
+| Já conferidas | 17 — Administração inteira, e metade de Equipe/Feedback |
+| Faltam | variantes de coordenador e colaborador, anotações realizadas, Cliente/Relatórios |
+| Resultado até aqui | [`conferencia-resultado.md`](conferencia-resultado.md) — 76 divergências e 5 defeitos próprios |
 | Já sabidamente ausentes | SCR-0021 (Meu Histórico), SCR-0023 (Feedback Livre) |
 | Parciais | SCR-0017 (Emitir Relatório), SCR-0022 (Caderno do Ciclo) |
 | Divergência estrutural | nenhuma em aberto |

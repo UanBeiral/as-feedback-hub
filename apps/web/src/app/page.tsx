@@ -123,7 +123,10 @@ export default function PaginaInicial() {
                   <li key={pendencia.id} className="flex items-center justify-between py-3">
                     <div>
                       <p className="text-sm text-foreground">
-                        Feedback sobre um colega
+                        {/* O nome vem do contrato (`receiver_name`). "Um colega" era
+                            texto de espera de quando ele não vinha, e deixava a lista
+                            sem dizer qual pedido é qual. */}
+                        Feedback sobre {pendencia.receiver_name ?? "um colega"}
                         {pendencia.due_date && (
                           <span className="ml-2 text-xs text-muted-foreground">
                             prazo {formatarData(pendencia.due_date)}

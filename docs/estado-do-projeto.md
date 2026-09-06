@@ -52,15 +52,16 @@ como decidido.
 
 **Não bloqueia, mas está aberto:**
 
-- **A comparação com o oráculo está em curso.** 11 das 35 telas do subset literal foram
-  conferidas — **todo o bloco de Administração**, mais o fluxo público e o login — e
-  renderam 53 divergências em
-  [`docs/conferencia-resultado.md`](conferencia-resultado.md); 24 seguem pendentes
-  (Equipe, Feedback e Cliente/Relatórios). É a validação que `parity_specs.md` exige e
-  que nenhum teste automatizado substitui.
-  Dois padrões já se repetem em quase toda tela de admin: **o legado exporta e filtra
-  quase tudo**, e o novo quase nada. E quatro divergências não se resolvem no front —
-  mexem em schema.
+- **A comparação com o oráculo está em curso.** 17 das 35 telas do subset literal foram
+  conferidas — Administração inteira e metade de Equipe/Feedback — e renderam 76
+  divergências em [`docs/conferencia-resultado.md`](conferencia-resultado.md); 18 seguem
+  pendentes. É a validação que `parity_specs.md` exige e que nenhum teste automatizado
+  substitui.
+  Três padrões já se repetem: **o legado exporta e filtra quase tudo**, e o novo quase
+  nada; **as telas de acompanhamento viraram listagens** (Minha Equipe perdeu progresso e
+  contadores, Meus Feedbacks perdeu os cards); e quatro divergências não se resolvem no
+  front, porque mexem em schema. Uma tela do gestor — **Feedbacks Pendentes da equipe** —
+  simplesmente não existe.
 - **Os 10 arquivos `.feature` de paridade não rodam.** Os cenários estão cobertos por
   testes de service, mas o roteiro formal da homologação ainda não é executável.
 - **Telas secundárias**: 24 das 43. Falta o detalhe de avaliação de cliente, o envio de
@@ -79,13 +80,14 @@ como decidido.
 
 Em ordem de valor, para quem for continuar. Cada item diz o que fazer e onde olhar.
 
-1. **Conferir as 24 telas literais que faltam contra o oráculo.** O roteiro está em
+1. **Conferir as 18 telas literais que faltam contra o oráculo.** O roteiro está em
    [`docs/conferencia-oraculo.md`](conferencia-oraculo.md) e o retorno vai para
    [`docs/conferencia-resultado.md`](conferencia-resultado.md). Suba o ambiente com
    `deploy/seed_demo.py` antes: contra tabela vazia a conferência não prova nada.
-   O bloco de Administração já saiu, e mostrou o que a conferência rende: a reescrita do
-   fluxo público como wizard, 53 divergências e dois defeitos que nenhum teste pegava —
-   um deles derrubando a sessão a cada F5.
+   O que já saiu mostra o que a conferência rende: a reescrita do fluxo público como
+   wizard, 76 divergências e cinco defeitos que nenhum teste pegava — um derrubando a
+   sessão a cada F5, outro deixando "Meus Feedbacks" com quatro linhas idênticas e sem
+   dizer sobre quem era cada uma.
 2. **Tornar os `.feature` executáveis.** Os 10 arquivos em
    `docs/reversa/migration/parity_tests/` são o roteiro formal da homologação e hoje não
    rodam. Os cenários estão cobertos por testes de service, mas o cliente vai homologar

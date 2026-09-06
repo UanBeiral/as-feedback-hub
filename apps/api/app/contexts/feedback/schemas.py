@@ -183,17 +183,35 @@ class CancelIn(BaseModel):
 
 
 class RequestOut(BaseModel):
+    """Pedido de feedback, com os nomes das duas pontas resolvidos.
+
+    Os nomes não são enfeite: sem eles a lista "Meus Feedbacks" vira um punhado de
+    linhas idênticas — mesmo status, mesmo prazo — e quem responde não descobre sobre
+    quem é cada uma. Resolver do lado da API é o caminho barato: o repositório já traz
+    os perfis pelo join, e a alternativa seria o front pedir `/profiles` inteiro só para
+    traduzir uuid em nome.
+    """
+
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
     cycle_id: UUID
     form_id: UUID
     giver_id: UUID
+    giver_name: str | None = None
     receiver_id: UUID
+    receiver_name: str | None = None
     status: str
     due_date: date | None
     submitted_at: datetime | None
     cancel_justification: str | None
+
+    @classmethod
+    def de_modelo(cls, request: object, nomes: dict[UUID, str]) -> RequestOut:
+        saida = cls.model_validate(request)
+        saida.giver_name = nomes.get(saida.giver_id)
+        saida.receiver_name = nomes.get(saida.receiver_id)
+        return saida
 
 
 class RequestDetailOut(RequestOut):

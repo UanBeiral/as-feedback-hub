@@ -3176,6 +3176,17 @@
             "title": "Giver Id",
             "type": "string"
           },
+          "giver_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Giver Name"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -3192,6 +3203,17 @@
             "format": "uuid",
             "title": "Receiver Id",
             "type": "string"
+          },
+          "receiver_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Receiver Name"
           },
           "status": {
             "title": "Status",
@@ -3325,6 +3347,7 @@
         "type": "object"
       },
       "RequestOut": {
+        "description": "Pedido de feedback, com os nomes das duas pontas resolvidos.\n\nOs nomes não são enfeite: sem eles a lista \"Meus Feedbacks\" vira um punhado de\nlinhas idênticas — mesmo status, mesmo prazo — e quem responde não descobre sobre\nquem é cada uma. Resolver do lado da API é o caminho barato: o repositório já traz\nos perfis pelo join, e a alternativa seria o front pedir `/profiles` inteiro só para\ntraduzir uuid em nome.",
         "properties": {
           "cancel_justification": {
             "anyOf": [
@@ -3364,6 +3387,17 @@
             "title": "Giver Id",
             "type": "string"
           },
+          "giver_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Giver Name"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -3373,6 +3407,17 @@
             "format": "uuid",
             "title": "Receiver Id",
             "type": "string"
+          },
+          "receiver_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Receiver Name"
           },
           "status": {
             "title": "Status",
