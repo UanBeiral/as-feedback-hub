@@ -76,6 +76,10 @@ services:
       # sobrescreve o `env_file`, que é carregado antes.
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-asfeedback}
       REDIS_URL: redis://redis:6379/0
+      # `localhost` no `.env` também não serve para o SMTP de desenvolvimento: dentro do
+      # container, o Mailpit é alcançado pelo nome do serviço. Só tem efeito quando
+      # SMTP_HOST está apontado para ele.
+      SMTP_HOST: ${SMTP_HOST:-}
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
@@ -106,6 +110,23 @@ services:
       # internet é o Nginx (AD-06) e esta seção sai — o web não precisa de porta
       # própria quando há proxy na frente.
       - "127.0.0.1:3000:3000"
+
+  # Caixa de entrada falsa, para desenvolvimento (BR-MIGRAR-030 / R-11). Só sobe com
+  # `--profile dev`: em produção quem entrega email é o Resend ou o SMTP do cliente, e
+  # um serviço que engole tudo o que sai não pode estar de pé lá por acidente.
+  #
+  #   docker compose --env-file .env -f deploy/docker-compose.yml --profile dev up -d mailpit
+  #
+  # Depois aponte EMAIL_PROVIDER=smtp, SMTP_HOST=mailpit, SMTP_PORT=1025 e abra
+  # http://localhost:8025 para ver o que o worker mandou. É o único jeito de exercitar
+  # o caminho que não é `console` sem gastar domínio verificado.
+  mailpit:
+    image: axllent/mailpit:latest
+    profiles: [dev]
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:1025:1025"
+      - "127.0.0.1:8025:8025"
 
   # nginx:
   #   image: nginx:1.27-alpine

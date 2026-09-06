@@ -49,6 +49,9 @@ class Settings(BaseSettings):
     smtp_port: int = 587
     smtp_user: str = ""
     smtp_password: str = ""
+    # STARTTLS obrigatório por padrão. Desligar é decisão explícita, para relay interno
+    # que não oferece TLS — e nunca com usuário e senha, ver `build_email_adapter`.
+    smtp_tls: bool = True
     email_from: str = "nao-responda@exemplo.com"
 
     # Exportações (AD-07/AD-09): arquivos em disco da VPS, um diretório por tenant.

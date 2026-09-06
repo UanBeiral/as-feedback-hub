@@ -20,7 +20,10 @@ from worker.consumers.outbox import despachar_lote
 from worker.handlers import RegistroDeHandlers, TopicoSemHandlerError
 from worker.jobs.email import (
     ConsoleEmailAdapter,
+    EnvioDeEmailError,
     ProvedorNaoConfiguradoError,
+    ResendEmailAdapter,
+    SmtpEmailAdapter,
     build_email_adapter,
 )
 from worker.scheduler import Scheduler
@@ -331,16 +334,131 @@ async def test_adapter_console_nao_explode(caplog: pytest.LogCaptureFixture) -> 
     await adapter.send(to="alguem@exemplo.com", subject="Oi", body="corpo")
 
 
-def test_provedor_nao_implementado_falha_alto() -> None:
-    """Melhor a mensagem ir para a DLQ do que sumir achando que foi enviada."""
+def _settings(**campos):
     from app.core.config import Settings
 
-    settings = Settings(  # type: ignore[call-arg]
-        jwt_secret="chave-de-teste-com-mais-de-32-caracteres-ok",
-        email_provider="resend",
+    return Settings(  # type: ignore[call-arg]
+        jwt_secret="chave-de-teste-com-mais-de-32-caracteres-ok", **campos
     )
-    with pytest.raises(ProvedorNaoConfiguradoError):
-        build_email_adapter(settings)
+
+
+def test_resend_sem_chave_falha_na_construcao() -> None:
+    """Configuração ausente explode antes de o worker aceitar o primeiro lote.
+
+    Subir e falhar em cada envio encheria a DLQ em silêncio, e o escritório descobriria
+    por um cliente dizendo que não recebeu.
+    """
+    with pytest.raises(ProvedorNaoConfiguradoError, match="RESEND_API_KEY"):
+        build_email_adapter(_settings(email_provider="resend"))
+
+
+def test_smtp_sem_host_falha_na_construcao() -> None:
+    with pytest.raises(ProvedorNaoConfiguradoError, match="SMTP_HOST"):
+        build_email_adapter(_settings(email_provider="smtp"))
+
+
+def test_smtp_com_usuario_e_sem_senha_falha_na_construcao() -> None:
+    """Quase sempre é variável esquecida no deploy — e o erro do servidor mandaria
+    procurar no lugar errado."""
+    with pytest.raises(ProvedorNaoConfiguradoError, match="SMTP_PASSWORD"):
+        build_email_adapter(
+            _settings(email_provider="smtp", smtp_host="mail.exemplo.com", smtp_user="u")
+        )
+
+
+def test_provedor_desconhecido_diz_quais_existem() -> None:
+    with pytest.raises(ProvedorNaoConfiguradoError, match="console"):
+        build_email_adapter(_settings(email_provider="sendgrid"))
+
+
+def test_provedores_configurados_constroem() -> None:
+    resend = build_email_adapter(_settings(email_provider="resend", resend_api_key="re_x"))
+    assert isinstance(resend, ResendEmailAdapter)
+
+    smtp = build_email_adapter(
+        _settings(email_provider="smtp", smtp_host="mail.exemplo.com")
+    )
+    assert isinstance(smtp, SmtpEmailAdapter)
+
+
+async def test_resend_recusado_vira_erro_retentavel_com_o_motivo() -> None:
+    """O corpo do erro entra na mensagem: é ele que diz *qual* é o problema.
+
+    Sem isso a DLQ guardaria "422" e ninguém saberia que o domínio não está verificado.
+    """
+    import httpx
+
+    adapter = ResendEmailAdapter("re_x", "nao-responda@exemplo.com")
+    adapter._cliente = httpx.AsyncClient(  # type: ignore[attr-defined]
+        transport=httpx.MockTransport(
+            lambda _: httpx.Response(422, text="The domain is not verified")
+        )
+    )
+
+    with pytest.raises(EnvioDeEmailError, match="não está verificado|not verified"):
+        await adapter.send(to="a@b.com", subject="x", body="y")
+
+
+async def test_resend_manda_texto_puro_para_o_destinatario() -> None:
+    import httpx
+
+    enviados: list[dict] = []
+
+    def registrar(request: httpx.Request) -> httpx.Response:
+        import json
+
+        enviados.append(json.loads(request.content))
+        return httpx.Response(200, json={"id": "abc"})
+
+    adapter = ResendEmailAdapter("re_x", "nao-responda@exemplo.com")
+    adapter._cliente = httpx.AsyncClient(  # type: ignore[attr-defined]
+        transport=httpx.MockTransport(registrar)
+    )
+
+    await adapter.send(to="pessoa@exemplo.com", subject="Oi", body="corpo")
+
+    assert enviados == [
+        {
+            "from": "nao-responda@exemplo.com",
+            "to": ["pessoa@exemplo.com"],
+            "subject": "Oi",
+            "text": "corpo",
+        }
+    ]
+
+
+def test_smtp_sem_tls_com_senha_e_recusado() -> None:
+    """Senha em conexão sem TLS é senha entregue a quem estiver no caminho.
+
+    Relay interno sem TLS existe e é legítimo — com autenticação, não.
+    """
+    with pytest.raises(ProvedorNaoConfiguradoError, match="texto puro"):
+        build_email_adapter(
+            _settings(
+                email_provider="smtp",
+                smtp_host="mail.interno",
+                smtp_user="u",
+                smtp_password="p",
+                smtp_tls=False,
+            )
+        )
+
+
+def test_smtp_sem_tls_sem_autenticacao_e_permitido() -> None:
+    adapter = build_email_adapter(
+        _settings(email_provider="smtp", smtp_host="mail.interno", smtp_tls=False)
+    )
+    assert isinstance(adapter, SmtpEmailAdapter)
+
+
+async def test_smtp_fora_do_ar_vira_erro_retentavel() -> None:
+    """Provedor caído é estado temporário: o despachante tenta de novo, não derruba
+    o worker — e as notificações no app não dependem de email nenhum."""
+    adapter = SmtpEmailAdapter(
+        host="127.0.0.1", port=1, user="", password="", remetente="x@exemplo.com"
+    )
+    with pytest.raises(EnvioDeEmailError, match="SMTP falhou"):
+        await adapter.send(to="a@b.com", subject="x", body="y")
 
 
 def test_provedor_console_e_o_default_de_desenvolvimento() -> None:

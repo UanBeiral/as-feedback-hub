@@ -87,6 +87,38 @@ O Redis ainda não é necessário: a fila do outbox é o próprio Postgres (poll
 `status='pending'`), como descreve `target_data_model.md`. Suba `redis` quando o worker
 existir.
 
+### Email
+
+`EMAIL_PROVIDER` aceita três valores (BR-MIGRAR-030 / R-11):
+
+| valor | o que faz | exige |
+|---|---|---|
+| `console` | escreve no log e não envia nada | — |
+| `resend` | o provedor que o legado já usava | `RESEND_API_KEY` e domínio de `EMAIL_FROM` verificado |
+| `smtp` | servidor próprio ou relay | `SMTP_HOST`; STARTTLS obrigatório salvo `SMTP_TLS=false` |
+
+**Configuração incompleta impede o worker de subir**, de propósito: subir e falhar em
+cada envio encheria a DLQ em silêncio, e o escritório descobriria por um cliente dizendo
+que não recebeu. Falha do provedor é outra coisa — essa é temporária, vai para retry e
+termina na DLQ com o motivo à vista.
+
+Para ver os emails em desenvolvimento sem gastar domínio verificado, suba a caixa falsa:
+
+```bash
+docker compose --env-file .env -f deploy/docker-compose.yml --profile dev up -d mailpit
+# EMAIL_PROVIDER=smtp  SMTP_HOST=mailpit  SMTP_PORT=1025  SMTP_TLS=false
+```
+
+A caixa fica em http://localhost:8025. O `--profile dev` existe para ela nunca subir em
+produção por acidente.
+
+Antes do corte, valide o provedor de verdade — é o que R-11 pede, e nenhum teste
+automatizado alcança, porque em teste o provedor é um dublê:
+
+```bash
+PYTHONPATH=apps/api:apps/worker python deploy/testar_email.py voce@empresa.com.br
+```
+
 ## Invariantes que o CI protege
 
 - **Isolamento de tenant** (AD-10, R-09): nenhuma query de domínio sem `tenant_id`.

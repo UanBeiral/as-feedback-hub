@@ -29,7 +29,7 @@ Leitura obrigatória antes de mexer, nesta ordem:
 | API (FastAPI) | 5 contextos, 102 rotas, 30 tabelas |
 | Worker | despacho do outbox + 3 jobs agendados |
 | Front (Next.js) | 28 rotas, client tipado gerado do OpenAPI; fluxo público em wizard |
-| Testes | 367, todos verdes |
+| Testes | 376, todos verdes |
 | Migrations | 0001→0008, aplicam do zero |
 | CI | lint + testes + migrations + build do front |
 
@@ -70,8 +70,10 @@ como decidido.
   a Q6 do legado, qual pergunta alimenta a coluna "Nota Geral" dos relatórios e o que
   fazer com o chip "+ Outro…" do tipo de serviço. Estão em `spec-deviations.md`
   (DEV-A12, DEV-A13) e no roteiro de conferência.
-- **Email só sai pelo console.** Resend e SMTP levantam erro explícito e a mensagem vai
-  para a DLQ com o motivo — melhor que sumir achando que foi enviada.
+- **O provedor de email está implementado, mas não configurado.** `console`, `resend` e
+  `smtp` funcionam; o `.env` de desenvolvimento aponta para `console`, que só escreve no
+  log. Falta escolher o provedor de produção e verificar o domínio — é o que R-11 pede, e
+  `deploy/testar_email.py` existe para validar isso antes do corte.
 - **Análises de IA** (AMB-005) e **status `reviewed`** (AMB-003) ficaram fora por decisão
   registrada, não por esquecimento.
 
@@ -84,10 +86,12 @@ divergências resolvidas ou registradas como desvio. O que ela rendeu está em
 [`docs/conferencia-resultado.md`](conferencia-resultado.md), e vale ler antes de mexer em
 qualquer tela — a maioria das decisões de comportamento do sistema está justificada lá.
 
-1. **Provedor de email real.** Hoje só `console`; Resend e SMTP levantam erro explícito
-   e a mensagem vai para a DLQ. Nenhum email chega a ninguém até isso mudar
-   (BR-MIGRAR-030) — e agora isso inclui o link de redefinição de senha, que é a única
-   forma de alguém recuperar o acesso sozinho.
+1. **Escolher e verificar o provedor de email em produção.** O código está pronto
+   (`resend` e `smtp`, com o teste de fumaça em `deploy/testar_email.py`); o que falta é
+   decisão e domínio: chave do Resend com o remetente verificado, ou host SMTP do
+   cliente. Enquanto o `.env` de produção disser `console`, ninguém recebe nada — e isso
+   inclui o link de redefinição de senha, que é a única forma de alguém recuperar o
+   acesso sozinho.
 2. **Tornar os `.feature` executáveis.** Os 10 arquivos em
    `docs/reversa/migration/parity_tests/` são o roteiro formal da homologação e hoje não
    rodam. Os cenários estão cobertos por testes de service, mas o cliente vai homologar

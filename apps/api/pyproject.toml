@@ -16,6 +16,9 @@ dependencies = [
     "pyjwt>=2.10",
     "redis>=5.2",
     "python-multipart>=0.0.12",
+    # Cliente HTTP do adapter de email (BR-MIGRAR-030). Async porque o worker é async;
+    # `requests` numa thread daria o mesmo resultado com mais peça.
+    "httpx>=0.28",
     # Exportações do worker (AD-07). No legado eram jspdf/xlsx no browser, e um
     # relatório grande travava a aba de quem pediu.
     "openpyxl>=3.1",
@@ -26,7 +29,6 @@ dependencies = [
 dev = [
     "pytest>=8.3",
     "pytest-asyncio>=0.24",
-    "httpx>=0.28",
     "ruff>=0.8",
     "mypy>=1.13",
 ]
