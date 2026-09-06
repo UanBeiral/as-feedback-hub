@@ -932,6 +932,34 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/permissions/bulk": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Import Permissions
+         * @description Importa um lote de permissões (#29 da conferência).
+         *
+         *     **Tudo ou nada**: um erro no meio desfaz o lote inteiro, porque a transação do
+         *     request faz rollback. É o comportamento certo aqui — meia matriz gravada é pior que
+         *     nenhuma: o ciclo abriria com metade das pessoas sem par, e ninguém saberia qual
+         *     metade. Quem quiser ignorar as linhas ruins corrige o arquivo e reenvia.
+         *
+         *     Par repetido não é erro: `save` devolve o que já existe (BR-MIGRAR-002), e reenviar
+         *     o mesmo arquivo é uma operação segura.
+         */
+        post: operations["import_permissions_api_v1_permissions_bulk_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/permissions/deactivate-inactive": {
         parameters: {
             query?: never;
@@ -2857,6 +2885,18 @@ export interface components {
             /** Pendentes */
             pendentes: components["schemas"]["PendenteDaEquipeOut"][];
         };
+        /**
+         * PermissionBulkIn
+         * @description Um lote de permissões, como o "Importar em Massa" do legado.
+         *
+         *     Uma chamada e não N: montar uma matriz de 40 pessoas são centenas de pares, e
+         *     centenas de requisições transformariam a importação numa espera de minutos com meia
+         *     matriz gravada se o navegador fechasse no meio.
+         */
+        PermissionBulkIn: {
+            /** Permissoes */
+            permissoes: components["schemas"]["PermissionIn"][];
+        };
         /** PermissionIn */
         PermissionIn: {
             /**
@@ -3340,6 +3380,15 @@ export interface components {
             status: string;
             /** Submitted At */
             submitted_at: string | null;
+        };
+        /** ResultadoDaImportacaoOut */
+        ResultadoDaImportacaoOut: {
+            /** Criadas */
+            criadas: number;
+            /** Erros */
+            erros: string[];
+            /** Ja Existiam */
+            ja_existiam: number;
         };
         /**
          * ResumoDeAuditoriaOut
@@ -5268,6 +5317,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PermissionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    import_permissions_api_v1_permissions_bulk_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PermissionBulkIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResultadoDaImportacaoOut"];
                 };
             };
             /** @description Validation Error */

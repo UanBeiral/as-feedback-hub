@@ -55,6 +55,7 @@ from app.contexts.feedback.schemas import (
     ParDePermissaoOut,
     PendenteDaEquipeOut,
     PendentesDaEquipeOut,
+    PermissionBulkIn,
     PermissionIn,
     PermissionOut,
     PessoaComCargaOut,
@@ -64,6 +65,7 @@ from app.contexts.feedback.schemas import (
     ReorderIn,
     RequestDetailOut,
     RequestOut,
+    ResultadoDaImportacaoOut,
     TeamProgressOut,
 )
 from app.contexts.feedback.service import (
@@ -82,7 +84,7 @@ from app.contexts.identity.admin_service import TeamMembershipService
 from app.contexts.identity.repository import CoordinatorMemberRepository, ProfileRepository
 from app.contexts.identity.service import TeamScopeService
 from app.core.di import SessionDep, TenantDep, require_role
-from app.core.errors import NotFoundError, ValidationError
+from app.core.errors import ConflictError, NotFoundError, ValidationError
 from app.core.tenancy import TenantContext
 
 router = APIRouter(tags=["feedback"])
@@ -336,6 +338,63 @@ async def save_permission(
     await session.flush()
     await session.refresh(regra)
     return PermissionOut.model_validate(regra)
+
+
+@router.post("/permissions/bulk", response_model=ResultadoDaImportacaoOut)
+async def import_permissions(
+    payload: PermissionBulkIn,
+    tenant: AdminDep,
+    session: SessionDep,
+    service: PermissionServiceDep,
+) -> ResultadoDaImportacaoOut:
+    """Importa um lote de permissões (#29 da conferência).
+
+    **Tudo ou nada**: um erro no meio desfaz o lote inteiro, porque a transação do
+    request faz rollback. É o comportamento certo aqui — meia matriz gravada é pior que
+    nenhuma: o ciclo abriria com metade das pessoas sem par, e ninguém saberia qual
+    metade. Quem quiser ignorar as linhas ruins corrige o arquivo e reenvia.
+
+    Par repetido não é erro: `save` devolve o que já existe (BR-MIGRAR-002), e reenviar
+    o mesmo arquivo é uma operação segura.
+    """
+    permissoes = PermissionRepository(session, tenant)
+    criadas = 0
+    ja_existiam = 0
+    erros: list[str] = []
+
+    for indice, item in enumerate(payload.permissoes, start=1):
+        try:
+            # Consulta antes de salvar para saber qual dos dois numeros somar. Uma
+            # leitura a mais por linha e barata perto de nao saber o que a importacao
+            # fez — "200 processadas" nao diz se o arquivo estava certo.
+            existente = await permissoes.get_regra(
+                reviewer_id=item.reviewer_id,
+                reviewee_id=item.reviewee_id,
+                permission_type=item.permission_type,
+                cycle_id=item.cycle_id,
+            )
+            await service.save(
+                reviewer_id=item.reviewer_id,
+                reviewee_id=item.reviewee_id,
+                permission_type=item.permission_type,
+                cycle_id=item.cycle_id,
+                active=item.active,
+            )
+            await session.flush()
+            if existente is None:
+                criadas += 1
+            else:
+                ja_existiam += 1
+        except (ConflictError, ValidationError) as erro:
+            erros.append(f"linha {indice}: {erro.message}")
+
+    if erros:
+        raise ValidationError(
+            "Nenhuma permissão foi importada — corrija o arquivo e reenvie.",
+            details={"erros": erros},
+        )
+
+    return ResultadoDaImportacaoOut(criadas=criadas, ja_existiam=ja_existiam, erros=[])
 
 
 # ---------------------------------------------------------------- ciclos

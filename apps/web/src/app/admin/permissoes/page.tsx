@@ -17,6 +17,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { PaginaAutenticada } from "@/components/pagina";
 import {
+  AreaDeTexto,
   Aviso,
   BarraDeFiltros,
   Botao,
@@ -58,6 +59,8 @@ export default function AdminPermissoes() {
   const [pessoas, setPessoas] = useState<Perfil[]>([]);
   const [ciclos, setCiclos] = useState<Ciclo[]>([]);
   const [mensagem, setMensagem] = useState<{ tom: "erro" | "sucesso"; texto: string } | null>(null);
+  const [abertos, setAbertos] = useState<string[]>([]);
+  const [importacao, setImportacao] = useState("");
   const [nova, setNova] = useState({
     reviewer_id: "",
     reviewee_id: "",
@@ -160,6 +163,106 @@ export default function AdminPermissoes() {
 
   const ativas = (permissoes ?? []).filter((regra) => regra.active).length;
 
+  /**
+   * A matriz agrupada por avaliador, como no oráculo.
+   *
+   * A tabela plana funciona com dezesseis regras e deixa de funcionar com trezentas: a
+   * pergunta que se faz nesta tela é "quem a Bruna avalia", e numa lista de pares ela
+   * exige varrer a coluna inteira. Agrupado, cada pessoa é uma linha que abre.
+   */
+  const porAvaliador = (() => {
+    const grupos = new Map<string, typeof visiveis>();
+    for (const regra of visiveis) {
+      const atual = grupos.get(regra.reviewer_id) ?? [];
+      atual.push(regra);
+      grupos.set(regra.reviewer_id, atual);
+    }
+    return [...grupos.entries()]
+      .map(([reviewerId, regras]) => ({
+        reviewerId,
+        nome: nomePor.get(reviewerId) ?? "(removido)",
+        regras,
+        ativas: regras.filter((r) => r.active).length,
+      }))
+      .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
+  })();
+
+  function iniciais(nome: string): string {
+    return nome
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((parte) => parte[0]?.toUpperCase() ?? "")
+      .join("");
+  }
+
+  async function importar(evento: React.FormEvent) {
+    evento.preventDefault();
+    setMensagem(null);
+
+    // Formato: uma linha por par, "avaliador;avaliado[;tipo]". Nomes, e não uuid: quem
+    // monta a matriz monta numa planilha, e lá o que existe é o nome das pessoas.
+    const porNome = new Map(
+      pessoas.map((p) => [p.full_name.trim().toLowerCase(), p.id] as const),
+    );
+    const linhas = importacao
+      .split("\n")
+      .map((linha) => linha.trim())
+      .filter(Boolean);
+
+    const permissoes: unknown[] = [];
+    const problemas: string[] = [];
+    linhas.forEach((linha, indice) => {
+      const [avaliador, avaliado, tipo] = linha.split(";").map((c) => c.trim());
+      const reviewer = porNome.get((avaliador ?? "").toLowerCase());
+      const reviewee = porNome.get((avaliado ?? "").toLowerCase());
+      if (!reviewer || !reviewee) {
+        problemas.push(
+          `linha ${indice + 1}: não encontrei ${!reviewer ? avaliador : avaliado}`,
+        );
+        return;
+      }
+      permissoes.push({
+        reviewer_id: reviewer,
+        reviewee_id: reviewee,
+        permission_type: tipo || "peer_to_peer",
+        cycle_id: null,
+        active: true,
+      });
+    });
+
+    if (problemas.length > 0) {
+      setMensagem({ tom: "erro", texto: problemas.slice(0, 5).join(" · ") });
+      return;
+    }
+    if (permissoes.length === 0) {
+      setMensagem({ tom: "erro", texto: "Nada para importar." });
+      return;
+    }
+
+    try {
+      const resultado = await api<{ criadas: number; ja_existiam: number }>(
+        "/permissions/bulk",
+        { method: "POST", body: { permissoes } },
+      );
+      setImportacao("");
+      setMensagem({
+        tom: "sucesso",
+        texto:
+          `${resultado.criadas} permissão(ões) criada(s)` +
+          (resultado.ja_existiam > 0 ? `, ${resultado.ja_existiam} já existia(m).` : "."),
+      });
+      await carregar();
+    } catch (falha) {
+      // O servidor recusa o lote inteiro quando há linha ruim: meia matriz gravada é
+      // pior que nenhuma, porque o ciclo abriria com metade das pessoas sem par.
+      setMensagem({
+        tom: "erro",
+        texto: falha instanceof ApiError ? falha.message : "Não foi possível importar.",
+      });
+    }
+  }
+
   function exportar() {
     exportarCsv(
       "permissoes",
@@ -250,6 +353,36 @@ export default function AdminPermissoes() {
           </form>
         </Cartao>
 
+        <Cartao
+          titulo="Importar em massa"
+          descricao="Uma linha por par, no formato avaliador;avaliado — o tipo é opcional."
+        >
+          <form onSubmit={importar} className="space-y-3">
+            {/* Nomes, e não uuid: quem monta a matriz monta numa planilha, e lá o que
+                existe é o nome das pessoas. Nome que não bate para a importação inteira
+                antes de gravar qualquer linha. */}
+            <AreaDeTexto
+              value={importacao}
+              onChange={(e) => setImportacao(e.target.value)}
+              placeholder={[
+                "Bruna Camargo;Diego Ramos",
+                "Diego Ramos;Bruna Camargo",
+                "Marina Duarte;Bruna Camargo;manager_to_report",
+              ].join("\n")}
+              className="min-h-32 font-mono text-xs"
+            />
+            <span className="flex items-center gap-3">
+              <Botao tipo="submit" desabilitado={!importacao.trim()}>
+                Importar
+              </Botao>
+              <span className="text-xs text-muted-foreground">
+                Um erro em qualquer linha cancela o lote inteiro — meia matriz é pior que
+                nenhuma.
+              </span>
+            </span>
+          </form>
+        </Cartao>
+
         <Cartao titulo={`Matriz (${ativas} ativa${ativas === 1 ? "" : "s"})`}>
           {permissoes === null ? (
             <Carregando />
@@ -297,12 +430,43 @@ export default function AdminPermissoes() {
               />
             </BarraDeFiltros>
 
+            {visiveis.length === 0 ? (
+              <EstadoVazio titulo="Nenhuma permissão com esses filtros" />
+            ) : (
+              <ul className="divide-y divide-border">
+                {porAvaliador.map((grupo) => (
+                  <li key={grupo.reviewerId} className="py-1">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setAbertos((atual) =>
+                          atual.includes(grupo.reviewerId)
+                            ? atual.filter((id) => id !== grupo.reviewerId)
+                            : [...atual, grupo.reviewerId],
+                        )
+                      }
+                      aria-expanded={abertos.includes(grupo.reviewerId)}
+                      className="flex w-full items-center gap-3 rounded-md px-2 py-2.5 text-left hover:bg-muted"
+                    >
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
+                        {iniciais(grupo.nome)}
+                      </span>
+                      <span className="flex-1 text-sm font-medium text-foreground">
+                        {grupo.nome}
+                      </span>
+                      <Selo tom={grupo.ativas > 0 ? "sucesso" : "neutro"}>
+                        {grupo.ativas} ativa{grupo.ativas === 1 ? "" : "s"}
+                      </Selo>
+                      <span className="text-xs text-muted-foreground" aria-hidden="true">
+                        {abertos.includes(grupo.reviewerId) ? "▲" : "▼"}
+                      </span>
+                    </button>
+
+                    {abertos.includes(grupo.reviewerId) && (
+                      <div className="pb-2 pl-11">
             <Tabela
               ordenacao={tabela.ordenacao}
-              vazio={visiveis.length === 0}
-              vazioTexto="Nenhuma permissão com esses filtros."
               colunas={[
-                { rotulo: "Avaliador", campo: "avaliador" },
                 { rotulo: "Avaliado", campo: "avaliado" },
                 { rotulo: "Tipo", campo: "tipo" },
                 { rotulo: "Alcance", campo: "alcance" },
@@ -310,11 +474,8 @@ export default function AdminPermissoes() {
                 "",
               ]}
             >
-              {visiveis.map((regra) => (
+              {grupo.regras.map((regra) => (
                 <Linha key={regra.id}>
-                  <Celula className="font-medium">
-                    {nomePor.get(regra.reviewer_id) ?? "—"}
-                  </Celula>
                   <Celula>{nomePor.get(regra.reviewee_id) ?? "—"}</Celula>
                   <Celula>
                     {rotuloDoTipo(regra.permission_type)}
@@ -337,6 +498,12 @@ export default function AdminPermissoes() {
                 </Linha>
               ))}
             </Tabela>
+                      </div>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
             </>
           )}
         </Cartao>

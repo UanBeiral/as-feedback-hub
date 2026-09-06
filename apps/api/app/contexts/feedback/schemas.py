@@ -57,6 +57,24 @@ class PermissionIn(BaseModel):
     active: bool = True
 
 
+class PermissionBulkIn(BaseModel):
+    """Um lote de permissões, como o "Importar em Massa" do legado.
+
+    Uma chamada e não N: montar uma matriz de 40 pessoas são centenas de pares, e
+    centenas de requisições transformariam a importação numa espera de minutos com meia
+    matriz gravada se o navegador fechasse no meio.
+    """
+
+    permissoes: list[PermissionIn] = Field(min_length=1, max_length=2000)
+
+
+class ResultadoDaImportacaoOut(BaseModel):
+    criadas: int
+    ja_existiam: int
+    # Uma linha por erro, com o índice de entrada — sem isso, "3 falharam" não diz qual.
+    erros: list[str]
+
+
 class PermissionOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

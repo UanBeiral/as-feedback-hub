@@ -2631,6 +2631,25 @@
         "title": "PendentesDaEquipeOut",
         "type": "object"
       },
+      "PermissionBulkIn": {
+        "description": "Um lote de permissões, como o \"Importar em Massa\" do legado.\n\nUma chamada e não N: montar uma matriz de 40 pessoas são centenas de pares, e\ncentenas de requisições transformariam a importação numa espera de minutos com meia\nmatriz gravada se o navegador fechasse no meio.",
+        "properties": {
+          "permissoes": {
+            "items": {
+              "$ref": "#/components/schemas/PermissionIn"
+            },
+            "maxItems": 2000,
+            "minItems": 1,
+            "title": "Permissoes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "permissoes"
+        ],
+        "title": "PermissionBulkIn",
+        "type": "object"
+      },
       "PermissionIn": {
         "properties": {
           "active": {
@@ -3929,6 +3948,32 @@
           "cancel_justification"
         ],
         "title": "RequestOut",
+        "type": "object"
+      },
+      "ResultadoDaImportacaoOut": {
+        "properties": {
+          "criadas": {
+            "title": "Criadas",
+            "type": "integer"
+          },
+          "erros": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Erros",
+            "type": "array"
+          },
+          "ja_existiam": {
+            "title": "Ja Existiam",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "criadas",
+          "ja_existiam",
+          "erros"
+        ],
+        "title": "ResultadoDaImportacaoOut",
         "type": "object"
       },
       "ResumoDeAuditoriaOut": {
@@ -7090,6 +7135,53 @@
           }
         ],
         "summary": "Save Permission",
+        "tags": [
+          "feedback"
+        ]
+      }
+    },
+    "/api/v1/permissions/bulk": {
+      "post": {
+        "description": "Importa um lote de permissões (#29 da conferência).\n\n**Tudo ou nada**: um erro no meio desfaz o lote inteiro, porque a transação do\nrequest faz rollback. É o comportamento certo aqui — meia matriz gravada é pior que\nnenhuma: o ciclo abriria com metade das pessoas sem par, e ninguém saberia qual\nmetade. Quem quiser ignorar as linhas ruins corrige o arquivo e reenvia.\n\nPar repetido não é erro: `save` devolve o que já existe (BR-MIGRAR-002), e reenviar\no mesmo arquivo é uma operação segura.",
+        "operationId": "import_permissions_api_v1_permissions_bulk_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PermissionBulkIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultadoDaImportacaoOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Import Permissions",
         "tags": [
           "feedback"
         ]
