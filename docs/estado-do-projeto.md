@@ -1,6 +1,7 @@
 # Estado do projeto — onde paramos
 
 > Escrito em 02/09/2026, ao fim da sessão que construiu o sistema.
+> Atualizado em 06/09/2026, no fecho da conferência contra o oráculo.
 > Serve para quem chegar depois (pessoa ou agente) entender em uma leitura o que existe,
 > o que falta e por que certas coisas são do jeito que são.
 
@@ -25,9 +26,9 @@ Leitura obrigatória antes de mexer, nesta ordem:
 
 | Parte | Estado |
 |---|---|
-| API (FastAPI) | 5 contextos, 102 rotas, 31 tabelas |
+| API (FastAPI) | 5 contextos, 102 rotas, 30 tabelas |
 | Worker | despacho do outbox + 3 jobs agendados |
-| Front (Next.js) | 30 rotas, client tipado gerado do OpenAPI; fluxo público em wizard |
+| Front (Next.js) | 28 rotas, client tipado gerado do OpenAPI; fluxo público em wizard |
 | Testes | 367, todos verdes |
 | Migrations | 0001→0008, aplicam do zero |
 | CI | lint + testes + migrations + build do front |
@@ -103,8 +104,9 @@ A seção seguinte explica por quê.
 
 ## Coisas que só aparecem rodando
 
-Quatro defeitos desta fase não foram pegos por teste nenhum — apareceram ao rodar contra
-Postgres de verdade. Vale saber que essa é a classe de erro que escapa:
+Estes defeitos não foram pegos por teste nenhum — apareceram ao rodar contra Postgres de
+verdade, ou ao comparar a tela com o screenshot do legado. Vale saber que essa é a classe
+de erro que escapa:
 
 - Escrita seguida de `raise` era desfeita pelo rollback do request, e o detector de reúso
   de refresh token virava enfeite. Corrigido com transação autônoma.
@@ -118,6 +120,15 @@ Postgres de verdade. Vale saber que essa é a classe de erro que escapa:
 - Autoflush invertia a ordem de dois INSERTs com FK entre si.
 - `vars()` não funciona em dataclass com `slots` — e o erro ficou escondido enquanto as
   listas estavam vazias.
+- Altura em porcentagem sem altura definida no pai resolve para zero: o gráfico da
+  auditoria renderizava **vazio com dados**, sem erro em lugar nenhum.
+- Duas classes do Tailwind em conflito (`w-full` e `w-auto`) são decididas pela ordem no
+  CSS gerado, não pela ordem na string — a barra de filtros empilhava por causa disso.
+
+E dois vieram da conferência, que é outra forma de rodar: o histórico da equipe mostrava
+feedback **sensível**, que a rota de recebidos esconde do destinatário desde sempre, e
+`can_view_team_history` decidia o menu sem que a rota a exigisse — quem soubesse a URL
+entrava. Nenhum teste podia pegá-los, porque os dois estavam consistentes consigo mesmos.
 
 Por isso os smokes contra o banco real existem, e por isso vale rodá-los antes de
 qualquer entrega grande.
@@ -136,6 +147,17 @@ PYTHONPATH=apps/api python deploy/seed_tenant.py --slug <empresa> --nome "<Empre
 
 Depois ajuste `DEFAULT_TENANT_SLUG` no `.env` para o slug criado e reinicie a API —
 enquanto houver um escritório só, é essa chave que o login usa para achar o tenant.
+
+Para **olhar** o sistema — conferir tela, demonstrar, reproduzir bug — use o outro seed:
+
+```bash
+PYTHONPATH=apps/api python deploy/seed_demo.py --senha "..." --recriar
+```
+
+Ele cria o escritório fictício Braga & Duarte com nove pessoas, dois ciclos, avaliações
+de cliente respondidas e uma matriz de permissões **suja de propósito** — sem par
+recíproco, com gente sem cobertura. Contra tabela vazia, metade das telas renderiza
+estado vazio e não prova nada; foi ele que tornou a conferência possível.
 
 O front sobe em `http://localhost:3000`.
 
