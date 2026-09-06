@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.contexts.identity.models import (
     CoordinatorMember,
     Department,
+    PasswordResetToken,
     Profile,
     ProfileDepartment,
     RefreshToken,
@@ -66,6 +67,52 @@ class AuthRepository:
         self._session.add(token)
         return token
 
+    async def reivindicar_refresh_token(self, digest: str) -> bool:
+        """Marca o token como usado **num passo só**, e diz se foi este quem conseguiu.
+
+        Ler `used_at`, decidir e depois gravar é uma corrida: duas renovações
+        simultâneas do mesmo token leem `NULL` juntas, ambas passam, e a segunda a
+        commitar deixa o detector de reúso sem nada para detectar — ou, pior, dispara
+        num caso legítimo e derruba a sessão de quem só recarregou a página.
+
+        O UPDATE condicional decide no banco quem rotaciona. Quem receber `False` está
+        diante de um token já gasto: aí, sim, é reúso.
+        """
+        resultado = await self._session.execute(
+            update(RefreshToken)
+            .where(RefreshToken.token_digest == digest, RefreshToken.used_at.is_(None))
+            .values(used_at=datetime.now(UTC))
+        )
+        return resultado.rowcount == 1
+
+    def add_reset_token(self, token: PasswordResetToken) -> PasswordResetToken:
+        self._session.add(token)
+        return token
+
+    async def reivindicar_reset_token(self, digest: str) -> PasswordResetToken | None:
+        """Gasta o token **num passo só**, e devolve a linha se foi este quem conseguiu.
+
+        Mesmo raciocínio do refresh token: ler, decidir e depois gravar é uma corrida.
+        Aqui ela é pior — dois cliques no mesmo link deixariam duas senhas novas
+        disputando qual fica, e a pessoa não saberia com qual entrou.
+
+        `expires_at` entra na condição do UPDATE, e não num `if` depois: expirado e
+        gasto têm de ser a mesma resposta para quem apresenta o token, senão a diferença
+        entre "esse link já foi usado" e "esse link nunca existiu" vira sinal.
+        """
+        agora = datetime.now(UTC)
+        resultado = await self._session.execute(
+            update(PasswordResetToken)
+            .where(
+                PasswordResetToken.token_digest == digest,
+                PasswordResetToken.used_at.is_(None),
+                PasswordResetToken.expires_at > agora,
+            )
+            .values(used_at=agora)
+            .returning(PasswordResetToken)
+        )
+        return resultado.scalar_one_or_none()
+
     async def revoke_all_for_user(self, tenant_id: UUID, user_id: UUID) -> None:
         """Derruba todas as sessões do usuário, em transação própria.
 
@@ -110,6 +157,33 @@ class ProfileRepository(TenantScopedRepository[Profile]):
         )
         result = await self._session.execute(stmt)
         return list(result.scalars().all())
+
+    async def emails_por_id(self, profile_ids: set[UUID]) -> dict[UUID, str]:
+        """`profiles.id` **é** `users.id` (DEV-A03), então a junção é pelo próprio id.
+
+        Uma consulta para a lista toda: buscar o usuário de cada perfil dentro do laço
+        seria N+1 numa tabela que a tela sempre carrega inteira.
+        """
+        if not profile_ids:
+            return {}
+        stmt = select(User.id, User.email).where(
+            User.tenant_id == self.tenant_id, User.id.in_(profile_ids)
+        )
+        return {uid: str(email) for uid, email in (await self._session.execute(stmt)).all()}
+
+    async def contagem_por_status(self) -> dict[str, int]:
+        """Quantas pessoas em cada estado — o "Status dos Usuários" do painel.
+
+        `deleted` entra na conta: soft-delete guarda o histórico (BR-MIGRAR-018), e o
+        painel que só somasse ativos e inativos daria um total menor que o real sem
+        explicar onde foi parar a diferença.
+        """
+        stmt = (
+            select(Profile.status, func.count())
+            .where(Profile.tenant_id == self.tenant_id)
+            .group_by(Profile.status)
+        )
+        return {status: total for status, total in (await self._session.execute(stmt)).all()}
 
     async def list_by_ids(self, profile_ids: set[UUID]) -> list[Profile]:
         """Perfis ativos de um conjunto já resolvido pelo `TeamScopeService`.

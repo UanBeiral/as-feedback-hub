@@ -61,12 +61,17 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const itens: ItemDeMenu[] = [
     { href: "/", rotulo: "Início", visivel: true },
     { href: "/meus-feedbacks", rotulo: "Meus feedbacks", visivel: true },
+    { href: "/meu-historico", rotulo: "Meu histórico", visivel: true },
+    { href: "/feedback-livre", rotulo: "Dar feedback", visivel: true },
     { href: "/anotacoes", rotulo: "Anotações", visivel: temEquipe },
     { href: "/minha-equipe", rotulo: "Minha equipe", visivel: temEquipe },
+    { href: "/feedbacks-pendentes", rotulo: "Feedbacks pendentes", visivel: temEquipe },
     {
+      // Só a capacidade, e não "tem equipe": a rota a exige, e um menu que oferece o
+      // que o servidor recusa é pior do que não oferecer.
       href: "/historico-equipe",
       rotulo: "Histórico da equipe",
-      visivel: temEquipe || temCapacidade(usuario, "can_view_team_history"),
+      visivel: temCapacidade(usuario, "can_view_team_history"),
     },
     { href: "/avaliacoes-clientes", rotulo: "Avaliações de clientes", visivel: true },
     { href: "/relatorios", rotulo: "Relatórios", visivel: podeRelatorios },
@@ -161,7 +166,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
             {temPapel(usuario, "admin", "rh", "gestor") && (
               <select
                 aria-label="Ver o sistema como"
-                value={usuario.role}
+                value={usuario.active_role}
                 onChange={(evento) => void trocarContexto(evento.target.value)}
                 className="rounded-md border border-input bg-card px-2 py-1.5 text-xs text-foreground"
               >
@@ -173,12 +178,36 @@ export function Shell({ children }: { children: React.ReactNode }) {
               </select>
             )}
 
-            <SeloDePapel papel={usuario.role} coordenador={usuario.is_coordinator} />
+            <SeloDePapel
+              papel={usuario.active_role}
+              papelReal={usuario.role}
+              coordenador={usuario.is_coordinator}
+            />
           </div>
         </header>
 
         <main className="flex-1 px-6 py-6">{children}</main>
       </div>
+
+      {/* O botão flutuante do caderno de ciclo (SCR-0022). Fica em toda tela autenticada
+          porque a anotação nasce no meio de outra coisa — numa reunião, lendo um
+          relatório — e um caderno que exige navegar até ele é um caderno que ninguém
+          abre. Some na própria tela de anotações, onde seria um atalho para onde a
+          pessoa já está. */}
+      {temEquipe && caminho !== "/anotacoes" && (
+        <Link
+          href="/anotacoes"
+          title="Anotar sobre alguém"
+          className={
+            "fixed bottom-6 right-6 z-20 flex h-12 w-12 items-center justify-center " +
+            "rounded-full bg-primary text-xl text-primary-foreground shadow-lg " +
+            "transition hover:brightness-110"
+          }
+        >
+          <span aria-hidden="true">✎</span>
+          <span className="sr-only">Anotar sobre alguém</span>
+        </Link>
+      )}
     </div>
   );
 }

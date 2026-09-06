@@ -8,11 +8,11 @@ justificativa registrada no teste de isolamento.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import func, insert, or_, select, update
+from sqlalchemy import case, func, insert, or_, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -178,6 +178,7 @@ class AuditLogRepository(TenantScopedRepository[AuditLog]):
         table_name: str | None = None,
         record_id: UUID | None = None,
         details: dict[str, Any] | None = None,
+        is_sensitive: bool = False,
     ) -> None:
         """Append-only: só existe inserção, de propósito. Sem update, sem delete."""
         await self._session.execute(
@@ -188,6 +189,7 @@ class AuditLogRepository(TenantScopedRepository[AuditLog]):
                 table_name=table_name,
                 record_id=record_id,
                 details=details,
+                is_sensitive=is_sensitive,
             )
         )
 
@@ -199,6 +201,60 @@ class AuditLogRepository(TenantScopedRepository[AuditLog]):
             .offset(offset)
         )
         return list((await self._session.execute(stmt)).scalars().all())
+
+    async def contagem_por_dia(
+        self, *, desde: datetime
+    ) -> list[tuple[date, bool, int]]:
+        """Atividade por dia, separando sensível de normal — o gráfico de 14 dias.
+
+        Agrupa no banco: trazer as linhas todas para contar em Python funcionaria hoje e
+        pararia de funcionar exatamente quando a auditoria ficasse grande o bastante para
+        o gráfico importar.
+        """
+        dia = func.date(AuditLog.created_at)
+        stmt = (
+            select(dia, AuditLog.is_sensitive, func.count())
+            .where(AuditLog.tenant_id == self.tenant_id, AuditLog.created_at >= desde)
+            .group_by(dia, AuditLog.is_sensitive)
+            .order_by(dia)
+        )
+        return [(d, sensivel, total) for d, sensivel, total in (
+            await self._session.execute(stmt)
+        ).all()]
+
+    async def resumo(self, *, hoje: date, desde_7d: datetime) -> dict[str, int]:
+        """Os números dos cartões: total, hoje, últimos 7 dias e sensíveis em 7 dias."""
+        stmt = select(
+            func.count(),
+            func.count(case((func.date(AuditLog.created_at) == hoje, 1))),
+            func.count(case((AuditLog.created_at >= desde_7d, 1))),
+            func.count(
+                case(((AuditLog.created_at >= desde_7d) & AuditLog.is_sensitive, 1))
+            ),
+        ).where(AuditLog.tenant_id == self.tenant_id)
+        total, de_hoje, sete_dias, sensiveis = (await self._session.execute(stmt)).one()
+        return {
+            "total": total,
+            "hoje": de_hoje,
+            "sete_dias": sete_dias,
+            "sensiveis_sete_dias": sensiveis,
+        }
+
+    async def mais_ativo(self, *, desde: datetime) -> tuple[UUID, int] | None:
+        """Quem mais agiu na janela. `None` quando ninguém agiu ou só o sistema agiu."""
+        stmt = (
+            select(AuditLog.actor_id, func.count())
+            .where(
+                AuditLog.tenant_id == self.tenant_id,
+                AuditLog.created_at >= desde,
+                AuditLog.actor_id.is_not(None),
+            )
+            .group_by(AuditLog.actor_id)
+            .order_by(func.count().desc())
+            .limit(1)
+        )
+        linha = (await self._session.execute(stmt)).first()
+        return (linha[0], linha[1]) if linha else None
 
 
 class TenantSettingRepository(TenantScopedRepository[TenantSetting]):
@@ -245,6 +301,25 @@ class TenantSettingRepository(TenantScopedRepository[TenantSetting]):
             .values(value=value, updated_by=updated_by, updated_at=datetime.now(UTC))
         )
         return bool(result.rowcount)
+
+    async def definir(self, *, key: str, value: str, updated_by: UUID) -> TenantSetting:
+        """Grava sem a checagem otimista, e devolve a linha.
+
+        Existe para o valor que a **própria API** acabou de produzir — hoje só a URL do
+        logo recém-subido. Ali não há edição concorrente a proteger: o carimbo que o
+        cliente leu não diz nada sobre um arquivo que ele mandou depois, e recusar por
+        conflito deixaria o arquivo no disco e a configuração apontando para o anterior.
+        """
+        stmt = (
+            pg_insert(TenantSetting)
+            .values(tenant_id=self.tenant_id, key=key, value=value, updated_by=updated_by)
+            .on_conflict_do_update(
+                constraint="uq_tenant_settings_chave",
+                set_={"value": value, "updated_by": updated_by, "updated_at": datetime.now(UTC)},
+            )
+            .returning(TenantSetting)
+        )
+        return (await self._session.execute(stmt)).scalar_one()
 
 
 class PlatformUpdateRepository(TenantScopedRepository[PlatformUpdate]):

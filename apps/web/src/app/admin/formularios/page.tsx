@@ -1,7 +1,12 @@
 "use client";
 
 /**
- * Formulários de feedback — perguntas e ordem.
+ * Formulários — os de feedback 360 e os de cliente externo, em duas abas.
+ *
+ * São dois questionários diferentes, respondidos por pessoas diferentes: o 360 é o
+ * colega avaliando o colega, o de cliente é quem contratou o escritório respondendo pelo
+ * link do WhatsApp. O legado separava nas mesmas duas abas, e o sistema novo tinha só a
+ * primeira — as perguntas do wizard público só existiam no banco (#45 da conferência).
  *
  * A ordem é o que a tela de resposta segue, então mexer nela muda o que a pessoa vê.
  * Reordenar manda a lista inteira: o servidor recusa uma ordem parcial, porque metade
@@ -31,12 +36,22 @@ import {
 import { ApiError, api, apiVoid } from "@/lib/api";
 import type { Formulario, Pergunta } from "@/lib/tipos";
 
+import { FormulariosDeCliente } from "./formulario-de-cliente";
+
+type Aba = "360" | "cliente";
+
 export default function AdminFormularios() {
+  const [aba, setAba] = useState<Aba>("360");
   const [formularios, setFormularios] = useState<Formulario[] | null>(null);
   const [aberto, setAberto] = useState<string | null>(null);
   const [perguntas, setPerguntas] = useState<Pergunta[]>([]);
   const [mensagem, setMensagem] = useState<{ tom: "erro" | "sucesso"; texto: string } | null>(null);
-  const [novoNome, setNovoNome] = useState("");
+  const [novo, setNovo] = useState({ nome: "", descricao: "" });
+  const [editandoForm, setEditandoForm] = useState<{
+    id: string;
+    nome: string;
+    descricao: string;
+  } | null>(null);
   const [novaPergunta, setNovaPergunta] = useState({
     question_text: "",
     question_type: "textarea",
@@ -70,13 +85,31 @@ export default function AdminFormularios() {
     try {
       const criado = await api<Formulario>("/forms", {
         method: "POST",
-        body: { name: novoNome },
+        body: { name: novo.nome, description: novo.descricao.trim() || null },
       });
-      setNovoNome("");
+      setNovo({ nome: "", descricao: "" });
       await carregar();
       setAberto(criado.id);
     } catch (falha) {
       relatar(falha, "Não foi possível criar o formulário.");
+    }
+  }
+
+  async function salvarFormulario() {
+    if (!editandoForm) return;
+    setMensagem(null);
+    try {
+      await api(`/forms/${editandoForm.id}`, {
+        method: "PUT",
+        body: {
+          name: editandoForm.nome,
+          description: editandoForm.descricao.trim() || null,
+        },
+      });
+      setEditandoForm(null);
+      await carregar();
+    } catch (falha) {
+      relatar(falha, "Não foi possível salvar o formulário.");
     }
   }
 
@@ -117,36 +150,75 @@ export default function AdminFormularios() {
     }
   }
 
-  async function arquivar(formulario: Formulario) {
+  async function alternarArquivo(formulario: Formulario, acao: "archive" | "unarchive") {
     setMensagem(null);
     try {
-      await api(`/forms/${formulario.id}/archive`, { method: "POST" });
-      setMensagem({ tom: "sucesso", texto: `"${formulario.name}" arquivado.` });
-      if (aberto === formulario.id) setAberto(null);
+      await api(`/forms/${formulario.id}/${acao}`, { method: "POST" });
+      setMensagem({
+        tom: "sucesso",
+        texto: `"${formulario.name}" ${acao === "archive" ? "arquivado" : "reativado"}.`,
+      });
+      if (acao === "archive" && aberto === formulario.id) setAberto(null);
       await carregar();
     } catch (falha) {
       // 409 aqui é o guard de formulário em uso por ciclo vivo.
-      relatar(falha, "Não foi possível arquivar.");
+      relatar(falha, "Não foi possível salvar.");
     }
   }
 
+  const abas: { chave: Aba; rotulo: string }[] = [
+    { chave: "360", rotulo: "Formulários 360°" },
+    { chave: "cliente", rotulo: "Formulários de cliente externo" },
+  ];
+
   return (
     <PaginaAutenticada
-      titulo="Formulários de feedback"
+      titulo="Formulários"
       descricao="As perguntas que aparecem para quem responde, na ordem em que aparecem."
+      acao={
+        <span className="flex gap-1 rounded-md bg-muted p-1">
+          {abas.map((item) => (
+            <button
+              key={item.chave}
+              type="button"
+              onClick={() => setAba(item.chave)}
+              className={
+                "rounded px-3 py-1.5 text-sm " +
+                (aba === item.chave
+                  ? "bg-card font-medium text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground")
+              }
+            >
+              {item.rotulo}
+            </button>
+          ))}
+        </span>
+      }
     >
+      {aba === "cliente" ? (
+        <FormulariosDeCliente />
+      ) : (
       <div className="space-y-6">
         {mensagem && <Aviso tom={mensagem.tom}>{mensagem.texto}</Aviso>}
 
         <Cartao titulo="Novo formulário">
           <form onSubmit={criarFormulario} className="flex flex-wrap items-end gap-3">
-            <div className="min-w-64 flex-1">
+            <div className="min-w-48 flex-1">
               <Campo rotulo="Nome" obrigatorio>
                 <Entrada
                   required
-                  value={novoNome}
-                  onChange={(e) => setNovoNome(e.target.value)}
+                  value={novo.nome}
+                  onChange={(e) => setNovo({ ...novo, nome: e.target.value })}
                   placeholder="Avaliação 360 — 2026"
+                />
+              </Campo>
+            </div>
+            <div className="min-w-64 flex-[2]">
+              <Campo rotulo="Descrição" dica="Opcional — explica para que serve o formulário.">
+                <Entrada
+                  value={novo.descricao}
+                  onChange={(e) => setNovo({ ...novo, descricao: e.target.value })}
+                  placeholder="Feedback 360 graus no modelo Do More / Do Less / Continue"
                 />
               </Campo>
             </div>
@@ -163,10 +235,36 @@ export default function AdminFormularios() {
               descricao="Um ciclo precisa de formulário para ser criado."
             />
           ) : (
-            <Tabela colunas={["Nome", "Situação", ""]}>
+            <Tabela colunas={["Nome", "Descrição", "Situação", ""]}>
               {formularios.map((formulario) => (
                 <Linha key={formulario.id}>
-                  <Celula className="font-medium">{formulario.name}</Celula>
+                  <Celula className="font-medium">
+                    {editandoForm?.id === formulario.id ? (
+                      <Entrada
+                        value={editandoForm.nome}
+                        onChange={(e) =>
+                          setEditandoForm({ ...editandoForm, nome: e.target.value })
+                        }
+                        className="h-8"
+                      />
+                    ) : (
+                      formulario.name
+                    )}
+                  </Celula>
+                  <Celula className="text-muted-foreground">
+                    {editandoForm?.id === formulario.id ? (
+                      <Entrada
+                        value={editandoForm.descricao}
+                        onChange={(e) =>
+                          setEditandoForm({ ...editandoForm, descricao: e.target.value })
+                        }
+                        placeholder="Sem descrição"
+                        className="h-8"
+                      />
+                    ) : (
+                      (formulario.description ?? "—")
+                    )}
+                  </Celula>
                   <Celula>
                     <Selo tom={formulario.archived_at ? "neutro" : "sucesso"}>
                       {formulario.archived_at ? "arquivado" : "ativo"}
@@ -174,6 +272,38 @@ export default function AdminFormularios() {
                   </Celula>
                   <Celula className="text-right">
                     <span className="flex justify-end gap-3">
+                      {editandoForm?.id === formulario.id ? (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => void salvarFormulario()}
+                            className="text-sm text-primary underline-offset-4 hover:underline"
+                          >
+                            Salvar
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditandoForm(null)}
+                            className="text-sm text-muted-foreground underline-offset-4 hover:underline"
+                          >
+                            Cancelar
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setEditandoForm({
+                              id: formulario.id,
+                              nome: formulario.name,
+                              descricao: formulario.description ?? "",
+                            })
+                          }
+                          className="text-sm text-primary underline-offset-4 hover:underline"
+                        >
+                          Editar
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={() => setAberto(aberto === formulario.id ? null : formulario.id)}
@@ -181,10 +311,22 @@ export default function AdminFormularios() {
                       >
                         {aberto === formulario.id ? "Fechar" : "Perguntas"}
                       </button>
-                      {!formulario.archived_at && (
+                      {/* Arquivar tem volta: é tirar de circulação, não excluir. Sem
+                          o "Reativar", um clique errado obrigaria a recriar formulário e
+                          perguntas — e os ciclos antigos apontariam para um, os novos
+                          para outro de mesmo nome. */}
+                      {formulario.archived_at ? (
                         <button
                           type="button"
-                          onClick={() => void arquivar(formulario)}
+                          onClick={() => void alternarArquivo(formulario, "unarchive")}
+                          className="text-sm text-primary underline-offset-4 hover:underline"
+                        >
+                          Reativar
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => void alternarArquivo(formulario, "archive")}
                           className="text-sm text-destructive underline-offset-4 hover:underline"
                         >
                           Arquivar
@@ -301,6 +443,7 @@ export default function AdminFormularios() {
           </Cartao>
         )}
       </div>
+      )}
     </PaginaAutenticada>
   );
 }

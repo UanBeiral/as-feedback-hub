@@ -192,6 +192,41 @@ def registra_avisos(registro: object) -> None:
             link="/meus-feedbacks",
         )
 
+    @registrar("feedback.reminder")
+    async def lembrete_de_feedback(session: AsyncSession, mensagem: OutboxMessage) -> None:
+        """Cutucada do gestor para quem ainda deve resposta no ciclo.
+
+        É o único aviso que uma pessoa dispara para outra, e por isso é o único que
+        precisa nomear quem cutucou: um lembrete anônimo soaria como cobrança do
+        sistema, e quem recebe não saberia com quem falar se o prazo for impossível.
+        """
+        cycle_id = _uuid(mensagem, "cycle_id")
+        destinatario = _uuid(mensagem, "profile_id")
+        contexto = _contexto(mensagem)
+
+        ciclo = await CycleRepository(session, contexto).get(cycle_id)
+        if ciclo is None:
+            raise PayloadDeAvisoInvalidoError(f"ciclo {cycle_id} não existe neste tenant")
+
+        pendentes = mensagem.payload.get("pendentes")
+        quantos = (
+            f"{pendentes} feedback(s) seu(s) seguem"
+            if isinstance(pendentes, int) and pendentes > 0
+            else "Seus feedbacks seguem"
+        )
+        _notificar(
+            session,
+            mensagem,
+            destinatarios=[destinatario],
+            tipo="feedback_reminder",
+            titulo=f"Lembrete: {ciclo.name}",
+            texto=(
+                f"{quantos} sem resposta"
+                + (f", e o prazo é {ciclo.end_date:%d/%m/%Y}." if ciclo.end_date else ".")
+            ),
+            link="/meus-feedbacks",
+        )
+
     @registrar("client_eval.submitted")
     async def avaliacao_de_cliente(session: AsyncSession, mensagem: OutboxMessage) -> None:
         """Avisa o avaliado de que um cliente respondeu (`client_feedback_received`)."""

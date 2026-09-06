@@ -84,6 +84,12 @@ class ClientEvalFormQuestion(UUIDPrimaryKeyMixin, TenantScopedMixin, Base):
     )
     display_order: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
     placeholder: Mapped[str | None] = mapped_column(Text)
+    # Pergunta arquivada sai dos formulários novos e continua explicando os relatórios
+    # antigos. É o que permite "remover" uma pergunta já respondida sem destruir a
+    # resposta do cliente — ver `0007_pergunta_de_cliente_arquivavel.py`.
+    is_active: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default="true"
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
@@ -93,7 +99,9 @@ class ClientEvalFormQuestion(UUIDPrimaryKeyMixin, TenantScopedMixin, Base):
             "question_type IN ('rating','text','textarea','yes_no','nps','multiple_choice')",
             name="tipo_valido",
         ),
-        Index("ix_client_questions_ordem", "tenant_id", "form_id", "display_order"),
+        Index(
+            "ix_client_questions_ordem", "tenant_id", "form_id", "is_active", "display_order"
+        ),
     )
 
 

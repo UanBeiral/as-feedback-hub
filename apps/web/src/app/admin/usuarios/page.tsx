@@ -16,20 +16,30 @@ import { useCallback, useEffect, useState } from "react";
 import { PaginaAutenticada } from "@/components/pagina";
 import {
   Aviso,
+  BarraDeFiltros,
   Botao,
+  BotaoDeExportar,
   Campo,
   Carregando,
   Cartao,
   Celula,
+  ContadorDeResultados,
   Entrada,
   EstadoVazio,
+  FiltroSelecao,
   Linha,
   Selecao,
+  Selo,
   SeloDePapel,
   Tabela,
 } from "@/components/ui";
 import { ApiError, api } from "@/lib/api";
+import { exportarCsv } from "@/lib/exportar";
+import { ROTULO_DO_STATUS_DE_PESSOA } from "@/lib/formato";
+import { useTabela } from "@/lib/tabela";
 import type { Departamento, Perfil } from "@/lib/tipos";
+
+const PAPEIS = ["colaborador", "gestor", "rh", "admin"];
 
 const CAPACIDADES: { chave: string; rotulo: string }[] = [
   { chave: "can_request_client_feedback", rotulo: "Pedir avaliação de cliente" },
@@ -129,6 +139,45 @@ export default function AdminUsuarios() {
 
   const perfil = perfis?.find((p) => p.id === selecionado) ?? null;
 
+  function nomeDoDepartamento(id: string | null): string {
+    return departamentos.find((d) => d.id === id)?.name ?? "—";
+  }
+
+  const tabela = useTabela(perfis ?? [], {
+    busca: (p) => [p.full_name, p.email, p.job_title],
+    campos: {
+      nome: (p) => p.full_name,
+      email: (p) => p.email,
+      cargo: (p) => p.job_title,
+      departamento: (p) => nomeDoDepartamento(p.department_id),
+      papel: (p) => p.role,
+      status: (p) => p.status,
+    },
+    inicial: { campo: "nome" },
+  });
+  const porDepartamento = tabela.filtro("departamento", (p, valor) => p.department_id === valor);
+  const porPapel = tabela.filtro("papel", (p, valor) => p.role === valor);
+  const porStatus = tabela.filtro("status", (p, valor) => p.status === valor);
+  const visiveis = tabela.visiveis([porDepartamento, porPapel, porStatus]);
+
+  function exportar() {
+    // Exporta o que está na tela, com os filtros aplicados — é o que
+    // `target_screens.md` pede em `reflects_filters`.
+    exportarCsv(
+      "usuarios",
+      ["Nome", "E-mail", "Cargo", "Departamento", "Papel", "Status", "Coordena"],
+      visiveis.map((p) => [
+        p.full_name,
+        p.email ?? "",
+        p.job_title ?? "",
+        nomeDoDepartamento(p.department_id),
+        p.role,
+        ROTULO_DO_STATUS_DE_PESSOA[p.status] ?? p.status,
+        p.is_coordinator ? "sim" : "não",
+      ]),
+    );
+  }
+
   return (
     <PaginaAutenticada
       titulo="Usuários"
@@ -174,7 +223,7 @@ export default function AdminUsuarios() {
                 value={novo.role}
                 onChange={(e) => setNovo({ ...novo, role: e.target.value })}
               >
-                {["colaborador", "gestor", "rh", "admin"].map((papel) => (
+                {PAPEIS.map((papel) => (
                   <option key={papel} value={papel}>
                     {papel}
                   </option>
@@ -189,30 +238,96 @@ export default function AdminUsuarios() {
 
         <Cartao
           titulo="Pessoas"
-          descricao={`${departamentos.length} departamento(s) cadastrado(s).`}
+          descricao={
+            perfis === null ? undefined : `${perfis.length} pessoa(s) ativa(s) no escritório.`
+          }
         >
           {perfis === null ? (
             <Carregando />
           ) : perfis.length === 0 ? (
             <EstadoVazio titulo="Nenhum usuário ativo" />
           ) : (
-            <Tabela colunas={["Nome", "Cargo", "Papel", "Capacidades", "Ações"]}>
-              {perfis.map((pessoa) => (
+            <>
+              <BarraDeFiltros
+                busca={tabela.busca}
+                aoBuscar={tabela.setBusca}
+                placeholder="Buscar por nome, e-mail ou cargo…"
+                acoes={
+                  <>
+                    <ContadorDeResultados mostrando={visiveis.length} total={perfis.length} />
+                    <BotaoDeExportar quantidade={visiveis.length} onClick={exportar} />
+                  </>
+                }
+              >
+                <FiltroSelecao
+                  rotuloDeTodos="Todos os departamentos"
+                  valor={porDepartamento.valor}
+                  aoMudar={porDepartamento.aoMudar}
+                  opcoes={departamentos.map((d) => ({ valor: d.id, rotulo: d.name }))}
+                />
+                <FiltroSelecao
+                  rotuloDeTodos="Todos os papéis"
+                  valor={porPapel.valor}
+                  aoMudar={porPapel.aoMudar}
+                  opcoes={PAPEIS.map((p) => ({ valor: p, rotulo: p }))}
+                />
+                <FiltroSelecao
+                  rotuloDeTodos="Todos os status"
+                  valor={porStatus.valor}
+                  aoMudar={porStatus.aoMudar}
+                  opcoes={Object.entries(ROTULO_DO_STATUS_DE_PESSOA).map(([valor, rotulo]) => ({
+                    valor,
+                    rotulo,
+                  }))}
+                />
+              </BarraDeFiltros>
+
+              <Tabela
+                ordenacao={tabela.ordenacao}
+                vazio={visiveis.length === 0}
+                vazioTexto="Nenhuma pessoa com esses filtros."
+                colunas={[
+                  { rotulo: "Nome", campo: "nome" },
+                  { rotulo: "E-mail", campo: "email" },
+                  { rotulo: "Cargo", campo: "cargo" },
+                  { rotulo: "Departamento", campo: "departamento" },
+                  { rotulo: "Papel", campo: "papel" },
+                  { rotulo: "Status", campo: "status" },
+                  "Capacidades",
+                  "Ações",
+                ]}
+              >
+              {visiveis.map((pessoa) => (
                 <Linha key={pessoa.id}>
-                  <Celula className="font-medium">{pessoa.full_name}</Celula>
+                  <Celula className="font-medium">
+                    <span className="flex items-center gap-2">
+                      {pessoa.full_name}
+                      {pessoa.is_coordinator && <SeloDePapel papel={pessoa.role} coordenador />}
+                    </span>
+                  </Celula>
+                  <Celula className="text-muted-foreground">{pessoa.email ?? "—"}</Celula>
                   <Celula>{pessoa.job_title ?? "—"}</Celula>
+                  <Celula>{nomeDoDepartamento(pessoa.department_id)}</Celula>
                   <Celula>
                     <Selecao
                       value={pessoa.role}
                       onChange={(e) => void mudarPapel(pessoa, e.target.value)}
-                      className="h-8 py-0 text-xs"
+                      // `min-w`, e não `w`: `CLASSE_ENTRADA` já traz `w-full`, e duas
+                      // utilitárias de `width` disputam pela ordem no CSS gerado. Sem
+                      // isto a coluna espreme o select até sobrar uma letra.
+                      className="h-8 min-w-[7.5rem] py-0 text-xs"
                     >
-                      {["colaborador", "gestor", "rh", "admin"].map((papel) => (
+                      {PAPEIS.map((papel) => (
                         <option key={papel} value={papel}>
                           {papel}
                         </option>
                       ))}
                     </Selecao>
+                  </Celula>
+                  <Celula>
+                    <Selo tom={pessoa.status === "active" ? "sucesso" : "neutro"}>
+                      {ROTULO_DO_STATUS_DE_PESSOA[pessoa.status] ?? pessoa.status}
+                    </Selo>
                   </Celula>
                   <Celula>
                     <button
@@ -224,20 +339,18 @@ export default function AdminUsuarios() {
                     </button>
                   </Celula>
                   <Celula>
-                    <span className="flex items-center gap-3">
-                      <SeloDePapel papel={pessoa.role} coordenador={pessoa.is_coordinator} />
-                      <button
-                        type="button"
-                        onClick={() => void remover(pessoa)}
-                        className="text-sm text-destructive underline-offset-4 hover:underline"
-                      >
-                        Remover
-                      </button>
-                    </span>
+                    <button
+                      type="button"
+                      onClick={() => void remover(pessoa)}
+                      className="text-sm text-destructive underline-offset-4 hover:underline"
+                    >
+                      Remover
+                    </button>
                   </Celula>
                 </Linha>
               ))}
-            </Tabela>
+              </Tabela>
+            </>
           )}
         </Cartao>
 

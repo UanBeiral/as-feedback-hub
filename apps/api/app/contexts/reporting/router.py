@@ -23,6 +23,7 @@ from app.contexts.identity.service import TeamScopeService
 from app.contexts.reporting.queries import (
     ClientReportQuery,
     EngagementQuery,
+    FreeFeedbackReportQuery,
     Report360Query,
     TeamHistoryQuery,
 )
@@ -36,6 +37,7 @@ from app.contexts.reporting.schemas import (
     Linha360Out,
     LinhaClienteOut,
     LinhaEngajamentoOut,
+    LinhaFeedbackLivreOut,
 )
 from app.contexts.reporting.service import (
     ExportService,
@@ -49,6 +51,9 @@ from app.core.tenancy import TenantContext
 router = APIRouter(prefix="/reports", tags=["reporting"])
 
 PodeRelatarDep = Annotated[TenantContext, Depends(require_flag("can_generate_reports"))]
+PodeVerHistoricoDep = Annotated[
+    TenantContext, Depends(require_flag("can_view_team_history"))
+]
 
 
 def get_report_service(session: SessionDep, tenant: TenantDep) -> ReportService:
@@ -56,6 +61,7 @@ def get_report_service(session: SessionDep, tenant: TenantDep) -> ReportService:
         report_360=Report360Query(session, tenant),
         clientes=ClientReportQuery(session, tenant),
         engajamento=EngagementQuery(session, tenant),
+        livres=FreeFeedbackReportQuery(session, tenant),
     )
 
 
@@ -133,6 +139,26 @@ async def relatorio_de_clientes(
     ]
 
 
+@router.get("/free-feedbacks", response_model=list[LinhaFeedbackLivreOut])
+async def relatorio_de_livres(
+    tenant: TenantDep,
+    service: ReportServiceDep,
+    preview: Annotated[bool, Query()] = False,
+) -> list[LinhaFeedbackLivreOut]:
+    """A aba "Livres" do legado: quem recebe e quem escreve feedback fora do ciclo."""
+    return [
+        LinhaFeedbackLivreOut(
+            profile_id=linha.profile_id,
+            nome=linha.nome,
+            recebidos=linha.recebidos,
+            enviados=linha.enviados,
+            anonimos=linha.anonimos,
+            sensiveis=linha.sensiveis,
+        )
+        for linha in await service.livres(tenant, preview=preview)
+    ]
+
+
 @router.get("/engagement", response_model=list[LinhaEngajamentoOut])
 async def relatorio_de_engajamento(
     tenant: TenantDep,
@@ -154,8 +180,15 @@ async def relatorio_de_engajamento(
 
 
 @router.get("/team-history", response_model=HistoricoDaEquipeOut)
-async def historico_da_equipe(tenant: TenantDep, session: SessionDep) -> HistoricoDaEquipeOut:
+async def historico_da_equipe(
+    tenant: PodeVerHistoricoDep, session: SessionDep
+) -> HistoricoDaEquipeOut:
     """Histórico dos três tipos de feedback, dentro do escopo de equipe.
+
+    A capacidade é exigida **aqui**, e não só no menu: capacidade que o servidor não
+    cobra é decoração, e quem sabe a URL entra do mesmo jeito (BR-MIGRAR-013/015). Ter
+    equipe não substitui a capacidade — o escopo decide *o que* aparece, a capacidade
+    decide *se* a tela responde.
 
     O escopo sai do `TeamScopeService` e entra na query como lista de ids. Nenhum
     parâmetro desta rota amplia o que a pessoa enxerga — no máximo filtraria dentro
@@ -174,9 +207,37 @@ async def historico_da_equipe(tenant: TenantDep, session: SessionDep) -> Histori
         return [ItemDeHistoricoOut(**asdict(item)) for item in itens]
 
     return HistoricoDaEquipeOut(
-        livre=converter(await historico.livre(visiveis)),
+        # Sensível só para admin/RH, como na rota de recebidos: gestor e coordenador
+        # enxergam a equipe, e não a caixa de denúncia sobre ela.
+        livre=converter(
+            await historico.livre(visiveis, incluir_sensiveis=tenant.has_role("admin", "rh"))
+        ),
         clientes=converter(await historico.clientes(visiveis)),
         ciclos=converter(await historico.ciclos(visiveis)),
+    )
+
+
+@router.get("/my-history", response_model=HistoricoDaEquipeOut)
+async def meu_historico(tenant: TenantDep, session: SessionDep) -> HistoricoDaEquipeOut:
+    """O histórico da própria pessoa (SCR-0021).
+
+    Mesma consulta do histórico da equipe com escopo de um: quem já enxerga a si mesmo
+    não precisa passar pelo `TeamScopeService`, e um segundo jeito de montar as mesmas
+    três seções seria um segundo jeito de elas discordarem.
+
+    Sensível fica de fora sempre — aqui a pessoa é a destinatária, e o `admin` que abrir
+    a própria tela é destinatário como qualquer outro.
+    """
+    historico = TeamHistoryQuery(session, tenant)
+    eu = {tenant.user_id}
+
+    def converter(itens: list[Any]) -> list[ItemDeHistoricoOut]:
+        return [ItemDeHistoricoOut(**asdict(item)) for item in itens]
+
+    return HistoricoDaEquipeOut(
+        livre=converter(await historico.livre(eu)),
+        clientes=converter(await historico.clientes(eu)),
+        ciclos=converter(await historico.ciclos(eu)),
     )
 
 

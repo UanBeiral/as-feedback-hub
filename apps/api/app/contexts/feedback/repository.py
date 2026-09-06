@@ -10,7 +10,7 @@ from __future__ import annotations
 from datetime import UTC, date, datetime, timedelta
 from uuid import UUID
 
-from sqlalchemy import Select, and_, func, or_, select
+from sqlalchemy import Select, and_, case, func, or_, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from app.contexts.feedback.models import (
@@ -24,6 +24,7 @@ from app.contexts.feedback.models import (
     FeedbackRequest,
     FreeFeedback,
 )
+from app.contexts.identity.models import Department, Profile
 from app.core.tenancy import TenantScopedRepository
 
 # Estados que contam no denominador do progresso (BR-MIGRAR-009): `cancelled` e
@@ -297,6 +298,125 @@ class RequestRepository(TenantScopedRepository[FeedbackRequest]):
         )
         return list((await self._session.execute(stmt)).scalars().all())
 
+    async def list_pendentes_de(
+        self, cycle_id: UUID, avaliadores: set[UUID]
+    ) -> list[FeedbackRequest]:
+        """Pedidos em aberto de um conjunto de avaliadores, no ciclo.
+
+        O conjunto vem resolvido de fora (`TeamScopeService`): esta consulta filtra
+        dentro do que já foi autorizado, nunca amplia (R-04 / R-09).
+        """
+        if not avaliadores:
+            return []
+        stmt = (
+            self._scoped()
+            .where(
+                FeedbackRequest.cycle_id == cycle_id,
+                FeedbackRequest.giver_id.in_(avaliadores),
+                FeedbackRequest.status.in_(STATUS_EM_ABERTO),
+            )
+            .order_by(FeedbackRequest.due_date.nulls_last(), FeedbackRequest.created_at)
+        )
+        return list((await self._session.execute(stmt)).scalars().all())
+
+    async def contagem_por_avaliador(self, cycle_id: UUID) -> dict[tuple[UUID, str], int]:
+        """Quantos pedidos cada pessoa tem no ciclo, por status.
+
+        Uma consulta agrupada para a equipe inteira, e não uma por membro: a tela de
+        Minha Equipe pede este número para todo mundo de uma vez, e N+1 aqui apareceria
+        já com uma equipe de dez pessoas.
+        """
+        stmt = (
+            select(FeedbackRequest.giver_id, FeedbackRequest.status, func.count())
+            .where(
+                FeedbackRequest.tenant_id == self.tenant_id,
+                FeedbackRequest.cycle_id == cycle_id,
+            )
+            .group_by(FeedbackRequest.giver_id, FeedbackRequest.status)
+        )
+        return {
+            (giver_id, status): total
+            for giver_id, status, total in (await self._session.execute(stmt)).all()
+        }
+
+    async def contagem_nao_lidos_por_avaliado(self, cycle_id: UUID) -> dict[UUID, int]:
+        """Feedbacks que chegaram para a pessoa e ela ainda não leu (`read_at` nulo).
+
+        É a coluna "Pendentes de Leitura" do acompanhamento: mede o outro lado do ciclo
+        — não o que a pessoa deve escrever, e sim o que escreveram sobre ela e ela ainda
+        não viu.
+        """
+        stmt = (
+            select(FeedbackRequest.receiver_id, func.count())
+            .where(
+                FeedbackRequest.tenant_id == self.tenant_id,
+                FeedbackRequest.cycle_id == cycle_id,
+                FeedbackRequest.status == "submitted",
+                FeedbackRequest.read_at.is_(None),
+            )
+            .group_by(FeedbackRequest.receiver_id)
+        )
+        return {
+            receiver_id: total
+            for receiver_id, total in (await self._session.execute(stmt)).all()
+        }
+
+    async def contagem_por_departamento(
+        self, cycle_id: UUID
+    ) -> list[tuple[str, int, int]]:
+        """Conclusão por departamento: (nome, esperados, enviados).
+
+        O departamento é o de **quem avalia**, não o de quem é avaliado: a pergunta que
+        o painel responde é "que área está devendo resposta". Quem não tem departamento
+        entra como "Sem departamento" em vez de sumir — some do gráfico é como o legado
+        escondia gente sem lotação.
+        """
+        rotulo = func.coalesce(Department.name, "Sem departamento")
+        stmt = (
+            select(
+                rotulo,
+                func.count(),
+                func.count(case((FeedbackRequest.status == "submitted", 1))),
+            )
+            .select_from(FeedbackRequest)
+            .join(Profile, Profile.id == FeedbackRequest.giver_id)
+            .outerjoin(Department, Department.id == Profile.department_id)
+            .where(
+                FeedbackRequest.tenant_id == self.tenant_id,
+                FeedbackRequest.cycle_id == cycle_id,
+                FeedbackRequest.status.in_(STATUS_NO_DENOMINADOR),
+            )
+            .group_by(rotulo)
+            .order_by(rotulo)
+        )
+        return [(nome, esperados, enviados) for nome, esperados, enviados in (
+            await self._session.execute(stmt)
+        ).all()]
+
+    async def enviados_recentes(
+        self, cycle_id: UUID, *, limite: int = 8
+    ) -> list[FeedbackRequest]:
+        """Últimos envios do ciclo — a "Atividade no Ciclo Atual" do painel."""
+        stmt = (
+            self._scoped()
+            .where(
+                FeedbackRequest.cycle_id == cycle_id,
+                FeedbackRequest.status == "submitted",
+            )
+            .order_by(FeedbackRequest.submitted_at.desc())
+            .limit(limite)
+        )
+        return list((await self._session.execute(stmt)).scalars().all())
+
+    async def contagem_global_por_status(self) -> dict[str, int]:
+        """Contagem de todos os ciclos, para o "Resumo Geral"."""
+        stmt = (
+            select(FeedbackRequest.status, func.count())
+            .where(FeedbackRequest.tenant_id == self.tenant_id)
+            .group_by(FeedbackRequest.status)
+        )
+        return {status: total for status, total in (await self._session.execute(stmt)).all()}
+
     async def contagem_por_status(self, cycle_id: UUID) -> dict[str, int]:
         stmt = (
             select(FeedbackRequest.status, func.count())
@@ -407,6 +527,19 @@ class FreeFeedbackRepository(TenantScopedRepository[FreeFeedback]):
     ) -> list[FreeFeedback]:
         stmt = self._visiveis_para(profile_id, gestao=gestao).order_by(
             FreeFeedback.created_at.desc()
+        )
+        return list((await self._session.execute(stmt)).scalars().all())
+
+    async def list_enviados(self, profile_id: UUID) -> list[FreeFeedback]:
+        """O que a pessoa escreveu — o anônimo dela não entra.
+
+        Anônimo não guarda autor (AMB-001), então não há como reconhecê-lo como dela sem
+        guardar exatamente o vínculo que o anonimato existe para não guardar.
+        """
+        stmt = (
+            self._scoped()
+            .where(FreeFeedback.giver_id == profile_id)
+            .order_by(FreeFeedback.created_at.desc())
         )
         return list((await self._session.execute(stmt)).scalars().all())
 

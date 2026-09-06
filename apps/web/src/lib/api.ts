@@ -72,24 +72,50 @@ export const sessao = {
   },
 };
 
-async function renovar(): Promise<boolean> {
-  const refresh = sessao.refresh;
-  if (!refresh) return false;
+/**
+ * Renovação **única em curso**, compartilhada por todos os chamadores.
+ *
+ * O refresh token é de uso único e rotativo (AD-03), e reapresentá-lo derruba a sessão
+ * inteira — é essa a propriedade que torna o roubo detectável. Só que duas requisições
+ * disparadas juntas tomam 401 juntas, e sem esta trava cada uma renovaria por conta
+ * própria, com o mesmo token: a segunda a chegar no servidor seria lida como reúso e
+ * derrubaria a sessão de quem apenas recarregou a página. Acontecia em todo boot, onde
+ * `/auth/me` e `/settings` saem em paralelo.
+ *
+ * Com a promessa compartilhada, o primeiro a chegar renova e os demais esperam o
+ * resultado dele.
+ */
+let renovacaoEmCurso: Promise<boolean> | null = null;
 
-  const resposta = await fetch("/api/v1/auth/refresh", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ refresh_token: refresh }),
-  });
+function renovar(): Promise<boolean> {
+  // A promessa é guardada numa local antes de qualquer `await`: ler a variável de
+  // módulo no `return` daria `null` se a renovação terminasse no mesmo microtask.
+  const emCurso = (renovacaoEmCurso ??= (async () => {
+    try {
+      const refresh = sessao.refresh;
+      if (!refresh) return false;
 
-  if (!resposta.ok) {
-    sessao.limpar();
-    return false;
-  }
+      const resposta = await fetch("/api/v1/auth/refresh", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ refresh_token: refresh }),
+      });
 
-  const par = (await resposta.json()) as { access_token: string; refresh_token: string };
-  sessao.definir(par.access_token, par.refresh_token);
-  return true;
+      if (!resposta.ok) {
+        sessao.limpar();
+        return false;
+      }
+
+      const par = (await resposta.json()) as { access_token: string; refresh_token: string };
+      sessao.definir(par.access_token, par.refresh_token);
+      return true;
+    } finally {
+      // Libera na volta, e não no sucesso: uma renovação que falhou não pode deixar a
+      // trava presa e transformar todo 401 seguinte em erro permanente.
+      renovacaoEmCurso = null;
+    }
+  })());
+  return emCurso;
 }
 
 type Opcoes = {
@@ -141,6 +167,25 @@ export async function api<T>(caminho: string, opcoes: Opcoes = {}): Promise<T> {
 export async function apiVoid(caminho: string, opcoes: Opcoes = {}): Promise<void> {
   const resposta = await executar(caminho, opcoes, false);
   if (!resposta.ok) throw await erroDe(resposta);
+}
+
+/**
+ * Envio de arquivo (`multipart/form-data`).
+ *
+ * Não passa por `executar` porque ali o `content-type` é fixado em JSON, e num
+ * multipart o cabeçalho tem de trazer o `boundary` que o browser gera — escrevê-lo à
+ * mão faz o servidor não achar nenhum campo. A renovação de sessão fica de fora pelo
+ * mesmo motivo de sempre: `FormData` não se lê duas vezes, e repetir o envio exigiria
+ * remontá-lo.
+ */
+export async function apiUpload<T>(caminho: string, dados: FormData): Promise<T> {
+  const resposta = await fetch(`/api/v1${caminho}`, {
+    method: "POST",
+    headers: sessao.access ? { authorization: `Bearer ${sessao.access}` } : {},
+    body: dados,
+  });
+  if (!resposta.ok) throw await erroDe(resposta);
+  return (await resposta.json()) as T;
 }
 
 /** Download de arquivo gerado pelo worker (AD-07): precisa do Bearer, então não é <a>. */

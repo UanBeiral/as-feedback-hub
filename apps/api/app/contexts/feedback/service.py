@@ -30,6 +30,7 @@ from app.contexts.feedback.models import (
 )
 from app.contexts.feedback.repository import (
     STATUS_CONCLUIDO,
+    STATUS_EM_ABERTO,
     STATUS_NO_DENOMINADOR,
     AnswerRepository,
     CycleNoteRepository,
@@ -40,6 +41,7 @@ from app.contexts.feedback.repository import (
     QuestionRepository,
     RequestRepository,
 )
+from app.contexts.identity.repository import ProfileRepository
 from app.core.errors import ConflictError, NotFoundError, ValidationError
 from app.core.tenancy import TenantContext
 
@@ -139,6 +141,20 @@ class FormService:
                 details={"form_id": str(form_id)},
             )
         form.archived_at = datetime.now(UTC)
+        return form
+
+    async def unarchive(self, form_id: UUID) -> FeedbackForm:
+        """Desarquivar. O legado chamava o par de "Ativar/Desativar".
+
+        Arquivar existe para tirar de circulação um formulário que ninguém deve escolher
+        de novo — não é exclusão, e por isso tem volta. Sem ela, um clique errado obriga
+        a recriar o formulário e as perguntas, e os ciclos antigos passam a apontar para
+        um formulário e os novos para outro com o mesmo nome.
+        """
+        form = await self._forms.get(form_id)
+        if form is None:
+            raise NotFoundError("Formulário não encontrado")
+        form.archived_at = None
         return form
 
 
@@ -279,6 +295,37 @@ class CycleService:
                 status="draft",
             )
         )
+
+    async def update(
+        self,
+        cycle_id: UUID,
+        *,
+        name: str,
+        form_id: UUID,
+        start_date: date,
+        end_date: date,
+        frequency: str | None,
+    ) -> FeedbackCycle:
+        """Edita o ciclo — **só enquanto rascunho**.
+
+        Depois de aberto existem requests apontando para o formulário e prazos que as
+        pessoas já viram: trocar o formulário aí mudaria as perguntas embaixo de quem
+        está respondendo, e mudar a data faria o atraso de BR-MIGRAR-007 mudar de
+        resposta para o passado. Corrigir um ciclo em curso é estender (`extend`), que
+        é outra operação e tem outro nome de propósito.
+        """
+        cycle = await self._exige_ciclo(cycle_id)
+        if cycle.status != "draft":
+            raise ValidationError("Só rascunho pode ser editado")
+        if end_date < start_date:
+            raise ValidationError("A data final não pode ser anterior à inicial")
+
+        cycle.name = name
+        cycle.form_id = form_id
+        cycle.start_date = start_date
+        cycle.end_date = end_date
+        cycle.frequency = frequency
+        return cycle
 
     async def open(self, cycle_id: UUID) -> ResultadoDaAbertura:
         """Abre o ciclo e gera os requests (BR-MIGRAR-001/010/011).
@@ -653,6 +700,334 @@ class CycleProgressService:
             pendentes=total - concluidos,
             atrasados=len(atrasados),
             excluidos=excluidos,
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class MembroDaEquipe:
+    """Uma linha do acompanhamento: quem é a pessoa e onde ela está no ciclo."""
+
+    profile_id: UUID
+    full_name: str
+    job_title: str | None
+    role: str
+    is_coordinator: bool
+    status: str
+    pendentes_de_enviar: int
+    enviados: int
+    pendentes_de_leitura: int
+
+    @property
+    def esperados(self) -> int:
+        return self.pendentes_de_enviar + self.enviados
+
+    @property
+    def percentual(self) -> float:
+        """Pessoa sem pedido nenhum está 100% em dia — não 0%, e não divide por zero."""
+        if self.esperados == 0:
+            return 100.0
+        return round(self.enviados * 100 / self.esperados, 1)
+
+
+@dataclass(frozen=True, slots=True)
+class AcompanhamentoDaEquipe:
+    ciclo_id: UUID | None
+    ciclo_nome: str | None
+    membros: list[MembroDaEquipe]
+
+    @property
+    def total_membros(self) -> int:
+        return len(self.membros)
+
+    @property
+    def enviados(self) -> int:
+        return sum(m.enviados for m in self.membros)
+
+    @property
+    def esperados(self) -> int:
+        return sum(m.esperados for m in self.membros)
+
+    @property
+    def percentual(self) -> float:
+        if self.esperados == 0:
+            return 100.0
+        return round(self.enviados * 100 / self.esperados, 1)
+
+
+class TeamProgressService:
+    """O acompanhamento que o gestor abre para saber quem está devendo o quê.
+
+    Divide o mesmo denominador de `CycleProgressService` (BR-MIGRAR-009) — `cancelled` e
+    `waived` ficam de fora, `submitted` conta como feito —, só que por pessoa. Dois
+    números que não vêm de lá compõem a linha: o que a pessoa ainda deve **escrever**, e
+    o que já escreveram sobre ela e ela ainda não **leu**. São coisas diferentes, e o
+    legado mostrava as duas em colunas separadas justamente por isso.
+
+    O escopo sai de `TeamScopeService` e de nenhum outro lugar (BR-MIGRAR-017 / R-04) —
+    esta classe filtra dentro dele, nunca amplia.
+    """
+
+    def __init__(
+        self,
+        requests: RequestRepository,
+        cycles: CycleRepository,
+        profiles: ProfileRepository,
+    ) -> None:
+        self._requests = requests
+        self._cycles = cycles
+        self._profiles = profiles
+
+    async def acompanhar(
+        self, visiveis: set[UUID], *, exceto: UUID | None = None
+    ) -> AcompanhamentoDaEquipe:
+        """`exceto` tira quem está olhando da própria lista.
+
+        O escopo de visibilidade inclui a própria pessoa, porque ela pode ver o próprio
+        histórico. A tela de equipe é outra pergunta — "quem trabalha comigo" —, e o
+        gestor aparecendo na lista dele inflava o "total de membros" do rodapé.
+        """
+        alvos = {pid for pid in visiveis if pid != exceto}
+        if not alvos:
+            return AcompanhamentoDaEquipe(ciclo_id=None, ciclo_nome=None, membros=[])
+
+        perfis = sorted(
+            await self._profiles.list_by_ids(alvos), key=lambda p: p.full_name.lower()
+        )
+
+        abertos = await self._cycles.list_by_status("open")
+        ciclo = abertos[0] if abertos else None
+        if ciclo is None:
+            # Sem ciclo aberto não há o que acompanhar, mas a equipe continua existindo:
+            # a tela mostra as pessoas com as contagens zeradas, e não um estado vazio.
+            return AcompanhamentoDaEquipe(
+                ciclo_id=None,
+                ciclo_nome=None,
+                membros=[self._linha(p, {}, {}) for p in perfis],
+            )
+
+        por_avaliador = await self._requests.contagem_por_avaliador(ciclo.id)
+        nao_lidos = await self._requests.contagem_nao_lidos_por_avaliado(ciclo.id)
+        return AcompanhamentoDaEquipe(
+            ciclo_id=ciclo.id,
+            ciclo_nome=ciclo.name,
+            membros=[self._linha(p, por_avaliador, nao_lidos) for p in perfis],
+        )
+
+    async def pendentes_da_equipe(
+        self, visiveis: set[UUID], *, exceto: UUID | None = None
+    ) -> tuple[FeedbackCycle | None, list[tuple[FeedbackRequest, str, str]]]:
+        """O que a **equipe** ainda deve no ciclo, pedido a pedido.
+
+        Pergunta diferente da de `acompanhar`, e é por isso que são duas telas no legado:
+        lá se vê "Diego deve 1", aqui se vê "Diego deve o feedback sobre a Bruna, com
+        prazo tal". Com quatro pessoas dá no mesmo; com trinta, é a lista de pedidos que
+        permite cobrar item a item.
+
+        `exceto` tira quem está olhando: o que **eu** devo já tem tela própria, e
+        misturar as duas coisas faria o gestor cobrar a si mesmo na lista da equipe.
+        """
+        alvos = {pid for pid in visiveis if pid != exceto}
+        abertos = await self._cycles.list_by_status("open")
+        ciclo = abertos[0] if abertos else None
+        if ciclo is None or not alvos:
+            return ciclo, []
+
+        pedidos = await self._requests.list_pendentes_de(ciclo.id, alvos)
+        ids = {r.giver_id for r in pedidos} | {r.receiver_id for r in pedidos}
+        nomes = {p.id: p.full_name for p in await self._profiles.list_by_ids(ids)}
+        return ciclo, [
+            (
+                pedido,
+                nomes.get(pedido.giver_id, "Alguém que saiu"),
+                nomes.get(pedido.receiver_id, "Alguém que saiu"),
+            )
+            for pedido in pedidos
+        ]
+
+    @staticmethod
+    def _linha(
+        perfil: object,
+        por_avaliador: dict[tuple[UUID, str], int],
+        nao_lidos: dict[UUID, int],
+    ) -> MembroDaEquipe:
+        pid = perfil.id  # type: ignore[attr-defined]
+        return MembroDaEquipe(
+            profile_id=pid,
+            full_name=perfil.full_name,  # type: ignore[attr-defined]
+            job_title=perfil.job_title,  # type: ignore[attr-defined]
+            role=perfil.role,  # type: ignore[attr-defined]
+            is_coordinator=perfil.is_coordinator,  # type: ignore[attr-defined]
+            status=perfil.status,  # type: ignore[attr-defined]
+            pendentes_de_enviar=sum(
+                por_avaliador.get((pid, s), 0) for s in STATUS_EM_ABERTO
+            ),
+            enviados=sum(por_avaliador.get((pid, s), 0) for s in STATUS_CONCLUIDO),
+            pendentes_de_leitura=nao_lidos.get(pid, 0),
+        )
+
+
+class ReminderService:
+    """Lembrete que o gestor manda para quem ainda deve resposta no ciclo.
+
+    Três decisões que o legado não deixou escritas e valem estar aqui:
+
+    - **Só quem tem o que fazer.** Sem pedido em aberto não há lembrete — cutucar quem
+      já respondeu é o tipo de aviso que ensina a pessoa a ignorar o sino.
+    - **Um por pessoa por dia.** A chave de idempotência inclui a data, então clicar
+      duas vezes não gera dois avisos, e amanhã o gestor pode insistir. Sem o dia na
+      chave, o segundo lembrete da semana seria silenciosamente descartado.
+    - **O escopo é conferido por quem chama** (`TeamScopeService`), como manda R-04:
+      este serviço não decide quem o gestor pode cutucar.
+    """
+
+    def __init__(
+        self,
+        requests: RequestRepository,
+        cycles: CycleRepository,
+        outbox: OutboxService,
+    ) -> None:
+        self._requests = requests
+        self._cycles = cycles
+        self._outbox = outbox
+
+    async def lembrar(self, *, profile_id: UUID, hoje: date | None = None) -> int:
+        """Enfileira o lembrete. Devolve quantos pedidos estão em aberto.
+
+        Zero significa que não havia o que lembrar — e o chamador diz isso à pessoa em
+        vez de fingir que mandou.
+        """
+        abertos = await self._cycles.list_by_status("open")
+        if not abertos:
+            raise ValidationError("Não há ciclo aberto para lembrar.")
+        ciclo = abertos[0]
+
+        pendentes = await self._requests.list_para_avaliador(profile_id)
+        do_ciclo = [r for r in pendentes if r.cycle_id == ciclo.id]
+        if not do_ciclo:
+            return 0
+
+        dia = (hoje or datetime.now(UTC).date()).isoformat()
+        await self._outbox.enqueue(
+            topic="feedback.reminder",
+            payload={
+                "cycle_id": str(ciclo.id),
+                "profile_id": str(profile_id),
+                "pendentes": len(do_ciclo),
+            },
+            idempotency_key=f"feedback.reminder:{ciclo.id}:{profile_id}:{dia}",
+        )
+        return len(do_ciclo)
+
+
+@dataclass(frozen=True, slots=True)
+class ConclusaoDoDepartamento:
+    nome: str
+    esperados: int
+    enviados: int
+
+    @property
+    def percentual(self) -> float:
+        if self.esperados == 0:
+            return 100.0
+        return round(self.enviados * 100 / self.esperados, 1)
+
+
+@dataclass(frozen=True, slots=True)
+class AtividadeDoCiclo:
+    quando: datetime | None
+    avaliador: str
+    avaliado: str
+
+
+@dataclass(slots=True)
+class PainelDoCiclo:
+    """O que o painel inicial mostra, num pacote só.
+
+    Uma chamada e não cinco: o painel é a primeira tela que todo mundo abre, e cada
+    requisição a mais aparece como atraso justamente no pior momento.
+    """
+
+    ciclo: FeedbackCycle | None
+    progresso: ProgressoDoCiclo
+    pessoas_por_status: dict[str, int]
+    por_departamento: list[ConclusaoDoDepartamento]
+    atividade: list[AtividadeDoCiclo]
+    total_de_feedbacks: int
+    total_enviados: int
+
+
+class DashboardService:
+    """Os agregados do painel administrativo (SCR-0003).
+
+    O progresso vem de `CycleProgressService` e não de uma conta própria: era o legado
+    ter três implementações discordantes que motivou BR-MIGRAR-009, e um painel com
+    número próprio recriaria o problema na tela mais visível do sistema.
+    """
+
+    def __init__(
+        self,
+        requests: RequestRepository,
+        cycles: CycleRepository,
+        profiles: ProfileRepository,
+        progresso: CycleProgressService,
+    ) -> None:
+        self._requests = requests
+        self._cycles = cycles
+        self._profiles = profiles
+        self._progresso = progresso
+
+    async def montar(self) -> PainelDoCiclo:
+        pessoas_por_status = await self._profiles.contagem_por_status()
+        global_por_status = await self._requests.contagem_global_por_status()
+        total_de_feedbacks = sum(global_por_status.values())
+        total_enviados = global_por_status.get("submitted", 0)
+
+        abertos = await self._cycles.list_by_status("open")
+        ciclo = abertos[0] if abertos else None
+        if ciclo is None:
+            return PainelDoCiclo(
+                ciclo=None,
+                progresso=ProgressoDoCiclo(
+                    total=0, concluidos=0, pendentes=0, atrasados=0, excluidos=0
+                ),
+                pessoas_por_status=pessoas_por_status,
+                por_departamento=[],
+                atividade=[],
+                total_de_feedbacks=total_de_feedbacks,
+                total_enviados=total_enviados,
+            )
+
+        progresso = await self._progresso.calcular(ciclo.id)
+        departamentos = [
+            ConclusaoDoDepartamento(nome=nome, esperados=esperados, enviados=enviados)
+            for nome, esperados, enviados in await self._requests.contagem_por_departamento(
+                ciclo.id
+            )
+        ]
+
+        recentes = await self._requests.enviados_recentes(ciclo.id)
+        ids = {r.giver_id for r in recentes} | {r.receiver_id for r in recentes}
+        nomes = {p.id: p.full_name for p in await self._profiles.list_by_ids(ids)}
+        atividade = [
+            AtividadeDoCiclo(
+                quando=r.submitted_at,
+                # Pessoa desligada some de `list_by_ids` (que filtra ativos) e a linha
+                # ficaria com o nome em branco. "Alguém que saiu" é honesto e não
+                # esconde que a atividade aconteceu.
+                avaliador=nomes.get(r.giver_id, "Alguém que saiu"),
+                avaliado=nomes.get(r.receiver_id, "Alguém que saiu"),
+            )
+            for r in recentes
+        ]
+
+        return PainelDoCiclo(
+            ciclo=ciclo,
+            progresso=progresso,
+            pessoas_por_status=pessoas_por_status,
+            por_departamento=departamentos,
+            atividade=atividade,
+            total_de_feedbacks=total_de_feedbacks,
+            total_enviados=total_enviados,
         )
 
 

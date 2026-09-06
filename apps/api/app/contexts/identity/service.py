@@ -7,10 +7,16 @@ não decide nada disso — ele traduz HTTP para chamada de método e de volta.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+import secrets
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
-from app.contexts.identity.models import Profile, RefreshToken, User
+from app.contexts.identity.models import (
+    PasswordResetToken,
+    Profile,
+    RefreshToken,
+    User,
+)
 from app.contexts.identity.repository import (
     AuthRepository,
     CoordinatorMemberRepository,
@@ -24,6 +30,11 @@ from app.core.tenancy import TenantContext
 # Mensagem única para qualquer falha de login. Distinguir "e-mail não existe" de
 # "senha errada" entrega meio segredo a quem está tentando adivinhar.
 _CREDENCIAIS_INVALIDAS = "E-mail ou senha inválidos"
+
+# Curto de propósito: o link chega por e-mail, e e-mail é caixa que fica aberta em
+# máquina compartilhada. Uma hora cobre "pedi, fui almoçar e voltei"; um dia cobriria
+# também quem passar pela mesa amanhã.
+TTL_DO_RESET = timedelta(hours=1)
 
 
 class AuthService:
@@ -78,14 +89,78 @@ class AuthService:
         await self._repo.touch_last_login(user)
         return self._issue_pair(user, profile, user_agent=user_agent, ip_address=ip_address)
 
+    async def solicitar_reset(
+        self,
+        *,
+        email: str,
+        tenant_slug: str | None = None,
+        ip_address: str | None = None,
+    ) -> tuple[UUID, UUID, str] | None:
+        """Cria o token de redefinição. `None` quando não há a quem mandar.
+
+        Quem chama **não** deve transformar o `None` em erro visível: a resposta da rota
+        é a mesma com e sem conta, senão a tela vira um verificador de quem trabalha no
+        escritório. É a mesma decisão do `_CREDENCIAIS_INVALIDAS`.
+
+        Conta inativa também recebe `None`: quem foi desligado não volta por um link de
+        senha (BR-MIGRAR-016/018).
+        """
+        tenant = await self._repo.get_tenant_by_slug(tenant_slug or self._default_tenant_slug)
+        if tenant is None:
+            return None
+
+        user = await self._repo.get_user_by_email(tenant.id, email)
+        if user is None or not user.can_sign_in:
+            return None
+
+        plain = secrets.token_urlsafe(48)
+        self._repo.add_reset_token(
+            PasswordResetToken(
+                tenant_id=tenant.id,
+                user_id=user.id,
+                token_digest=hash_refresh_token(plain),
+                expires_at=datetime.now(UTC) + TTL_DO_RESET,
+                requested_ip=ip_address,
+            )
+        )
+        return tenant.id, user.id, plain
+
+    async def confirmar_reset(self, *, token: str, nova_senha: str) -> None:
+        """Gasta o token e troca a senha.
+
+        Todas as sessões daquela pessoa caem junto. Quem redefine senha ou esqueceu a
+        anterior ou desconfia que alguém a tem — nos dois casos, deixar de pé a sessão
+        que já estava aberta noutro lugar é deixar de pé exatamente o que o reset veio
+        fechar.
+        """
+        linha = await self._repo.reivindicar_reset_token(hash_refresh_token(token))
+        if linha is None:
+            raise AuthenticationError("Link inválido ou expirado")
+
+        user = await self._repo.get_user(linha.tenant_id, linha.user_id)
+        if user is None or not user.can_sign_in:
+            raise AuthenticationError("Link inválido ou expirado")
+
+        user.password_hash = self._hasher.hash(nova_senha)
+        await self._repo.revoke_all_for_user(linha.tenant_id, linha.user_id)
+
     async def refresh_session(
         self, *, refresh_token: str, user_agent: str | None = None, ip_address: str | None = None
     ) -> TokenPair:
-        stored = await self._repo.get_refresh_token(hash_refresh_token(refresh_token))
+        digest = hash_refresh_token(refresh_token)
+        stored = await self._repo.get_refresh_token(digest)
         if stored is None:
             raise AuthenticationError("Sessão inválida")
 
-        if stored.used_at is not None:
+        now = datetime.now(UTC)
+        if stored.revoked_at is not None or stored.expires_at <= now:
+            raise AuthenticationError("Sessão expirada")
+
+        # Rotaciona antes de qualquer outra coisa, e num passo só: é a reivindicação
+        # atômica que decide quem fica com o token. Ler `used_at` e gravar depois
+        # deixava duas renovações simultâneas do mesmo token passarem juntas — e a
+        # segunda a chegar derrubava a sessão de quem apenas recarregou a página.
+        if not await self._repo.reivindicar_refresh_token(digest):
             # O token é de uso único. Uma segunda apresentação significa que alguém
             # tem uma cópia: não dá para saber se é o dono ou o ladrão, então as duas
             # sessões caem e o login é refeito.
@@ -93,10 +168,6 @@ class AuthService:
             # dar rollback, e sem isso a revogação não sobreviveria.
             await self._repo.revoke_all_for_user(stored.tenant_id, stored.user_id)
             raise AuthenticationError("Sessão encerrada por segurança. Entre novamente.")
-
-        now = datetime.now(UTC)
-        if stored.revoked_at is not None or stored.expires_at <= now:
-            raise AuthenticationError("Sessão expirada")
 
         user = await self._repo.get_user(stored.tenant_id, stored.user_id)
         if user is None or not user.can_sign_in:
@@ -106,7 +177,6 @@ class AuthService:
         if profile is None or profile.status != "active":
             raise AuthenticationError("Conta inativa. Procure o administrador.")
 
-        stored.used_at = now
         return self._issue_pair(user, profile, user_agent=user_agent, ip_address=ip_address)
 
     async def logout(self, *, refresh_token: str) -> None:
@@ -123,7 +193,7 @@ class AuthService:
         profile = await self._repo.get_profile_by_user(tenant.tenant_id, tenant.user_id)
         if user is None or profile is None:
             raise AuthenticationError("Sessão inválida")
-        return _to_current_user(user, profile)
+        return _to_current_user(user, profile, active_role=tenant.active_role)
 
     def _issue_pair(
         self,
@@ -152,7 +222,7 @@ class AuthService:
         return TokenPair(access_token=access, refresh_token=refresh.plain, expires_at=expires_at)
 
 
-def _to_current_user(user: User, profile: Profile) -> CurrentUser:
+def _to_current_user(user: User, profile: Profile, *, active_role: str = "") -> CurrentUser:
     return CurrentUser(
         user_id=user.id,
         profile_id=profile.id,
@@ -160,6 +230,7 @@ def _to_current_user(user: User, profile: Profile) -> CurrentUser:
         email=user.email,
         full_name=profile.full_name,
         role=profile.role,
+        active_role=active_role or profile.role,
         job_title=profile.job_title,
         is_coordinator=profile.is_coordinator,
         department_id=profile.department_id,

@@ -116,7 +116,7 @@ class FakeQuery:
 async def test_preview_e_tabela_usam_limites_diferentes() -> None:
     """BR-MIGRAR-029: preview 50, tabela 100 — aplicados na query."""
     q360, clientes, engajamento = FakeQuery(), FakeQuery(), FakeQuery()
-    service = ReportService(q360, clientes, engajamento)  # type: ignore[arg-type]
+    service = ReportService(q360, clientes, engajamento, FakeQuery())  # type: ignore[arg-type]
 
     await service.feedback_360(cycle_id=None, department_id=None, preview=True)
     assert q360.limite_recebido == LIMITE_PREVIEW
@@ -130,7 +130,7 @@ async def test_preview_e_tabela_usam_limites_diferentes() -> None:
 
 async def test_relatorio_de_cliente_exige_a_capacidade() -> None:
     """BR-MIGRAR-029: `can_generate_reports` é capacidade individual, não papel."""
-    service = ReportService(FakeQuery(), FakeQuery(), FakeQuery())  # type: ignore[arg-type]
+    service = ReportService(FakeQuery(), FakeQuery(), FakeQuery(), FakeQuery())  # type: ignore[arg-type]
 
     with pytest.raises(AuthorizationError):
         await service.clientes(_contexto())
@@ -264,6 +264,7 @@ def test_item_de_historico_e_serializavel() -> None:
 
     item = ItemDeHistorico(
         tipo="livre",
+        item_id=uuid4(),
         quando=datetime.now(UTC),
         sobre_id=uuid4(),
         sobre_nome="Ana",
@@ -275,3 +276,56 @@ def test_item_de_historico_e_serializavel() -> None:
     assert ItemDeHistoricoOut(**asdict(item)).sobre_nome == "Ana"
     with pytest.raises(TypeError):
         vars(item)
+
+
+class _SessaoQueGravaStatement:
+    """Sessão falsa que guarda o `select` e devolve nada.
+
+    O que estes testes verificam é a cláusula que a query monta, não o resultado — e
+    para isso um banco de verdade seria máquina demais para responder "o `WHERE` tem
+    `is_sensitive`?".
+    """
+
+    def __init__(self) -> None:
+        self.statements: list[object] = []
+
+    async def execute(self, statement):
+        self.statements.append(statement)
+
+        class _Vazio:
+            @staticmethod
+            def all():
+                return []
+
+        return _Vazio()
+
+
+@pytest.mark.asyncio
+async def test_historico_esconde_sensivel_por_padrao() -> None:
+    """Sensível não chega a quem recebeu — no histórico vale igual à caixa de recebidos."""
+    from app.contexts.reporting.queries import TeamHistoryQuery
+
+    sessao = _SessaoQueGravaStatement()
+    tenant = TenantContext(tenant_id=uuid4(), user_id=uuid4(), role="gestor", flags=frozenset())
+    query = TeamHistoryQuery(sessao, tenant)  # type: ignore[arg-type]
+
+    await query.livre({uuid4()})
+    assert "is_sensitive" in str(sessao.statements[-1])
+
+    await query.livre({uuid4()}, incluir_sensiveis=True)
+    assert "is_sensitive" not in str(sessao.statements[-1])
+
+
+@pytest.mark.asyncio
+async def test_historico_de_escopo_vazio_nao_vira_todo_mundo() -> None:
+    """PAR-05 do lado da leitura: sem escopo, nada — e não "sem filtro"."""
+    from app.contexts.reporting.queries import TeamHistoryQuery
+
+    sessao = _SessaoQueGravaStatement()
+    tenant = TenantContext(tenant_id=uuid4(), user_id=uuid4(), role="gestor", flags=frozenset())
+    query = TeamHistoryQuery(sessao, tenant)  # type: ignore[arg-type]
+
+    assert await query.livre(set()) == []
+    assert await query.clientes(set()) == []
+    assert await query.ciclos(set()) == []
+    assert sessao.statements == [], "escopo vazio nao deveria nem consultar"

@@ -429,3 +429,82 @@ def test_nota_geral_aceita_a_escala_de_zero_a_dez() -> None:
     assert PublicSubmitIn(overall_rating=10).overall_rating == 10
     with pytest.raises(PydanticValidationError):
         PublicSubmitIn(overall_rating=11)
+
+
+# ---------------------------------------------------------------- editor do formulário
+
+
+class FakePerguntasDoCliente:
+    """Dublê do repositório de perguntas, com o filtro de arquivadas."""
+
+    def __init__(self, perguntas: list, respondidas: set[UUID] | None = None) -> None:
+        self.perguntas = perguntas
+        self.respondidas = respondidas or set()
+        self.apagadas: list = []
+
+    async def list_by_form(self, form_id: UUID, *, incluir_arquivadas: bool = False) -> list:
+        itens = [p for p in self.perguntas if p.form_id == form_id]
+        if not incluir_arquivadas:
+            itens = [p for p in itens if p.is_active]
+        return sorted(itens, key=lambda p: p.display_order)
+
+    async def tem_resposta(self, question_id: UUID) -> bool:
+        return question_id in self.respondidas
+
+    async def remove(self, pergunta) -> None:
+        self.perguntas.remove(pergunta)
+        self.apagadas.append(pergunta)
+
+
+def _pergunta_de_cliente(form_id: UUID, ordem: int, **campos):
+    base = {
+        "id": uuid4(),
+        "tenant_id": uuid4(),
+        "form_id": form_id,
+        "question_text": f"Pergunta {ordem}",
+        "question_type": "rating",
+        "is_required": True,
+        "display_order": ordem,
+        "is_active": True,
+    }
+    return ClientEvalFormQuestion(**{**base, **campos})
+
+
+async def test_pergunta_arquivada_some_do_formulario_mas_nao_do_banco() -> None:
+    """Apagar pergunta respondida destruiria a resposta de um cliente.
+
+    Arquivar é o meio-termo: sai dos formulários novos e continua explicando os
+    relatórios antigos, com a resposta intacta.
+    """
+    form = uuid4()
+    viva = _pergunta_de_cliente(form, 1)
+    arquivada = _pergunta_de_cliente(form, 2, is_active=False)
+    repo = FakePerguntasDoCliente([viva, arquivada], respondidas={arquivada.id})
+
+    assert await repo.list_by_form(form) == [viva]
+    assert len(await repo.list_by_form(form, incluir_arquivadas=True)) == 2
+    assert repo.apagadas == [], "arquivar não apaga"
+
+
+async def test_reordenar_manda_a_ordem_inteira_e_nao_deixa_buraco() -> None:
+    """A lista completa torna a operação idempotente e sem corrida (BR-MIGRAR-020).
+
+    Quem ficou de fora da lista vai para o fim em vez de manter a ordem antiga: duas
+    perguntas com o mesmo `display_order` deixariam a ordem do wizard ao acaso do banco.
+    """
+    form = uuid4()
+    a, b, c = (_pergunta_de_cliente(form, i) for i in range(3))
+    perguntas = {p.id: p for p in (a, b, c)}
+
+    # A tela mandou uma lista defasada, sem a `c`.
+    ordem = 0
+    for question_id in [c.id, a.id]:
+        pergunta = perguntas.pop(question_id, None)
+        if pergunta is not None:
+            pergunta.display_order = ordem
+            ordem += 1
+    for restante in perguntas.values():
+        restante.display_order = ordem
+        ordem += 1
+
+    assert [c.display_order, a.display_order, b.display_order] == [0, 1, 2]

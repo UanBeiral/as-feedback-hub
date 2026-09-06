@@ -32,6 +32,7 @@ from app.contexts.identity.repository import (
     UserRepository,
 )
 from app.contexts.identity.schemas import (
+    ColleagueOut,
     CoordinatorIn,
     CoordinatorMemberIn,
     DepartmentIn,
@@ -96,10 +97,34 @@ AdminDep = Annotated[TenantContext, Depends(require_role("admin", "rh"))]
 GestaoDep = Annotated[TenantContext, Depends(require_role("admin", "rh", "gestor"))]
 
 
+@router.get("/colleagues", response_model=list[ColleagueOut])
+async def list_colleagues(tenant: TenantDep, session: SessionDep) -> list[ColleagueOut]:
+    """As pessoas do escritório, para quem vai escrever um feedback livre (SCR-0023).
+
+    Aberta a qualquer autenticado, e não só a admin: dar feedback fora do ciclo é de todo
+    mundo, e sem esta lista o formulário só serviria a quem tem equipe.
+
+    Quem pede sai da lista — a API recusa feedback para si mesmo, e oferecer a opção seria
+    montar um caminho que termina em erro.
+    """
+    perfis = await ProfileRepository(session, tenant).list_active()
+    return [
+        ColleagueOut.model_validate(p) for p in perfis if p.id != tenant.user_id
+    ]
+
+
 @router.get("/profiles", response_model=list[ProfileSummary])
 async def list_profiles(tenant: AdminDep, session: SessionDep) -> list[ProfileSummary]:
+    """A tabela de usuários do admin, com o e-mail que mora em `users`."""
     repo = ProfileRepository(session, tenant)
-    return [ProfileSummary.model_validate(p) for p in await repo.list_active()]
+    perfis = await repo.list_active()
+    emails = await repo.emails_por_id({p.id for p in perfis})
+    saida = []
+    for perfil in perfis:
+        resumo = ProfileSummary.model_validate(perfil)
+        resumo.email = emails.get(perfil.id)
+        saida.append(resumo)
+    return saida
 
 
 @router.post("/profiles", response_model=ProfileSummary, status_code=status.HTTP_201_CREATED)
@@ -230,18 +255,22 @@ async def create_department(
     payload: DepartmentIn, tenant: AdminDep, session: SessionDep
 ) -> DepartmentOut:
     service = DepartmentService(DepartmentRepository(session, tenant))
-    departamento = await service.create(name=payload.name)
+    departamento = await service.create(name=payload.name, description=payload.description)
     await session.flush()
     await session.refresh(departamento)
     return DepartmentOut.model_validate(departamento)
 
 
 @router.put("/departments/{department_id}", response_model=DepartmentOut)
-async def rename_department(
+async def update_department(
     department_id: UUID, payload: DepartmentIn, tenant: AdminDep, session: SessionDep
 ) -> DepartmentOut:
+    """PUT e não PATCH: o corpo é o departamento inteiro, e `description` ausente
+    significa "sem descrição" — não "mantenha a que estava"."""
     service = DepartmentService(DepartmentRepository(session, tenant))
-    return DepartmentOut.model_validate(await service.rename(department_id, name=payload.name))
+    return DepartmentOut.model_validate(
+        await service.update(department_id, name=payload.name, description=payload.description)
+    )
 
 
 # ---------------------------------------------------------------- equipe

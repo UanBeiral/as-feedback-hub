@@ -28,6 +28,15 @@ class LinhaClienteOut(BaseModel):
     negativas: int
 
 
+class LinhaFeedbackLivreOut(BaseModel):
+    profile_id: UUID
+    nome: str
+    recebidos: int
+    enviados: int
+    anonimos: int
+    sensiveis: int
+
+
 class LinhaEngajamentoOut(BaseModel):
     profile_id: UUID
     nome: str
@@ -91,14 +100,22 @@ class ExportJobOut(BaseModel):
         )
 
 
+class ParteDoHistoricoOut(BaseModel):
+    rotulo: str
+    texto: str
+
+
 class ItemDeHistoricoOut(BaseModel):
     tipo: str
+    item_id: UUID
     quando: datetime | None
     sobre_id: UUID
     sobre_nome: str
     titulo: str
     detalhe: str | None
     lido_em: datetime | None
+    lido_por: str | None = None
+    partes: list[ParteDoHistoricoOut] = []
 
 
 class HistoricoDaEquipeOut(BaseModel):

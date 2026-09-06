@@ -12,11 +12,12 @@ não na renderização: o ponto do limite é não trafegar o que ninguém vai ol
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date, datetime
 from uuid import UUID
 
 from sqlalchemy import Select, and_, case, func, select
+from sqlalchemy.orm import aliased
 
 from app.contexts.client_eval.models import ClientEvaluation
 from app.contexts.feedback.models import (
@@ -58,6 +59,24 @@ class LinhaDeCliente:
     respondidas: int
     media_geral: float | None
     negativas: int
+
+
+@dataclass(frozen=True, slots=True)
+class LinhaDeFeedbackLivre:
+    """Feedback livre agregado por pessoa — a aba "Livres" do legado.
+
+    Recebidos e enviados na mesma linha porque a pergunta que o relatório responde é
+    sobre reciprocidade: quem recebe muito e não escreve nada é um caso; quem escreve
+    muito e não recebe é outro, e nenhum dos dois aparece se as duas colunas viverem
+    em relatórios separados.
+    """
+
+    profile_id: UUID
+    nome: str
+    recebidos: int
+    enviados: int
+    anonimos: int
+    sensiveis: int
 
 
 @dataclass(frozen=True, slots=True)
@@ -198,6 +217,69 @@ class ClientReportQuery(TenantScopedRepository[ClientEvaluation]):
         ]
 
 
+class FreeFeedbackReportQuery(TenantScopedRepository[FreeFeedback]):
+    """Feedback livre por pessoa: o que recebeu e o que enviou."""
+
+    model = FreeFeedback
+
+    async def linhas(self, *, limite: int = LIMITE_TABELA) -> list[LinhaDeFeedbackLivre]:
+        # Duas agregações com chaves diferentes (recebedor e autor) não cabem num
+        # `GROUP BY` só: são feitas separadas e casadas por id em Python, que é barato
+        # porque cada uma devolve uma linha por pessoa, não por feedback.
+        recebidos = (
+            select(
+                FreeFeedback.receiver_id.label("pid"),
+                func.count().label("total"),
+                func.count(case((FreeFeedback.is_anonymous.is_(True), 1))).label("anon"),
+                func.count(case((FreeFeedback.is_sensitive.is_(True), 1))).label("sens"),
+            )
+            .where(FreeFeedback.tenant_id == self.tenant_id)
+            .group_by(FreeFeedback.receiver_id)
+        )
+        enviados = (
+            select(FreeFeedback.giver_id.label("pid"), func.count().label("total"))
+            .where(
+                FreeFeedback.tenant_id == self.tenant_id,
+                # Anônimo não tem autor no banco (AMB-001), então não conta para
+                # ninguém — contá-lo em algum lugar seria reinventar o autor.
+                FreeFeedback.giver_id.is_not(None),
+            )
+            .group_by(FreeFeedback.giver_id)
+        )
+
+        por_recebido = {
+            linha.pid: linha for linha in (await self._session.execute(recebidos)).all()
+        }
+        por_enviado = {
+            linha.pid: linha.total for linha in (await self._session.execute(enviados)).all()
+        }
+
+        ids = set(por_recebido) | set(por_enviado)
+        if not ids:
+            return []
+
+        perfis = (
+            await self._session.execute(
+                select(Profile.id, Profile.full_name)
+                .where(Profile.tenant_id == self.tenant_id, Profile.id.in_(ids))
+                .order_by(Profile.full_name)
+                .limit(limite)
+            )
+        ).all()
+
+        return [
+            LinhaDeFeedbackLivre(
+                profile_id=pid,
+                nome=nome,
+                recebidos=por_recebido[pid].total if pid in por_recebido else 0,
+                enviados=por_enviado.get(pid, 0),
+                anonimos=por_recebido[pid].anon if pid in por_recebido else 0,
+                sensiveis=por_recebido[pid].sens if pid in por_recebido else 0,
+            )
+            for pid, nome in perfis
+        ]
+
+
 class EngagementQuery(TenantScopedRepository[FeedbackRequest]):
     """Engajamento por pessoa (BR-MIGRAR-028).
 
@@ -241,6 +323,14 @@ class EngagementQuery(TenantScopedRepository[FeedbackRequest]):
 
 
 @dataclass(frozen=True, slots=True)
+class ParteDoHistorico:
+    """Um campo rotulado de um item do histórico."""
+
+    rotulo: str
+    texto: str
+
+
+@dataclass(frozen=True, slots=True)
 class ItemDeHistorico:
     """Uma linha do histórico, seja de que tipo for.
 
@@ -250,12 +340,21 @@ class ItemDeHistorico:
     """
 
     tipo: str
+    # Id do registro de origem (feedback livre, avaliacao ou request). E o que permite
+    # marcar ciencia a partir do historico, e a chave estavel da lista na tela.
+    item_id: UUID
     quando: datetime | None
     sobre_id: UUID
     sobre_nome: str
     titulo: str
     detalhe: str | None
     lido_em: datetime | None
+    # Quem deu ciência. Nulo quando ninguém deu, ou quando o tipo não tem leitura —
+    # avaliação de cliente não é dirigida à pessoa, é sobre ela.
+    lido_por: str | None = None
+    # As mesmas informacoes de `detalhe`, mas separadas pelo rotulo que tinham no
+    # formulario. `detalhe` fica para busca e exportacao, onde uma linha so serve.
+    partes: list[ParteDoHistorico] = field(default_factory=list)
 
 
 class TeamHistoryQuery(TenantScopedRepository[FeedbackRequest]):
@@ -269,12 +368,24 @@ class TeamHistoryQuery(TenantScopedRepository[FeedbackRequest]):
     model = FeedbackRequest
 
     async def livre(
-        self, visiveis: set[UUID], *, limite: int = LIMITE_TABELA
+        self,
+        visiveis: set[UUID],
+        *,
+        incluir_sensiveis: bool = False,
+        limite: int = LIMITE_TABELA,
     ) -> list[ItemDeHistorico]:
+        """Feedback livre recebido por quem está no escopo.
+
+        `incluir_sensiveis` é falso por padrão porque o sensível não chega ao
+        destinatário — é invariante do aggregate, e vale igual aqui: sem isso, a pessoa
+        leria no histórico o que a rota de recebidos esconde dela.
+        """
         if not visiveis:
             return []
+        leitor = aliased(Profile)
         stmt = (
             select(
+                FreeFeedback.id,
                 FreeFeedback.created_at,
                 Profile.id,
                 Profile.full_name,
@@ -283,9 +394,11 @@ class TeamHistoryQuery(TenantScopedRepository[FeedbackRequest]):
                 FreeFeedback.improvements,
                 FreeFeedback.message,
                 FreeFeedback.read_at,
+                leitor.full_name,
             )
             .select_from(FreeFeedback)
             .join(Profile, Profile.id == FreeFeedback.receiver_id)
+            .outerjoin(leitor, leitor.id == FreeFeedback.read_by)
             .where(
                 FreeFeedback.tenant_id == self.tenant_id,
                 FreeFeedback.receiver_id.in_(visiveis),
@@ -293,18 +406,38 @@ class TeamHistoryQuery(TenantScopedRepository[FeedbackRequest]):
             .order_by(FreeFeedback.created_at.desc())
             .limit(limite)
         )
+        if not incluir_sensiveis:
+            stmt = stmt.where(FreeFeedback.is_sensitive.is_(False))
         linhas = (await self._session.execute(stmt)).all()
         return [
             ItemDeHistorico(
                 tipo="livre",
+                item_id=item_id,
                 quando=quando,
                 sobre_id=pid,
                 sobre_nome=nome,
                 titulo="Feedback livre" + (" (anônimo)" if anonimo else ""),
                 detalhe=_juntar(positivos, melhorias, mensagem),
+                partes=_rotuladas(
+                    ("Pontos positivos", positivos),
+                    ("Pontos de melhoria", melhorias),
+                    ("Mensagem", mensagem),
+                ),
                 lido_em=lido,
+                lido_por=leitor_nome,
             )
-            for quando, pid, nome, anonimo, positivos, melhorias, mensagem, lido in linhas
+            for (
+                item_id,
+                quando,
+                pid,
+                nome,
+                anonimo,
+                positivos,
+                melhorias,
+                mensagem,
+                lido,
+                leitor_nome,
+            ) in linhas
         ]
 
     async def clientes(
@@ -314,6 +447,7 @@ class TeamHistoryQuery(TenantScopedRepository[FeedbackRequest]):
             return []
         stmt = (
             select(
+                ClientEvaluation.id,
                 ClientEvaluation.submitted_at,
                 Profile.id,
                 Profile.full_name,
@@ -335,6 +469,7 @@ class TeamHistoryQuery(TenantScopedRepository[FeedbackRequest]):
         return [
             ItemDeHistorico(
                 tipo="cliente",
+                item_id=item_id,
                 quando=quando,
                 sobre_id=pid,
                 sobre_nome=nome,
@@ -345,7 +480,7 @@ class TeamHistoryQuery(TenantScopedRepository[FeedbackRequest]):
                 ),
                 lido_em=None,
             )
-            for quando, pid, nome, cliente, nota, negativa in linhas
+            for item_id, quando, pid, nome, cliente, nota, negativa in linhas
         ]
 
     async def ciclos(
@@ -353,16 +488,20 @@ class TeamHistoryQuery(TenantScopedRepository[FeedbackRequest]):
     ) -> list[ItemDeHistorico]:
         if not visiveis:
             return []
+        leitor = aliased(Profile)
         stmt = (
             select(
+                FeedbackRequest.id,
                 FeedbackRequest.submitted_at,
                 Profile.id,
                 Profile.full_name,
                 FeedbackCycle.name,
                 FeedbackRequest.read_at,
+                leitor.full_name,
             )
             .select_from(FeedbackRequest)
             .join(Profile, Profile.id == FeedbackRequest.receiver_id)
+            .outerjoin(leitor, leitor.id == FeedbackRequest.read_by)
             .join(FeedbackCycle, FeedbackCycle.id == FeedbackRequest.cycle_id)
             .where(
                 FeedbackRequest.tenant_id == self.tenant_id,
@@ -376,6 +515,7 @@ class TeamHistoryQuery(TenantScopedRepository[FeedbackRequest]):
         return [
             ItemDeHistorico(
                 tipo="ciclo",
+                item_id=item_id,
                 quando=quando,
                 sobre_id=pid,
                 sobre_nome=nome,
@@ -383,8 +523,9 @@ class TeamHistoryQuery(TenantScopedRepository[FeedbackRequest]):
                 # Sem o autor, de propósito: quem avaliou não aparece no histórico.
                 detalhe=None,
                 lido_em=lido,
+                lido_por=leitor_nome,
             )
-            for quando, pid, nome, ciclo, lido in linhas
+            for item_id, quando, pid, nome, ciclo, lido, leitor_nome in linhas
         ]
 
 
@@ -392,6 +533,20 @@ def _juntar(*partes: str | None) -> str | None:
     """Junta o que existe, devolve `None` quando não sobra nada."""
     texto = " · ".join(parte.strip() for parte in partes if parte and parte.strip())
     return texto or None
+
+
+def _rotuladas(*pares: tuple[str, str | None]) -> list[ParteDoHistorico]:
+    """As partes com o rótulo que cada uma tem no formulário.
+
+    Concatenar elogio e crítica numa frase só apaga a distinção que o formulário faz
+    questão de manter: "explica bem" e "atropela quem fala mais baixo" viram a mesma
+    linha, e quem lê o histórico perde justamente o que o feedback separou.
+    """
+    return [
+        ParteDoHistorico(rotulo=rotulo, texto=texto.strip())
+        for rotulo, texto in pares
+        if texto and texto.strip()
+    ]
 
 
 class ExecutiveDataQuery(TenantScopedRepository[FeedbackRequest]):

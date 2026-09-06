@@ -50,12 +50,32 @@ class CurrentUser(BaseModel):
     tenant_id: UUID
     email: EmailStr
     full_name: str
+    # O papel **persistido** — o que autoriza (BR-MIGRAR-016). Nunca muda com a troca de
+    # contexto, e é ele que a tela mostra entre parênteses quando os dois divergem.
     role: str
+    # O papel que a pessoa escolheu enxergar. Igual a `role` quando não escolheu nada.
+    active_role: str
     job_title: str | None
     is_coordinator: bool
     department_id: UUID | None
     manager_id: UUID | None
     flags: CapabilityFlags
+
+
+class ColleagueOut(BaseModel):
+    """Um colega, para escolher destinatário de feedback livre.
+
+    Só nome e cargo. Não é `ProfileSummary` de propósito: ali vão e-mail, papel,
+    capacidades e vínculo, que são assunto da administração — esta lista é aberta a
+    qualquer autenticado, e o que ela pode dizer é o que qualquer pessoa do escritório já
+    sabe olhando em volta.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    full_name: str
+    job_title: str | None
 
 
 class ProfileSummary(BaseModel):
@@ -69,6 +89,10 @@ class ProfileSummary(BaseModel):
     is_coordinator: bool
     department_id: UUID | None
     manager_id: UUID | None
+    # O e-mail mora em `users`, não em `profiles`, e por isso é opcional aqui: só as
+    # rotas que fazem a junção o preenchem. A tabela de usuários do admin mostra a
+    # coluna (o oráculo confirma), e sem ela não há como distinguir dois homônimos.
+    email: str | None = None
 
 
 class RegisterUserIn(BaseModel):
@@ -101,6 +125,18 @@ class OwnPasswordIn(BaseModel):
     nova_senha: str = Field(min_length=8, max_length=72)
 
 
+class PasswordResetRequestIn(BaseModel):
+    email: EmailStr
+    tenant_slug: str | None = None
+
+
+class PasswordResetConfirmIn(BaseModel):
+    token: str = Field(min_length=1)
+    # O mesmo mínimo da troca autenticada: um caminho de redefinição mais frouxo que o
+    # normal seria o caminho preferido de quem quer uma senha fraca.
+    nova_senha: str = Field(min_length=8, max_length=72)
+
+
 class RoleIn(BaseModel):
     role: str = Field(pattern="^(admin|rh|gestor|colaborador)$")
 
@@ -129,6 +165,9 @@ class PasswordResetIn(BaseModel):
 
 class DepartmentIn(BaseModel):
     name: str = Field(min_length=1)
+    # Opcional: os departamentos migrados do legado podem não ter uma, e obrigar texto
+    # aqui forçaria a inventar descrição para dado que já existe.
+    description: str | None = None
 
 
 class DepartmentOut(BaseModel):
@@ -136,6 +175,7 @@ class DepartmentOut(BaseModel):
 
     id: UUID
     name: str
+    description: str | None
 
 
 class CoordinatorMemberIn(BaseModel):

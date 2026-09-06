@@ -11,6 +11,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request, status
 
+from app.contexts.engagement.repository import OutboxRepository
 from app.contexts.identity.repository import (
     AuthRepository,
     CoordinatorMemberRepository,
@@ -23,6 +24,8 @@ from app.contexts.identity.schemas import (
     LoginRequest,
     OwnPasswordIn,
     OwnProfileIn,
+    PasswordResetConfirmIn,
+    PasswordResetRequestIn,
     ProfileSummary,
     RefreshRequest,
     TokenPair,
@@ -38,6 +41,7 @@ from app.core.di import (
 )
 from app.core.errors import AuthorizationError
 from app.core.security import pode_assumir
+from app.core.tenancy import TenantContext
 
 router = APIRouter(prefix="/auth", tags=["identity"])
 
@@ -93,6 +97,49 @@ async def refresh(
         user_agent=request.headers.get("user-agent"),
         ip_address=client_ip(request),
     )
+
+
+@router.post("/reset-password/request", status_code=status.HTTP_204_NO_CONTENT)
+async def solicitar_reset(
+    payload: PasswordResetRequestIn,
+    request: Request,
+    session: SessionDep,
+    service: AuthServiceDep,
+) -> None:
+    """Pede o link de redefinição (SCR-0038).
+
+    **204 sempre**, exista a conta ou não. A tela que responde "esse e-mail não está
+    cadastrado" é um verificador de quem trabalha no escritório — e o custo de não
+    dizer é zero, porque quem tem a conta recebe o e-mail.
+    """
+    resultado = await service.solicitar_reset(
+        email=payload.email,
+        tenant_slug=payload.tenant_slug,
+        ip_address=client_ip(request),
+    )
+    if resultado is None:
+        return
+
+    tenant_id, user_id, token = resultado
+    # O e-mail sai pelo outbox, na mesma transação do token: link enviado sem token
+    # gravado é link que não funciona, e token gravado sem link é ninguém avisado.
+    outbox = OutboxRepository(
+        session,
+        TenantContext(tenant_id=tenant_id, user_id=user_id, role="system", flags=frozenset()),
+    )
+    await outbox.enqueue(
+        topic="auth.password_reset",
+        payload={"user_id": str(user_id), "token": token},
+        # A chave inclui o token, que é único: dois pedidos seguidos mandam dois links,
+        # e o segundo não pode ser engolido como "repetição" do primeiro.
+        idempotency_key=f"reset:{token[:32]}",
+    )
+
+
+@router.post("/reset-password/confirm", status_code=status.HTTP_204_NO_CONTENT)
+async def confirmar_reset(payload: PasswordResetConfirmIn, service: AuthServiceDep) -> None:
+    """Gasta o link e grava a senha nova. Expirado e já usado dão a mesma resposta."""
+    await service.confirmar_reset(token=payload.token, nova_senha=payload.nova_senha)
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)

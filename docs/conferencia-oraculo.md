@@ -3,9 +3,13 @@
 > Roteiro para a validação que `parity_specs.md` exige e que nenhum teste automatizado
 > substitui: comparar cada tela do sistema novo com o screenshot do legado.
 >
-> **Como usar**: suba o sistema (`README` § Rodando local), abra a rota numa aba e o
-> screenshot noutra, e marque a caixa quando conferir. Divergência encontrada vai para
-> `docs/reversa/migration/screen_deviation_log.md`, com o SCR e o que difere.
+> **Como usar**: suba o sistema (`README` § Rodando local), popule com
+> `deploy/seed_demo.py` — tela vazia esconde coluna, filtro e badge, e conferir contra
+> ela é marcar caixa sem provar nada —, abra a rota numa aba e o screenshot noutra, e
+> marque a caixa quando conferir. O que diverge vai para
+> [`conferencia-resultado.md`](conferencia-resultado.md), tela a tela; o que for
+> aprovado como divergência deliberada segue depois para
+> `docs/reversa/migration/screen_deviation_log.md`.
 >
 > O que olhar, em ordem de importância: **texto** (rótulos, mensagens, estados vazios —
 > o modo literal exige diff zero), **colunas e campos** presentes, **ações** disponíveis,
@@ -18,46 +22,49 @@ Legenda: ✅ tela existe · ⚠️ existe parcialmente · ❌ não implementada
 
 ## Administração
 
-- [ ] **SCR-0003 · Painel Administrativo** ✅ `/`
+- [x] **SCR-0003 · Painel Administrativo** ✅ `/` — **conferida**, 7 divergências
+      (4 seções inteiras ausentes); ver `conferencia-resultado.md`
       `docs/reversa/admin/screenshots/dashboard.png` (+ `-2`, `-3`, `-4`)
       *Atenção*: no legado eram quatro telas de início por papel; aqui é uma rota só que
       se adapta. Confira se o conteúdo do admin bate — não o caminho.
 
-- [ ] **SCR-0007 · Usuários** ✅ `/admin/usuarios`
+- [x] **SCR-0007 · Usuários** ✅ `/admin/usuarios` — **conferida**, 5 divergências
+      (faltam colunas, filtros, exportação e ordenação); ver `conferencia-resultado.md`
       `admin/screenshots/usuarios.png` · `usuarios-modal-novo-usuario.png`
       *Atenção*: o modal virou formulário na própria página.
 
-- [ ] **SCR-0008 · Departamentos** ✅ `/admin/departamentos`
+- [x] **SCR-0008 · Departamentos** ✅ `/admin/departamentos` — **conferida**, 4 divergências
       `admin/screenshots/departamentos.png` · `departamentos-modal-novo.png`
 
-- [ ] **SCR-0009 · Ciclos de Feedback** ✅ `/admin/ciclos`
+- [x] **SCR-0009 · Ciclos de Feedback** ✅ `/admin/ciclos` — **conferida**, 5 divergências
       `admin/screenshots/ciclos.png` · `ciclos-modal-novo.png` (+ `-2`, `-3`) ·
       `ciclos-modal-editar.png`
 
-- [ ] **SCR-0010 · Permissões** ✅ `/admin/permissoes`
+- [x] **SCR-0010 · Permissões** ✅ `/admin/permissoes` — **conferida**, 6 divergências (estrutural)
       `admin/screenshots/permissoes.png` · `permissoes-modal-nova.png`
       *Atenção*: o legado tinha importação em massa; a tela nova não tem.
 
-- [ ] **SCR-0011 · Diagnóstico de Permissões** ✅ `/admin/diagnostico`
+- [x] **SCR-0011 · Diagnóstico de Permissões** ✅ `/admin/diagnostico` — **conferida**, sem divergência
       `admin/screenshots/diagnostico.png` (+ `-2`, `-3`, `-4`)
       *Atenção*: é a tela mais densa do legado. Confira as **5 categorias**, o texto de
       cada banner explicativo e as ações em massa.
 
-- [ ] **SCR-0012 · Auditoria** ✅ `/admin/auditoria`
+- [x] **SCR-0012 · Auditoria** ✅ `/admin/auditoria` — **conferida**, 7 divergências
       `admin/screenshots/auditoria.png` (+ `-2`, `-3`)
 
-- [ ] **SCR-0013 · Fale Conosco (admin)** ✅ `/admin/contatos`
+- [x] **SCR-0013 · Fale Conosco (admin)** ✅ `/admin/contatos` — **conferida**, 4 divergências
       `admin/screenshots/fale-conosco.png`
 
-- [ ] **SCR-0015 · Central de Atualizações** ✅ `/admin/atualizacoes`
+- [x] **SCR-0015 · Central de Atualizações** ✅ `/admin/atualizacoes` — **conferida**, sem divergência
       `admin/screenshots/atualizacoes.png`
 
-- [ ] **SCR-0024 · Configurações** ✅ `/admin/configuracoes`
+- [x] **SCR-0024 · Configurações** ✅ `/admin/configuracoes` — **conferida**, 5 divergências
       `docs/reversa/company-settings/screenshots/configuracoes.png`
       *Atenção*: o novo tem 11 chaves contra 8 do legado (DEV-A09). As três extras são
       esperadas.
 
-- [ ] **SCR-0018 · Formulários** ✅ `/admin/formularios`
+- [x] **SCR-0018 · Formulários** ✅ `/admin/formularios` — **conferida**, 4 divergências
+      (a aba de cliente externo foi feita em 06/09/2026)
       `docs/reversa/feedback/screenshots/formularios.png` · `formularios-modal-novo.png`
 
 - **SCR-0014 · Agenda** ❌ fora do corte por decisão (AMB-007, fase 2).
@@ -72,31 +79,39 @@ Legenda: ✅ tela existe · ⚠️ existe parcialmente · ❌ não implementada
       `admin/screenshots/historico-equipe.png` (+ `-2`)
       *Atenção*: confira as **três seções** (livre, clientes, 360) e os filtros.
 
-- [ ] **SCR-0026 / 0030 · Minha Equipe (coordenador / gestor)** ✅ `/minha-equipe`
+- [x] **SCR-0030 · Minha Equipe (gestor)** ✅ `/minha-equipe` — **conferida**,
+      7 divergências (a tela era um painel de acompanhamento e virou listagem)
+      Falta ainda conferir a variante do coordenador (SCR-0026).
       `coordenador/screenshots/minha-equipe.png` · `gestor/screenshots/minha-equipe.png`
       *Atenção*: é a mesma rota do admin, com escopo diferente. Entre com um gestor para
       conferir — o conteúdo muda, o layout não.
 
-- [ ] **SCR-0028 / 0032 · Histórico (coordenador / gestor)** ✅ `/historico-equipe`
+- [x] **SCR-0032 · Histórico (gestor)** ✅ `/historico-equipe` — **conferida**,
+      5 divergências. Falta a variante do coordenador (SCR-0028).
       `coordenador/screenshots/historico-equipe.png` ·
       `gestor/screenshots/historico-equipe.png` (+ `-2`)
 
-- [ ] **SCR-0027 / 0031 · Feedbacks Pendentes (coordenador / gestor)** ✅ `/meus-feedbacks`
+- [x] **SCR-0027 / 0031 · Feedbacks Pendentes (coordenador / gestor)** ✅
+      `/feedbacks-pendentes` — **feita em 06/09/2026**
       `coordenador/screenshots/feedbacks-pendentes.png` ·
       `gestor/screenshots/feedbacks-pendentes.png`
+      *Correção do roteiro*: esta tela **não** é `/meus-feedbacks`. O legado diz
+      "Feedbacks que **sua equipe** ainda precisa enviar no ciclo atual" — é a visão do
+      gestor sobre a equipe, e a rota nova é a que responde isso.
 
-- [ ] **SCR-0025 / 0029 / 0033 · Início (coordenador / gestor / colaborador)** ✅ `/`
+- [x] **SCR-0029 · Início (gestor)** ✅ `/` — **conferida**, 4 divergências.
+      Faltam as variantes de coordenador (SCR-0025) e colaborador (SCR-0033).
       `coordenador/screenshots/inicio.png` · `gestor/screenshots/inicio.png` (+ `-2`) ·
       `colaborador/screenshots/inicio.png` (+ `-2`, `-3`)
       *Atenção*: quatro telas do legado viraram uma. Entre com cada papel.
 
 ## Feedback
 
-- [ ] **SCR-0020 · Meus Feedbacks** ✅ `/meus-feedbacks`
+- [x] **SCR-0020 · Meus Feedbacks** ✅ `/meus-feedbacks` — **conferida**, 5 divergências
       `feedback/screenshots/meus-feedbacks.png` · `meus-feedbacks-colaborador.png` ·
       `meus-feedbacks-gestor.png`
 
-- [ ] **SCR-0019 · Minhas Anotações** ✅ `/anotacoes`
+- [x] **SCR-0019 · Minhas Anotações** ✅ `/anotacoes` — **conferida**, 1 divergência
       `feedback/screenshots/minhas-anotacoes.png`
 
 - [ ] **SCR-0004 · Anotações Realizadas** ✅ `/anotacoes` (seção inferior)
@@ -104,18 +119,21 @@ Legenda: ✅ tela existe · ⚠️ existe parcialmente · ❌ não implementada
       *Atenção*: no legado eram duas entradas de menu; aqui é uma tela com as duas
       partes.
 
-- [ ] **SCR-0021 · Meu Histórico** ❌ **não implementada**
+- [x] **SCR-0021 · Meu Histórico** ✅ `/meu-historico` — **implementada** em 06/09/2026
       `feedback/screenshots/meu-historico.png` · `meu-historico-colaborador.png` ·
       `meu-historico-gestor.png`
-      É o histórico da **própria pessoa** — existe o da equipe, não o individual.
+      Mesmo componente do histórico da equipe com escopo de um, mais a ação de dar
+      ciência — que é a única coisa que existe aqui e não lá.
 
 - [ ] **SCR-0022 · Caderno do Ciclo** ⚠️ parcial — `/anotacoes` cobre o conteúdo
       `feedback/screenshots/caderno-do-ciclo-painel.png` · `caderno-do-ciclo-widget.png`
       Falta o **botão flutuante** presente em todas as telas autenticadas.
 
-- [ ] **SCR-0023 · Modal Dar Feedback Livre** ❌ **não implementada**
+- [x] **SCR-0023 · Modal Dar Feedback Livre** ⚠️ **parcial** — existe em `/minha-equipe`
       `feedback/screenshots/dar-feedback-livre-modal.png` (+ `-2`)
-      A API existe (`POST /free-feedbacks`); a interface, não.
+      O formulário foi feito junto com as ações de #59: três campos, anônimo e sensível.
+      Falta só a entrada pelo banner do Início, que no legado oferecia a ação a todo
+      mundo e não só a quem tem equipe (#8).
 
 ## Cliente e relatórios
 
@@ -147,7 +165,8 @@ Legenda: ✅ tela existe · ⚠️ existe parcialmente · ❌ não implementada
 
 ## Sessão
 
-- [ ] **SCR-0001 · Login** ✅ `/login`
+- [x] **SCR-0001 · Login** ✅ `/login` — **conferida**, 6 divergências;
+      ver `conferencia-resultado.md`
       `docs/reversa/auth/screenshots/login.png`
 
 - [ ] **SCR-0002 · Meu Perfil** ✅ `/meu-perfil`
@@ -155,14 +174,18 @@ Legenda: ✅ tela existe · ⚠️ existe parcialmente · ❌ não implementada
 
 ---
 
-## Resumo antes de começar
+## Resumo — conferência encerrada em 06/09/2026
 
 | | |
 |---|---|
-| Telas literais a conferir | 34 (uma, a Agenda, está fora do corte; SCR-0035 já conferida) |
-| Já conferidas | SCR-0035 (Avaliação Pública) — 02/09/2026 |
-| Já sabidamente ausentes | SCR-0021 (Meu Histórico), SCR-0023 (Feedback Livre) |
-| Parciais | SCR-0017 (Emitir Relatório), SCR-0022 (Caderno do Ciclo) |
+| Telas literais a conferir | 18 (uma, a Agenda, está fora do corte) |
+| Conferidas | 18 — todas |
+| Resultado | [`conferencia-resultado.md`](conferencia-resultado.md) — 90 divergências e 8 defeitos próprios |
+| Resolvidas | 87 implementadas, 3 registradas como desvio deliberado (#2, #43, #67) |
+| Defeitos próprios | 8, todos corrigidos |
+| Telas que nasceram da conferência | SCR-0021 (Meu Histórico), SCR-0027/0031 (Feedbacks Pendentes), SCR-0038 (Reset de Senha), SCR-0043 (Editor de Perguntas) |
+| Ainda ausentes | SCR-0023 só como entrada pelo banner do Início (#8); o formulário existe em `/minha-equipe` |
+| Parciais | SCR-0022 (Caderno do Ciclo) — falta o botão flutuante |
 | Divergência estrutural | nenhuma em aberto |
 
 As **8 telas modernizadas** (SCR-0036 a SCR-0044) não entram nesta conferência: por

@@ -132,6 +132,37 @@
         "title": "AnswersIn",
         "type": "object"
       },
+      "AtividadeDoCicloOut": {
+        "properties": {
+          "avaliado": {
+            "title": "Avaliado",
+            "type": "string"
+          },
+          "avaliador": {
+            "title": "Avaliador",
+            "type": "string"
+          },
+          "quando": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quando"
+          }
+        },
+        "required": [
+          "quando",
+          "avaliador",
+          "avaliado"
+        ],
+        "title": "AtividadeDoCicloOut",
+        "type": "object"
+      },
       "AuditLogOut": {
         "properties": {
           "action": {
@@ -172,6 +203,10 @@
             "title": "Id",
             "type": "string"
           },
+          "is_sensitive": {
+            "title": "Is Sensitive",
+            "type": "boolean"
+          },
           "record_id": {
             "anyOf": [
               {
@@ -203,9 +238,24 @@
           "table_name",
           "record_id",
           "details",
+          "is_sensitive",
           "created_at"
         ],
         "title": "AuditLogOut",
+        "type": "object"
+      },
+      "Body_upload_logo_api_v1_settings_logo_post": {
+        "properties": {
+          "arquivo": {
+            "contentMediaType": "application/octet-stream",
+            "title": "Arquivo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "arquivo"
+        ],
+        "title": "Body_upload_logo_api_v1_settings_logo_post",
         "type": "object"
       },
       "CancelIn": {
@@ -364,6 +414,10 @@
             "title": "Id",
             "type": "string"
           },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
           "is_required": {
             "title": "Is Required",
             "type": "boolean"
@@ -386,6 +440,11 @@
           "question_type": {
             "title": "Question Type",
             "type": "string"
+          },
+          "tem_resposta": {
+            "default": false,
+            "title": "Tem Resposta",
+            "type": "boolean"
           }
         },
         "required": [
@@ -394,9 +453,106 @@
           "question_type",
           "is_required",
           "display_order",
-          "placeholder"
+          "placeholder",
+          "is_active"
         ],
         "title": "ClientQuestionOut",
+        "type": "object"
+      },
+      "ClientQuestionUpdateIn": {
+        "properties": {
+          "is_required": {
+            "default": true,
+            "title": "Is Required",
+            "type": "boolean"
+          },
+          "placeholder": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Placeholder"
+          },
+          "question_text": {
+            "minLength": 1,
+            "title": "Question Text",
+            "type": "string"
+          },
+          "question_type": {
+            "pattern": "^(rating|text|textarea|yes_no|nps|multiple_choice)$",
+            "title": "Question Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "question_text",
+          "question_type"
+        ],
+        "title": "ClientQuestionUpdateIn",
+        "type": "object"
+      },
+      "ColleagueOut": {
+        "description": "Um colega, para escolher destinatário de feedback livre.\n\nSó nome e cargo. Não é `ProfileSummary` de propósito: ali vão e-mail, papel,\ncapacidades e vínculo, que são assunto da administração — esta lista é aberta a\nqualquer autenticado, e o que ela pode dizer é o que qualquer pessoa do escritório já\nsabe olhando em volta.",
+        "properties": {
+          "full_name": {
+            "title": "Full Name",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "job_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Title"
+          }
+        },
+        "required": [
+          "id",
+          "full_name",
+          "job_title"
+        ],
+        "title": "ColleagueOut",
+        "type": "object"
+      },
+      "ConclusaoDoDepartamentoOut": {
+        "properties": {
+          "enviados": {
+            "title": "Enviados",
+            "type": "integer"
+          },
+          "esperados": {
+            "title": "Esperados",
+            "type": "integer"
+          },
+          "nome": {
+            "title": "Nome",
+            "type": "string"
+          },
+          "percentual": {
+            "title": "Percentual",
+            "type": "number"
+          }
+        },
+        "required": [
+          "nome",
+          "esperados",
+          "enviados",
+          "percentual"
+        ],
+        "title": "ConclusaoDoDepartamentoOut",
         "type": "object"
       },
       "ContactMessageIn": {
@@ -439,7 +595,7 @@
             "title": "Phone"
           },
           "type": {
-            "minLength": 1,
+            "pattern": "^(sugestao|critica)$",
             "title": "Type",
             "type": "string"
           }
@@ -572,6 +728,10 @@
       "CurrentUser": {
         "description": "O que o front precisa saber para montar a navegação — e nada além disso.",
         "properties": {
+          "active_role": {
+            "title": "Active Role",
+            "type": "string"
+          },
           "department_id": {
             "anyOf": [
               {
@@ -650,6 +810,7 @@
           "email",
           "full_name",
           "role",
+          "active_role",
           "job_title",
           "is_coordinator",
           "department_id",
@@ -905,8 +1066,106 @@
         "title": "CycleOut",
         "type": "object"
       },
+      "DashboardOut": {
+        "description": "Os agregados do painel inicial (SCR-0003), numa chamada só.",
+        "properties": {
+          "atividade": {
+            "items": {
+              "$ref": "#/components/schemas/AtividadeDoCicloOut"
+            },
+            "title": "Atividade",
+            "type": "array"
+          },
+          "cycle_end_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cycle End Date"
+          },
+          "cycle_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cycle Id"
+          },
+          "cycle_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cycle Name"
+          },
+          "pessoas_ativas": {
+            "title": "Pessoas Ativas",
+            "type": "integer"
+          },
+          "pessoas_inativas": {
+            "title": "Pessoas Inativas",
+            "type": "integer"
+          },
+          "por_departamento": {
+            "items": {
+              "$ref": "#/components/schemas/ConclusaoDoDepartamentoOut"
+            },
+            "title": "Por Departamento",
+            "type": "array"
+          },
+          "progresso": {
+            "$ref": "#/components/schemas/ProgressOut"
+          },
+          "total_de_feedbacks": {
+            "title": "Total De Feedbacks",
+            "type": "integer"
+          },
+          "total_enviados": {
+            "title": "Total Enviados",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "cycle_id",
+          "cycle_name",
+          "cycle_end_date",
+          "progresso",
+          "pessoas_ativas",
+          "pessoas_inativas",
+          "por_departamento",
+          "atividade",
+          "total_de_feedbacks",
+          "total_enviados"
+        ],
+        "title": "DashboardOut",
+        "type": "object"
+      },
       "DepartmentIn": {
         "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
           "name": {
             "minLength": 1,
             "title": "Name",
@@ -921,6 +1180,17 @@
       },
       "DepartmentOut": {
         "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -933,7 +1203,8 @@
         },
         "required": [
           "id",
-          "name"
+          "name",
+          "description"
         ],
         "title": "DepartmentOut",
         "type": "object"
@@ -950,6 +1221,30 @@
           }
         },
         "title": "DepartmentsIn",
+        "type": "object"
+      },
+      "DiaDeAuditoriaOut": {
+        "properties": {
+          "dia": {
+            "format": "date",
+            "title": "Dia",
+            "type": "string"
+          },
+          "normais": {
+            "title": "Normais",
+            "type": "integer"
+          },
+          "sensiveis": {
+            "title": "Sensiveis",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "dia",
+          "normais",
+          "sensiveis"
+        ],
+        "title": "DiaDeAuditoriaOut",
         "type": "object"
       },
       "DiagnosticoOut": {
@@ -1649,6 +1944,116 @@
         "title": "FreeFeedbackOut",
         "type": "object"
       },
+      "FreeFeedbackSentOut": {
+        "description": "O que a pessoa enviou, com o nome de quem recebeu.\n\nO nome não entra em `FreeFeedbackOut` porque lá a outra ponta é o autor, e autor de\nanônimo é justamente o que não se conta.",
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "giver_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Giver Id"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "improvements": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Improvements"
+          },
+          "is_anonymous": {
+            "title": "Is Anonymous",
+            "type": "boolean"
+          },
+          "is_sensitive": {
+            "title": "Is Sensitive",
+            "type": "boolean"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "positives": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Positives"
+          },
+          "read_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Read At"
+          },
+          "receiver_id": {
+            "format": "uuid",
+            "title": "Receiver Id",
+            "type": "string"
+          },
+          "receiver_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Receiver Name"
+          }
+        },
+        "required": [
+          "id",
+          "giver_id",
+          "receiver_id",
+          "is_anonymous",
+          "is_sensitive",
+          "positives",
+          "improvements",
+          "message",
+          "read_at",
+          "created_at"
+        ],
+        "title": "FreeFeedbackSentOut",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -1708,6 +2113,11 @@
             ],
             "title": "Detalhe"
           },
+          "item_id": {
+            "format": "uuid",
+            "title": "Item Id",
+            "type": "string"
+          },
           "lido_em": {
             "anyOf": [
               {
@@ -1719,6 +2129,25 @@
               }
             ],
             "title": "Lido Em"
+          },
+          "lido_por": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lido Por"
+          },
+          "partes": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ParteDoHistoricoOut"
+            },
+            "title": "Partes",
+            "type": "array"
           },
           "quando": {
             "anyOf": [
@@ -1752,6 +2181,7 @@
         },
         "required": [
           "tipo",
+          "item_id",
           "quando",
           "sobre_id",
           "sobre_nome",
@@ -1760,6 +2190,25 @@
           "lido_em"
         ],
         "title": "ItemDeHistoricoOut",
+        "type": "object"
+      },
+      "LembreteOut": {
+        "description": "Resposta do lembrete. `pendentes` = 0 significa que não havia o que lembrar.",
+        "properties": {
+          "mensagem": {
+            "title": "Mensagem",
+            "type": "string"
+          },
+          "pendentes": {
+            "title": "Pendentes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "pendentes",
+          "mensagem"
+        ],
+        "title": "LembreteOut",
         "type": "object"
       },
       "Linha360Out": {
@@ -1900,6 +2349,45 @@
         "title": "LinhaEngajamentoOut",
         "type": "object"
       },
+      "LinhaFeedbackLivreOut": {
+        "properties": {
+          "anonimos": {
+            "title": "Anonimos",
+            "type": "integer"
+          },
+          "enviados": {
+            "title": "Enviados",
+            "type": "integer"
+          },
+          "nome": {
+            "title": "Nome",
+            "type": "string"
+          },
+          "profile_id": {
+            "format": "uuid",
+            "title": "Profile Id",
+            "type": "string"
+          },
+          "recebidos": {
+            "title": "Recebidos",
+            "type": "integer"
+          },
+          "sensiveis": {
+            "title": "Sensiveis",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "profile_id",
+          "nome",
+          "recebidos",
+          "enviados",
+          "anonimos",
+          "sensiveis"
+        ],
+        "title": "LinhaFeedbackLivreOut",
+        "type": "object"
+      },
       "LoginRequest": {
         "properties": {
           "email": {
@@ -1949,6 +2437,73 @@
           }
         },
         "title": "ManagerIn",
+        "type": "object"
+      },
+      "MembroDaEquipeOut": {
+        "description": "Uma linha da tela de acompanhamento da equipe.",
+        "properties": {
+          "enviados": {
+            "title": "Enviados",
+            "type": "integer"
+          },
+          "full_name": {
+            "title": "Full Name",
+            "type": "string"
+          },
+          "is_coordinator": {
+            "title": "Is Coordinator",
+            "type": "boolean"
+          },
+          "job_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Title"
+          },
+          "pendentes_de_enviar": {
+            "title": "Pendentes De Enviar",
+            "type": "integer"
+          },
+          "pendentes_de_leitura": {
+            "title": "Pendentes De Leitura",
+            "type": "integer"
+          },
+          "percentual": {
+            "title": "Percentual",
+            "type": "number"
+          },
+          "profile_id": {
+            "format": "uuid",
+            "title": "Profile Id",
+            "type": "string"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "profile_id",
+          "full_name",
+          "job_title",
+          "role",
+          "is_coordinator",
+          "status",
+          "pendentes_de_enviar",
+          "enviados",
+          "pendentes_de_leitura",
+          "percentual"
+        ],
+        "title": "MembroDaEquipeOut",
         "type": "object"
       },
       "NotificationFeed": {
@@ -2165,6 +2720,45 @@
         "title": "ParDePermissaoOut",
         "type": "object"
       },
+      "ParteDoHistoricoOut": {
+        "properties": {
+          "rotulo": {
+            "title": "Rotulo",
+            "type": "string"
+          },
+          "texto": {
+            "title": "Texto",
+            "type": "string"
+          }
+        },
+        "required": [
+          "rotulo",
+          "texto"
+        ],
+        "title": "ParteDoHistoricoOut",
+        "type": "object"
+      },
+      "PasswordResetConfirmIn": {
+        "properties": {
+          "nova_senha": {
+            "maxLength": 72,
+            "minLength": 8,
+            "title": "Nova Senha",
+            "type": "string"
+          },
+          "token": {
+            "minLength": 1,
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "nova_senha"
+        ],
+        "title": "PasswordResetConfirmIn",
+        "type": "object"
+      },
       "PasswordResetIn": {
         "properties": {
           "nova_senha": {
@@ -2178,6 +2772,145 @@
           "nova_senha"
         ],
         "title": "PasswordResetIn",
+        "type": "object"
+      },
+      "PasswordResetRequestIn": {
+        "properties": {
+          "email": {
+            "format": "email",
+            "title": "Email",
+            "type": "string"
+          },
+          "tenant_slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tenant Slug"
+          }
+        },
+        "required": [
+          "email"
+        ],
+        "title": "PasswordResetRequestIn",
+        "type": "object"
+      },
+      "PendenteDaEquipeOut": {
+        "description": "Um pedido que a equipe ainda deve — a linha de SCR-0027/0031.",
+        "properties": {
+          "atrasado": {
+            "title": "Atrasado",
+            "type": "boolean"
+          },
+          "due_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date"
+          },
+          "giver_id": {
+            "format": "uuid",
+            "title": "Giver Id",
+            "type": "string"
+          },
+          "giver_name": {
+            "title": "Giver Name",
+            "type": "string"
+          },
+          "receiver_name": {
+            "title": "Receiver Name",
+            "type": "string"
+          },
+          "request_id": {
+            "format": "uuid",
+            "title": "Request Id",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "request_id",
+          "giver_id",
+          "giver_name",
+          "receiver_name",
+          "status",
+          "due_date",
+          "atrasado"
+        ],
+        "title": "PendenteDaEquipeOut",
+        "type": "object"
+      },
+      "PendentesDaEquipeOut": {
+        "properties": {
+          "cycle_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cycle Id"
+          },
+          "cycle_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cycle Name"
+          },
+          "pendentes": {
+            "items": {
+              "$ref": "#/components/schemas/PendenteDaEquipeOut"
+            },
+            "title": "Pendentes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "cycle_id",
+          "cycle_name",
+          "pendentes"
+        ],
+        "title": "PendentesDaEquipeOut",
+        "type": "object"
+      },
+      "PermissionBulkIn": {
+        "description": "Um lote de permissões, como o \"Importar em Massa\" do legado.\n\nUma chamada e não N: montar uma matriz de 40 pessoas são centenas de pares, e\ncentenas de requisições transformariam a importação numa espera de minutos com meia\nmatriz gravada se o navegador fechasse no meio.",
+        "properties": {
+          "permissoes": {
+            "items": {
+              "$ref": "#/components/schemas/PermissionIn"
+            },
+            "maxItems": 2000,
+            "minItems": 1,
+            "title": "Permissoes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "permissoes"
+        ],
+        "title": "PermissionBulkIn",
         "type": "object"
       },
       "PermissionIn": {
@@ -2381,6 +3114,17 @@
               }
             ],
             "title": "Department Id"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
           },
           "full_name": {
             "title": "Full Name",
@@ -3110,6 +3854,25 @@
         "title": "RegisterUserIn",
         "type": "object"
       },
+      "ReordenarPerguntasIn": {
+        "description": "A ordem inteira, e não um \"mover para cima\".\n\nMandar a lista toda faz a operação ser idempotente e livre de corrida: duas\nreordenações simultâneas terminam numa das duas ordens pedidas, e não numa terceira\nque ninguém escolheu (BR-MIGRAR-020).",
+        "properties": {
+          "question_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Question Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "question_ids"
+        ],
+        "title": "ReordenarPerguntasIn",
+        "type": "object"
+      },
       "ReorderIn": {
         "properties": {
           "question_ids": {
@@ -3176,6 +3939,17 @@
             "title": "Giver Id",
             "type": "string"
           },
+          "giver_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Giver Name"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -3192,6 +3966,17 @@
             "format": "uuid",
             "title": "Receiver Id",
             "type": "string"
+          },
+          "receiver_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Receiver Name"
           },
           "status": {
             "title": "Status",
@@ -3325,6 +4110,7 @@
         "type": "object"
       },
       "RequestOut": {
+        "description": "Pedido de feedback, com os nomes das duas pontas resolvidos.\n\nOs nomes não são enfeite: sem eles a lista \"Meus Feedbacks\" vira um punhado de\nlinhas idênticas — mesmo status, mesmo prazo — e quem responde não descobre sobre\nquem é cada uma. Resolver do lado da API é o caminho barato: o repositório já traz\nos perfis pelo join, e a alternativa seria o front pedir `/profiles` inteiro só para\ntraduzir uuid em nome.",
         "properties": {
           "cancel_justification": {
             "anyOf": [
@@ -3364,6 +4150,17 @@
             "title": "Giver Id",
             "type": "string"
           },
+          "giver_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Giver Name"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -3373,6 +4170,17 @@
             "format": "uuid",
             "title": "Receiver Id",
             "type": "string"
+          },
+          "receiver_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Receiver Name"
           },
           "status": {
             "title": "Status",
@@ -3403,6 +4211,86 @@
           "cancel_justification"
         ],
         "title": "RequestOut",
+        "type": "object"
+      },
+      "ResultadoDaImportacaoOut": {
+        "properties": {
+          "criadas": {
+            "title": "Criadas",
+            "type": "integer"
+          },
+          "erros": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Erros",
+            "type": "array"
+          },
+          "ja_existiam": {
+            "title": "Ja Existiam",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "criadas",
+          "ja_existiam",
+          "erros"
+        ],
+        "title": "ResultadoDaImportacaoOut",
+        "type": "object"
+      },
+      "ResumoDeAuditoriaOut": {
+        "description": "Os cartões e o gráfico do painel de auditoria (#34 a #37 da conferência).",
+        "properties": {
+          "atividade": {
+            "items": {
+              "$ref": "#/components/schemas/DiaDeAuditoriaOut"
+            },
+            "title": "Atividade",
+            "type": "array"
+          },
+          "hoje": {
+            "title": "Hoje",
+            "type": "integer"
+          },
+          "mais_ativo_acoes": {
+            "title": "Mais Ativo Acoes",
+            "type": "integer"
+          },
+          "mais_ativo_nome": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mais Ativo Nome"
+          },
+          "sensiveis_sete_dias": {
+            "title": "Sensiveis Sete Dias",
+            "type": "integer"
+          },
+          "sete_dias": {
+            "title": "Sete Dias",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total",
+          "hoje",
+          "sete_dias",
+          "sensiveis_sete_dias",
+          "mais_ativo_nome",
+          "mais_ativo_acoes",
+          "atividade"
+        ],
+        "title": "ResumoDeAuditoriaOut",
         "type": "object"
       },
       "RoleIn": {
@@ -3527,6 +4415,68 @@
           }
         },
         "title": "SettingUpdate",
+        "type": "object"
+      },
+      "TeamProgressOut": {
+        "description": "Acompanhamento da equipe no ciclo aberto (SCR-0030).\n\nSem ciclo aberto os membros vêm com as contagens zeradas em vez de a tela cair num\nestado vazio: a equipe continua existindo entre um ciclo e outro.",
+        "properties": {
+          "cycle_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cycle Id"
+          },
+          "cycle_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cycle Name"
+          },
+          "enviados": {
+            "title": "Enviados",
+            "type": "integer"
+          },
+          "esperados": {
+            "title": "Esperados",
+            "type": "integer"
+          },
+          "membros": {
+            "items": {
+              "$ref": "#/components/schemas/MembroDaEquipeOut"
+            },
+            "title": "Membros",
+            "type": "array"
+          },
+          "percentual": {
+            "title": "Percentual",
+            "type": "number"
+          },
+          "total_membros": {
+            "title": "Total Membros",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "cycle_id",
+          "cycle_name",
+          "membros",
+          "total_membros",
+          "enviados",
+          "esperados",
+          "percentual"
+        ],
+        "title": "TeamProgressOut",
         "type": "object"
       },
       "TeamRequestIn": {
@@ -3760,6 +4710,33 @@
           }
         ],
         "summary": "List Audit Logs",
+        "tags": [
+          "engagement"
+        ]
+      }
+    },
+    "/api/v1/audit-logs/summary": {
+      "get": {
+        "description": "Cartões e gráfico do painel de auditoria.\n\nRota separada da listagem porque responde outra pergunta: a listagem pagina o\ndetalhe, esta agrega o todo. Juntar as duas obrigaria a recalcular os agregados a\ncada página virada.",
+        "operationId": "audit_summary_api_v1_audit_logs_summary_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResumoDeAuditoriaOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Audit Summary",
         "tags": [
           "engagement"
         ]
@@ -4090,6 +5067,76 @@
         ]
       }
     },
+    "/api/v1/auth/reset-password/confirm": {
+      "post": {
+        "description": "Gasta o link e grava a senha nova. Expirado e já usado dão a mesma resposta.",
+        "operationId": "confirmar_reset_api_v1_auth_reset_password_confirm_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordResetConfirmIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Confirmar Reset",
+        "tags": [
+          "identity"
+        ]
+      }
+    },
+    "/api/v1/auth/reset-password/request": {
+      "post": {
+        "description": "Pede o link de redefinição (SCR-0038).\n\n**204 sempre**, exista a conta ou não. A tela que responde \"esse e-mail não está\ncadastrado\" é um verificador de quem trabalha no escritório — e o custo de não\ndizer é zero, porque quem tem a conta recebe o e-mail.",
+        "operationId": "solicitar_reset_api_v1_auth_reset_password_request_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordResetRequestIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Solicitar Reset",
+        "tags": [
+          "identity"
+        ]
+      }
+    },
     "/api/v1/client-eval/evaluations": {
       "get": {
         "description": "WhatsApp completo só para admin/RH; para o resto, mascarado (BR-MIGRAR-022).",
@@ -4257,7 +5304,127 @@
         ]
       }
     },
+    "/api/v1/client-eval/forms/{form_id}": {
+      "put": {
+        "description": "Renomeia, ativa/desativa e define o formulário padrão do fluxo espontâneo.",
+        "operationId": "update_client_form_api_v1_client_eval_forms__form_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "form_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Form Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClientFormIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClientFormOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update Client Form",
+        "tags": [
+          "client_eval"
+        ]
+      }
+    },
     "/api/v1/client-eval/forms/{form_id}/questions": {
+      "get": {
+        "description": "As perguntas que o cliente responde no wizard público (SCR-0043).\n\n`tem_resposta` vem junto porque é o que a tela precisa para saber se \"remover\" apaga\nou arquiva — e para explicar à pessoa por que uma pergunta não some mais.",
+        "operationId": "list_client_questions_api_v1_client_eval_forms__form_id__questions_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "form_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Form Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "incluir_arquivadas",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Incluir Arquivadas",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ClientQuestionOut"
+                  },
+                  "title": "Response List Client Questions Api V1 Client Eval Forms  Form Id  Questions Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Client Questions",
+        "tags": [
+          "client_eval"
+        ]
+      },
       "post": {
         "operationId": "add_client_question_api_v1_client_eval_forms__form_id__questions_post",
         "parameters": [
@@ -4310,6 +5477,194 @@
           }
         ],
         "summary": "Add Client Question",
+        "tags": [
+          "client_eval"
+        ]
+      }
+    },
+    "/api/v1/client-eval/forms/{form_id}/questions/order": {
+      "put": {
+        "description": "Regrava a ordem inteira (BR-MIGRAR-020).\n\nIds que não são do formulário são ignorados em silêncio, e perguntas que ficaram de\nfora da lista vão para o fim: a ordem resultante é sempre completa e sem buraco,\nmesmo que a tela mande uma lista defasada.",
+        "operationId": "reorder_client_questions_api_v1_client_eval_forms__form_id__questions_order_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "form_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Form Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReordenarPerguntasIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ClientQuestionOut"
+                  },
+                  "title": "Response Reorder Client Questions Api V1 Client Eval Forms  Form Id  Questions Order Put",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Reorder Client Questions",
+        "tags": [
+          "client_eval"
+        ]
+      }
+    },
+    "/api/v1/client-eval/forms/{form_id}/questions/{question_id}": {
+      "delete": {
+        "description": "Apaga a pergunta, ou arquiva se alguém já respondeu.\n\nApagar uma pergunta respondida destruiria a resposta de um cliente para limpar um\nformulário. Arquivada, ela sai dos formulários novos e continua explicando os\nrelatórios antigos — e a resposta segue lá.\n\nDevolve a pergunta em vez de 204 justamente para a tela saber qual dos dois\naconteceu, sem ter que recarregar a lista para descobrir.",
+        "operationId": "remove_client_question_api_v1_client_eval_forms__form_id__questions__question_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "form_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Form Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "question_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Question Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClientQuestionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Remove Client Question",
+        "tags": [
+          "client_eval"
+        ]
+      },
+      "put": {
+        "operationId": "update_client_question_api_v1_client_eval_forms__form_id__questions__question_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "form_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Form Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "question_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Question Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClientQuestionUpdateIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClientQuestionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update Client Question",
         "tags": [
           "client_eval"
         ]
@@ -4389,6 +5744,37 @@
         "summary": "List Service Tags",
         "tags": [
           "client_eval"
+        ]
+      }
+    },
+    "/api/v1/colleagues": {
+      "get": {
+        "description": "As pessoas do escritório, para quem vai escrever um feedback livre (SCR-0023).\n\nAberta a qualquer autenticado, e não só a admin: dar feedback fora do ciclo é de todo\nmundo, e sem esta lista o formulário só serviria a quem tem equipe.\n\nQuem pede sai da lista — a API recusa feedback para si mesmo, e oferecer a opção seria\nmontar um caminho que termina em erro.",
+        "operationId": "list_colleagues_api_v1_colleagues_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ColleagueOut"
+                  },
+                  "title": "Response List Colleagues Api V1 Colleagues Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Colleagues",
+        "tags": [
+          "identity-admin"
         ]
       }
     },
@@ -4902,6 +6288,65 @@
         ]
       }
     },
+    "/api/v1/cycles/{cycle_id}": {
+      "put": {
+        "description": "Edita o rascunho. Ciclo aberto recusa — ver `CycleService.update`.",
+        "operationId": "update_cycle_api_v1_cycles__cycle_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cycle_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Cycle Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CycleIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CycleOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update Cycle",
+        "tags": [
+          "feedback"
+        ]
+      }
+    },
     "/api/v1/cycles/{cycle_id}/archive": {
       "post": {
         "operationId": "archive_cycle_api_v1_cycles__cycle_id__archive_post",
@@ -5250,6 +6695,33 @@
         ]
       }
     },
+    "/api/v1/dashboard": {
+      "get": {
+        "description": "Agregados do painel inicial (SCR-0003).\n\nAberta a qualquer sessão, e não só ao admin: os números são do escritório inteiro e\no legado já os mostrava ao gestor. Nada de pessoa sai daqui além de contagens e do\npar avaliador/avaliado da atividade recente, que qualquer um do escritório já vê.",
+        "operationId": "dashboard_api_v1_dashboard_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Dashboard",
+        "tags": [
+          "feedback"
+        ]
+      }
+    },
     "/api/v1/departments": {
       "get": {
         "operationId": "list_departments_api_v1_departments_get",
@@ -5326,7 +6798,8 @@
     },
     "/api/v1/departments/{department_id}": {
       "put": {
-        "operationId": "rename_department_api_v1_departments__department_id__put",
+        "description": "PUT e não PATCH: o corpo é o departamento inteiro, e `description` ausente\nsignifica \"sem descrição\" — não \"mantenha a que estava\".",
+        "operationId": "update_department_api_v1_departments__department_id__put",
         "parameters": [
           {
             "in": "path",
@@ -5376,7 +6849,7 @@
             "HTTPBearer": []
           }
         ],
-        "summary": "Rename Department",
+        "summary": "Update Department",
         "tags": [
           "identity-admin"
         ]
@@ -5451,6 +6924,65 @@
           }
         ],
         "summary": "Create Form",
+        "tags": [
+          "feedback"
+        ]
+      }
+    },
+    "/api/v1/forms/{form_id}": {
+      "put": {
+        "description": "Renomeia e redescreve. PUT com o recurso inteiro: descricao ausente apaga.",
+        "operationId": "update_form_api_v1_forms__form_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "form_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Form Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FormIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FormOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update Form",
         "tags": [
           "feedback"
         ]
@@ -5663,6 +7195,55 @@
         ]
       }
     },
+    "/api/v1/forms/{form_id}/unarchive": {
+      "post": {
+        "description": "O outro lado do \"Ativar/Desativar\" do legado — arquivar não é exclusão.",
+        "operationId": "unarchive_form_api_v1_forms__form_id__unarchive_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "form_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Form Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FormOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Unarchive Form",
+        "tags": [
+          "feedback"
+        ]
+      }
+    },
     "/api/v1/free-feedbacks": {
       "post": {
         "operationId": "send_free_feedback_api_v1_free_feedbacks_post",
@@ -5765,6 +7346,37 @@
           }
         ],
         "summary": "Sensitive Free Feedbacks",
+        "tags": [
+          "feedback"
+        ]
+      }
+    },
+    "/api/v1/free-feedbacks/sent": {
+      "get": {
+        "description": "O feedback livre que a pessoa enviou. O que ela mandou anônimo não aparece.",
+        "operationId": "sent_free_feedbacks_api_v1_free_feedbacks_sent_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/FreeFeedbackSentOut"
+                  },
+                  "title": "Response Sent Free Feedbacks Api V1 Free Feedbacks Sent Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Sent Free Feedbacks",
         "tags": [
           "feedback"
         ]
@@ -6031,6 +7643,53 @@
         ]
       }
     },
+    "/api/v1/permissions/bulk": {
+      "post": {
+        "description": "Importa um lote de permissões (#29 da conferência).\n\n**Tudo ou nada**: um erro no meio desfaz o lote inteiro, porque a transação do\nrequest faz rollback. É o comportamento certo aqui — meia matriz gravada é pior que\nnenhuma: o ciclo abriria com metade das pessoas sem par, e ninguém saberia qual\nmetade. Quem quiser ignorar as linhas ruins corrige o arquivo e reenvia.\n\nPar repetido não é erro: `save` devolve o que já existe (BR-MIGRAR-002), e reenviar\no mesmo arquivo é uma operação segura.",
+        "operationId": "import_permissions_api_v1_permissions_bulk_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PermissionBulkIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultadoDaImportacaoOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Import Permissions",
+        "tags": [
+          "feedback"
+        ]
+      }
+    },
     "/api/v1/permissions/deactivate-inactive": {
       "post": {
         "description": "Ação em massa do diagnóstico: desliga o que aponta para quem saiu.",
@@ -6215,6 +7874,7 @@
     },
     "/api/v1/profiles": {
       "get": {
+        "description": "A tabela de usuários do admin, com o e-mail que mora em `users`.",
         "operationId": "list_profiles_api_v1_profiles_get",
         "responses": {
           "200": {
@@ -7480,9 +9140,89 @@
         ]
       }
     },
+    "/api/v1/reports/free-feedbacks": {
+      "get": {
+        "description": "A aba \"Livres\" do legado: quem recebe e quem escreve feedback fora do ciclo.",
+        "operationId": "relatorio_de_livres_api_v1_reports_free_feedbacks_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "preview",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Preview",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/LinhaFeedbackLivreOut"
+                  },
+                  "title": "Response Relatorio De Livres Api V1 Reports Free Feedbacks Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Relatorio De Livres",
+        "tags": [
+          "reporting"
+        ]
+      }
+    },
+    "/api/v1/reports/my-history": {
+      "get": {
+        "description": "O histórico da própria pessoa (SCR-0021).\n\nMesma consulta do histórico da equipe com escopo de um: quem já enxerga a si mesmo\nnão precisa passar pelo `TeamScopeService`, e um segundo jeito de montar as mesmas\ntrês seções seria um segundo jeito de elas discordarem.\n\nSensível fica de fora sempre — aqui a pessoa é a destinatária, e o `admin` que abrir\na própria tela é destinatário como qualquer outro.",
+        "operationId": "meu_historico_api_v1_reports_my_history_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HistoricoDaEquipeOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Meu Historico",
+        "tags": [
+          "reporting"
+        ]
+      }
+    },
     "/api/v1/reports/team-history": {
       "get": {
-        "description": "Histórico dos três tipos de feedback, dentro do escopo de equipe.\n\nO escopo sai do `TeamScopeService` e entra na query como lista de ids. Nenhum\nparâmetro desta rota amplia o que a pessoa enxerga — no máximo filtraria dentro\n(PAR-05).",
+        "description": "Histórico dos três tipos de feedback, dentro do escopo de equipe.\n\nA capacidade é exigida **aqui**, e não só no menu: capacidade que o servidor não\ncobra é decoração, e quem sabe a URL entra do mesmo jeito (BR-MIGRAR-013/015). Ter\nequipe não substitui a capacidade — o escopo decide *o que* aparece, a capacidade\ndecide *se* a tela responde.\n\nO escopo sai do `TeamScopeService` e entra na query como lista de ids. Nenhum\nparâmetro desta rota amplia o que a pessoa enxerga — no máximo filtraria dentro\n(PAR-05).",
         "operationId": "historico_da_equipe_api_v1_reports_team_history_get",
         "responses": {
           "200": {
@@ -7982,6 +9722,76 @@
         ]
       }
     },
+    "/api/v1/settings/logo": {
+      "get": {
+        "description": "Serve o arquivo subido. Autenticado como o resto — o login não estampa marca.",
+        "operationId": "download_logo_api_v1_settings_logo_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Download Logo",
+        "tags": [
+          "engagement"
+        ]
+      },
+      "post": {
+        "description": "Sobe o logo do escritório e aponta `logo_url` para ele.\n\nO campo continua sendo uma URL no banco — o que muda é que agora existe uma URL para\napontar sem depender de o escritório ter onde hospedar a imagem. Pedir uma URL a\nquem só tem o arquivo era o mesmo que não ter o recurso.\n\nO limite é conferido pelo tamanho **lido**, e não pelo `content-length` do envio:\ncabeçalho é declaração do cliente, e o arquivo é o que chega.",
+        "operationId": "upload_logo_api_v1_settings_logo_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_logo_api_v1_settings_logo_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Upload Logo",
+        "tags": [
+          "engagement"
+        ]
+      }
+    },
     "/api/v1/settings/{key}": {
       "put": {
         "operationId": "update_setting_api_v1_settings__key__put",
@@ -8210,6 +10020,151 @@
         "summary": "Reject Team Request",
         "tags": [
           "identity-admin"
+        ]
+      }
+    },
+    "/api/v1/team/pending": {
+      "get": {
+        "description": "O que a equipe ainda deve no ciclo, pedido a pedido (SCR-0027/0031).\n\nRota antes de `/team/{profile_id}` de propósito: `pending` casaria com o parâmetro\nde caminho, e o FastAPI resolve pela ordem de declaração.",
+        "operationId": "team_pending_api_v1_team_pending_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PendentesDaEquipeOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Team Pending",
+        "tags": [
+          "feedback"
+        ]
+      }
+    },
+    "/api/v1/team/progress": {
+      "get": {
+        "description": "Acompanhamento da equipe no ciclo aberto (SCR-0030).\n\nO escopo sai de `TeamScopeService`, o mesmo de `/auth/my-team` — nada aqui amplia o\nque aquele serviço devolveu (R-04 / R-09). Quem está olhando sai da própria lista:\no escopo inclui a pessoa porque ela pode ver o próprio histórico, e esta tela\nresponde outra pergunta.",
+        "operationId": "team_progress_api_v1_team_progress_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeamProgressOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Team Progress",
+        "tags": [
+          "feedback"
+        ]
+      }
+    },
+    "/api/v1/team/{profile_id}": {
+      "delete": {
+        "description": "Tira alguém da própria equipe (#59, decidido com o cliente em 06/09/2026).\n\nAberta a qualquer sessão porque a autorização é do **vínculo**, não do papel: o\nserviço só remove se quem pede for o gestor direto ou o coordenador daquela pessoa.\nUm `require_role(\"gestor\")` seria mais frouxo, não mais rígido — deixaria um gestor\nmexer na equipe de outro.\n\nNão é exclusão: quem sai continua no escritório. Desligar é `DELETE /profiles/{id}`,\nque segue sendo de admin/RH.",
+        "operationId": "remove_from_my_team_api_v1_team__profile_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "profile_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Profile Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Remove From My Team",
+        "tags": [
+          "feedback"
+        ]
+      }
+    },
+    "/api/v1/team/{profile_id}/reminder": {
+      "post": {
+        "description": "Cutuca alguém da equipe que ainda deve resposta no ciclo (SCR-0030).\n\n`assert_can_view` é o guard: cutucar quem não é da sua equipe seria descobrir, pelo\nerro, que a pessoa existe. Lembrar a si mesmo é recusado — não é uso, é engano.",
+        "operationId": "send_reminder_api_v1_team__profile_id__reminder_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "profile_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Profile Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LembreteOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Send Reminder",
+        "tags": [
+          "feedback"
         ]
       }
     },

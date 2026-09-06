@@ -21,6 +21,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/audit-logs/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Audit Summary
+         * @description Cartões e gráfico do painel de auditoria.
+         *
+         *     Rota separada da listagem porque responde outra pergunta: a listagem pagina o
+         *     detalhe, esta agrega o todo. Juntar as duas obrigaria a recalcular os agregados a
+         *     cada página virada.
+         */
+        get: operations["audit_summary_api_v1_audit_logs_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/active-role": {
         parameters: {
             query?: never;
@@ -181,6 +205,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/reset-password/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirmar Reset
+         * @description Gasta o link e grava a senha nova. Expirado e já usado dão a mesma resposta.
+         */
+        post: operations["confirmar_reset_api_v1_auth_reset_password_confirm_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/reset-password/request": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Solicitar Reset
+         * @description Pede o link de redefinição (SCR-0038).
+         *
+         *     **204 sempre**, exista a conta ou não. A tela que responde "esse e-mail não está
+         *     cadastrado" é um verificador de quem trabalha no escritório — e o custo de não
+         *     dizer é zero, porque quem tem a conta recebe o e-mail.
+         */
+        post: operations["solicitar_reset_api_v1_auth_reset_password_request_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/client-eval/evaluations": {
         parameters: {
             query?: never;
@@ -239,7 +307,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/client-eval/forms/{form_id}/questions": {
+    "/api/v1/client-eval/forms/{form_id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -247,10 +315,89 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
+        /**
+         * Update Client Form
+         * @description Renomeia, ativa/desativa e define o formulário padrão do fluxo espontâneo.
+         */
+        put: operations["update_client_form_api_v1_client_eval_forms__form_id__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/client-eval/forms/{form_id}/questions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Client Questions
+         * @description As perguntas que o cliente responde no wizard público (SCR-0043).
+         *
+         *     `tem_resposta` vem junto porque é o que a tela precisa para saber se "remover" apaga
+         *     ou arquiva — e para explicar à pessoa por que uma pergunta não some mais.
+         */
+        get: operations["list_client_questions_api_v1_client_eval_forms__form_id__questions_get"];
         put?: never;
         /** Add Client Question */
         post: operations["add_client_question_api_v1_client_eval_forms__form_id__questions_post"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/client-eval/forms/{form_id}/questions/order": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Reorder Client Questions
+         * @description Regrava a ordem inteira (BR-MIGRAR-020).
+         *
+         *     Ids que não são do formulário são ignorados em silêncio, e perguntas que ficaram de
+         *     fora da lista vão para o fim: a ordem resultante é sempre completa e sem buraco,
+         *     mesmo que a tela mande uma lista defasada.
+         */
+        put: operations["reorder_client_questions_api_v1_client_eval_forms__form_id__questions_order_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/client-eval/forms/{form_id}/questions/{question_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Update Client Question */
+        put: operations["update_client_question_api_v1_client_eval_forms__form_id__questions__question_id__put"];
+        post?: never;
+        /**
+         * Remove Client Question
+         * @description Apaga a pergunta, ou arquiva se alguém já respondeu.
+         *
+         *     Apagar uma pergunta respondida destruiria a resposta de um cliente para limpar um
+         *     formulário. Arquivada, ela sai dos formulários novos e continua explicando os
+         *     relatórios antigos — e a resposta segue lá.
+         *
+         *     Devolve a pergunta em vez de 204 justamente para a tela saber qual dos dois
+         *     aconteceu, sem ter que recarregar a lista para descobrir.
+         */
+        delete: operations["remove_client_question_api_v1_client_eval_forms__form_id__questions__question_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -285,6 +432,32 @@ export interface paths {
         };
         /** List Service Tags */
         get: operations["list_service_tags_api_v1_client_eval_service_tags_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/colleagues": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Colleagues
+         * @description As pessoas do escritório, para quem vai escrever um feedback livre (SCR-0023).
+         *
+         *     Aberta a qualquer autenticado, e não só a admin: dar feedback fora do ciclo é de todo
+         *     mundo, e sem esta lista o formulário só serviria a quem tem equipe.
+         *
+         *     Quem pede sai da lista — a API recusa feedback para si mesmo, e oferecer a opção seria
+         *     montar um caminho que termina em erro.
+         */
+        get: operations["list_colleagues_api_v1_colleagues_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -399,6 +572,26 @@ export interface paths {
         put?: never;
         /** Create Cycle */
         post: operations["create_cycle_api_v1_cycles_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cycles/{cycle_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Update Cycle
+         * @description Edita o rascunho. Ciclo aberto recusa — ver `CycleService.update`.
+         */
+        put: operations["update_cycle_api_v1_cycles__cycle_id__put"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -530,6 +723,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/dashboard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Dashboard
+         * @description Agregados do painel inicial (SCR-0003).
+         *
+         *     Aberta a qualquer sessão, e não só ao admin: os números são do escritório inteiro e
+         *     o legado já os mostrava ao gestor. Nada de pessoa sai daqui além de contagens e do
+         *     par avaliador/avaliado da atividade recente, que qualquer um do escritório já vê.
+         */
+        get: operations["dashboard_api_v1_dashboard_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/departments": {
         parameters: {
             query?: never;
@@ -556,8 +773,12 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** Rename Department */
-        put: operations["rename_department_api_v1_departments__department_id__put"];
+        /**
+         * Update Department
+         * @description PUT e não PATCH: o corpo é o departamento inteiro, e `description` ausente
+         *     significa "sem descrição" — não "mantenha a que estava".
+         */
+        put: operations["update_department_api_v1_departments__department_id__put"];
         post?: never;
         delete?: never;
         options?: never;
@@ -577,6 +798,26 @@ export interface paths {
         put?: never;
         /** Create Form */
         post: operations["create_form_api_v1_forms_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/forms/{form_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Update Form
+         * @description Renomeia e redescreve. PUT com o recurso inteiro: descricao ausente apaga.
+         */
+        put: operations["update_form_api_v1_forms__form_id__put"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -635,6 +876,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/forms/{form_id}/unarchive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Unarchive Form
+         * @description O outro lado do "Ativar/Desativar" do legado — arquivar não é exclusão.
+         */
+        post: operations["unarchive_form_api_v1_forms__form_id__unarchive_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/free-feedbacks": {
         parameters: {
             query?: never;
@@ -681,6 +942,26 @@ export interface paths {
         };
         /** Sensitive Free Feedbacks */
         get: operations["sensitive_free_feedbacks_api_v1_free_feedbacks_sensitive_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/free-feedbacks/sent": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Sent Free Feedbacks
+         * @description O feedback livre que a pessoa enviou. O que ela mandou anônimo não aparece.
+         */
+        get: operations["sent_free_feedbacks_api_v1_free_feedbacks_sent_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -775,6 +1056,34 @@ export interface paths {
          * @description `peer_to_peer` cria a recíproca na mesma transação (BR-MIGRAR-002).
          */
         post: operations["save_permission_api_v1_permissions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/permissions/bulk": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Import Permissions
+         * @description Importa um lote de permissões (#29 da conferência).
+         *
+         *     **Tudo ou nada**: um erro no meio desfaz o lote inteiro, porque a transação do
+         *     request faz rollback. É o comportamento certo aqui — meia matriz gravada é pior que
+         *     nenhuma: o ciclo abriria com metade das pessoas sem par, e ninguém saberia qual
+         *     metade. Quem quiser ignorar as linhas ruins corrige o arquivo e reenvia.
+         *
+         *     Par repetido não é erro: `save` devolve o que já existe (BR-MIGRAR-002), e reenviar
+         *     o mesmo arquivo é uma operação segura.
+         */
+        post: operations["import_permissions_api_v1_permissions_bulk_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -876,7 +1185,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List Profiles */
+        /**
+         * List Profiles
+         * @description A tabela de usuários do admin, com o e-mail que mora em `users`.
+         */
         get: operations["list_profiles_api_v1_profiles_get"];
         put?: never;
         /**
@@ -1283,6 +1595,53 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/reports/free-feedbacks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Relatorio De Livres
+         * @description A aba "Livres" do legado: quem recebe e quem escreve feedback fora do ciclo.
+         */
+        get: operations["relatorio_de_livres_api_v1_reports_free_feedbacks_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/my-history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Meu Historico
+         * @description O histórico da própria pessoa (SCR-0021).
+         *
+         *     Mesma consulta do histórico da equipe com escopo de um: quem já enxerga a si mesmo
+         *     não precisa passar pelo `TeamScopeService`, e um segundo jeito de montar as mesmas
+         *     três seções seria um segundo jeito de elas discordarem.
+         *
+         *     Sensível fica de fora sempre — aqui a pessoa é a destinatária, e o `admin` que abrir
+         *     a própria tela é destinatário como qualquer outro.
+         */
+        get: operations["meu_historico_api_v1_reports_my_history_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/reports/team-history": {
         parameters: {
             query?: never;
@@ -1293,6 +1652,11 @@ export interface paths {
         /**
          * Historico Da Equipe
          * @description Histórico dos três tipos de feedback, dentro do escopo de equipe.
+         *
+         *     A capacidade é exigida **aqui**, e não só no menu: capacidade que o servidor não
+         *     cobra é decoração, e quem sabe a URL entra do mesmo jeito (BR-MIGRAR-013/015). Ter
+         *     equipe não substitui a capacidade — o escopo decide *o que* aparece, a capacidade
+         *     decide *se* a tela responde.
          *
          *     O escopo sai do `TeamScopeService` e entra na query como lista de ids. Nenhum
          *     parâmetro desta rota amplia o que a pessoa enxerga — no máximo filtraria dentro
@@ -1492,6 +1856,37 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/settings/logo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download Logo
+         * @description Serve o arquivo subido. Autenticado como o resto — o login não estampa marca.
+         */
+        get: operations["download_logo_api_v1_settings_logo_get"];
+        put?: never;
+        /**
+         * Upload Logo
+         * @description Sobe o logo do escritório e aponta `logo_url` para ele.
+         *
+         *     O campo continua sendo uma URL no banco — o que muda é que agora existe uma URL para
+         *     apontar sem depender de o escritório ter onde hospedar a imagem. Pedir uma URL a
+         *     quem só tem o arquivo era o mesmo que não ter o recurso.
+         *
+         *     O limite é conferido pelo tamanho **lido**, e não pelo `content-length` do envio:
+         *     cabeçalho é declaração do cliente, e o arquivo é o que chega.
+         */
+        post: operations["upload_logo_api_v1_settings_logo_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/settings/{key}": {
         parameters: {
             query?: never;
@@ -1558,6 +1953,105 @@ export interface paths {
          * @description Só aprovação e rejeição existem (AMB-004): o resto não foi confirmado no legado.
          */
         post: operations["reject_team_request_api_v1_team_requests__request_id__reject_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/team/pending": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Team Pending
+         * @description O que a equipe ainda deve no ciclo, pedido a pedido (SCR-0027/0031).
+         *
+         *     Rota antes de `/team/{profile_id}` de propósito: `pending` casaria com o parâmetro
+         *     de caminho, e o FastAPI resolve pela ordem de declaração.
+         */
+        get: operations["team_pending_api_v1_team_pending_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/team/progress": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Team Progress
+         * @description Acompanhamento da equipe no ciclo aberto (SCR-0030).
+         *
+         *     O escopo sai de `TeamScopeService`, o mesmo de `/auth/my-team` — nada aqui amplia o
+         *     que aquele serviço devolveu (R-04 / R-09). Quem está olhando sai da própria lista:
+         *     o escopo inclui a pessoa porque ela pode ver o próprio histórico, e esta tela
+         *     responde outra pergunta.
+         */
+        get: operations["team_progress_api_v1_team_progress_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/team/{profile_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Remove From My Team
+         * @description Tira alguém da própria equipe (#59, decidido com o cliente em 06/09/2026).
+         *
+         *     Aberta a qualquer sessão porque a autorização é do **vínculo**, não do papel: o
+         *     serviço só remove se quem pede for o gestor direto ou o coordenador daquela pessoa.
+         *     Um `require_role("gestor")` seria mais frouxo, não mais rígido — deixaria um gestor
+         *     mexer na equipe de outro.
+         *
+         *     Não é exclusão: quem sai continua no escritório. Desligar é `DELETE /profiles/{id}`,
+         *     que segue sendo de admin/RH.
+         */
+        delete: operations["remove_from_my_team_api_v1_team__profile_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/team/{profile_id}/reminder": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send Reminder
+         * @description Cutuca alguém da equipe que ainda deve resposta no ciclo (SCR-0030).
+         *
+         *     `assert_can_view` é o guard: cutucar quem não é da sua equipe seria descobrir, pelo
+         *     erro, que a pessoa existe. Lembrar a si mesmo é recusado — não é uso, é engano.
+         */
+        post: operations["send_reminder_api_v1_team__profile_id__reminder_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1641,6 +2135,15 @@ export interface components {
             /** Answers */
             answers?: components["schemas"]["AnswerIn"][];
         };
+        /** AtividadeDoCicloOut */
+        AtividadeDoCicloOut: {
+            /** Avaliado */
+            avaliado: string;
+            /** Avaliador */
+            avaliador: string;
+            /** Quando */
+            quando: string | null;
+        };
         /** AuditLogOut */
         AuditLogOut: {
             /** Action */
@@ -1661,10 +2164,17 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            /** Is Sensitive */
+            is_sensitive: boolean;
             /** Record Id */
             record_id: string | null;
             /** Table Name */
             table_name: string | null;
+        };
+        /** Body_upload_logo_api_v1_settings_logo_post */
+        Body_upload_logo_api_v1_settings_logo_post: {
+            /** Arquivo */
+            arquivo: string;
         };
         /** CancelIn */
         CancelIn: {
@@ -1753,6 +2263,8 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            /** Is Active */
+            is_active: boolean;
             /** Is Required */
             is_required: boolean;
             /** Placeholder */
@@ -1761,6 +2273,56 @@ export interface components {
             question_text: string;
             /** Question Type */
             question_type: string;
+            /**
+             * Tem Resposta
+             * @default false
+             */
+            tem_resposta: boolean;
+        };
+        /** ClientQuestionUpdateIn */
+        ClientQuestionUpdateIn: {
+            /**
+             * Is Required
+             * @default true
+             */
+            is_required: boolean;
+            /** Placeholder */
+            placeholder?: string | null;
+            /** Question Text */
+            question_text: string;
+            /** Question Type */
+            question_type: string;
+        };
+        /**
+         * ColleagueOut
+         * @description Um colega, para escolher destinatário de feedback livre.
+         *
+         *     Só nome e cargo. Não é `ProfileSummary` de propósito: ali vão e-mail, papel,
+         *     capacidades e vínculo, que são assunto da administração — esta lista é aberta a
+         *     qualquer autenticado, e o que ela pode dizer é o que qualquer pessoa do escritório já
+         *     sabe olhando em volta.
+         */
+        ColleagueOut: {
+            /** Full Name */
+            full_name: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Job Title */
+            job_title: string | null;
+        };
+        /** ConclusaoDoDepartamentoOut */
+        ConclusaoDoDepartamentoOut: {
+            /** Enviados */
+            enviados: number;
+            /** Esperados */
+            esperados: number;
+            /** Nome */
+            nome: string;
+            /** Percentual */
+            percentual: number;
         };
         /** ContactMessageIn */
         ContactMessageIn: {
@@ -1838,6 +2400,8 @@ export interface components {
          * @description O que o front precisa saber para montar a navegação — e nada além disso.
          */
         CurrentUser: {
+            /** Active Role */
+            active_role: string;
             /** Department Id */
             department_id: string | null;
             /**
@@ -1982,13 +2546,42 @@ export interface components {
             /** Status */
             status: string;
         };
+        /**
+         * DashboardOut
+         * @description Os agregados do painel inicial (SCR-0003), numa chamada só.
+         */
+        DashboardOut: {
+            /** Atividade */
+            atividade: components["schemas"]["AtividadeDoCicloOut"][];
+            /** Cycle End Date */
+            cycle_end_date: string | null;
+            /** Cycle Id */
+            cycle_id: string | null;
+            /** Cycle Name */
+            cycle_name: string | null;
+            /** Pessoas Ativas */
+            pessoas_ativas: number;
+            /** Pessoas Inativas */
+            pessoas_inativas: number;
+            /** Por Departamento */
+            por_departamento: components["schemas"]["ConclusaoDoDepartamentoOut"][];
+            progresso: components["schemas"]["ProgressOut"];
+            /** Total De Feedbacks */
+            total_de_feedbacks: number;
+            /** Total Enviados */
+            total_enviados: number;
+        };
         /** DepartmentIn */
         DepartmentIn: {
+            /** Description */
+            description?: string | null;
             /** Name */
             name: string;
         };
         /** DepartmentOut */
         DepartmentOut: {
+            /** Description */
+            description: string | null;
             /**
              * Id
              * Format: uuid
@@ -2001,6 +2594,18 @@ export interface components {
         DepartmentsIn: {
             /** Department Ids */
             department_ids?: string[];
+        };
+        /** DiaDeAuditoriaOut */
+        DiaDeAuditoriaOut: {
+            /**
+             * Dia
+             * Format: date
+             */
+            dia: string;
+            /** Normais */
+            normais: number;
+            /** Sensiveis */
+            sensiveis: number;
         };
         /**
          * DiagnosticoOut
@@ -2234,6 +2839,46 @@ export interface components {
              */
             receiver_id: string;
         };
+        /**
+         * FreeFeedbackSentOut
+         * @description O que a pessoa enviou, com o nome de quem recebeu.
+         *
+         *     O nome não entra em `FreeFeedbackOut` porque lá a outra ponta é o autor, e autor de
+         *     anônimo é justamente o que não se conta.
+         */
+        FreeFeedbackSentOut: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Giver Id */
+            giver_id: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Improvements */
+            improvements: string | null;
+            /** Is Anonymous */
+            is_anonymous: boolean;
+            /** Is Sensitive */
+            is_sensitive: boolean;
+            /** Message */
+            message: string | null;
+            /** Positives */
+            positives: string | null;
+            /** Read At */
+            read_at: string | null;
+            /**
+             * Receiver Id
+             * Format: uuid
+             */
+            receiver_id: string;
+            /** Receiver Name */
+            receiver_name?: string | null;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -2255,8 +2900,20 @@ export interface components {
         ItemDeHistoricoOut: {
             /** Detalhe */
             detalhe: string | null;
+            /**
+             * Item Id
+             * Format: uuid
+             */
+            item_id: string;
             /** Lido Em */
             lido_em: string | null;
+            /** Lido Por */
+            lido_por?: string | null;
+            /**
+             * Partes
+             * @default []
+             */
+            partes: components["schemas"]["ParteDoHistoricoOut"][];
             /** Quando */
             quando: string | null;
             /**
@@ -2270,6 +2927,16 @@ export interface components {
             tipo: string;
             /** Titulo */
             titulo: string;
+        };
+        /**
+         * LembreteOut
+         * @description Resposta do lembrete. `pendentes` = 0 significa que não havia o que lembrar.
+         */
+        LembreteOut: {
+            /** Mensagem */
+            mensagem: string;
+            /** Pendentes */
+            pendentes: number;
         };
         /** Linha360Out */
         Linha360Out: {
@@ -2325,6 +2992,24 @@ export interface components {
             /** Solicitados */
             solicitados: number;
         };
+        /** LinhaFeedbackLivreOut */
+        LinhaFeedbackLivreOut: {
+            /** Anonimos */
+            anonimos: number;
+            /** Enviados */
+            enviados: number;
+            /** Nome */
+            nome: string;
+            /**
+             * Profile Id
+             * Format: uuid
+             */
+            profile_id: string;
+            /** Recebidos */
+            recebidos: number;
+            /** Sensiveis */
+            sensiveis: number;
+        };
         /** LoginRequest */
         LoginRequest: {
             /**
@@ -2344,6 +3029,35 @@ export interface components {
         ManagerIn: {
             /** Manager Id */
             manager_id?: string | null;
+        };
+        /**
+         * MembroDaEquipeOut
+         * @description Uma linha da tela de acompanhamento da equipe.
+         */
+        MembroDaEquipeOut: {
+            /** Enviados */
+            enviados: number;
+            /** Full Name */
+            full_name: string;
+            /** Is Coordinator */
+            is_coordinator: boolean;
+            /** Job Title */
+            job_title: string | null;
+            /** Pendentes De Enviar */
+            pendentes_de_enviar: number;
+            /** Pendentes De Leitura */
+            pendentes_de_leitura: number;
+            /** Percentual */
+            percentual: number;
+            /**
+             * Profile Id
+             * Format: uuid
+             */
+            profile_id: string;
+            /** Role */
+            role: string;
+            /** Status */
+            status: string;
         };
         /**
          * NotificationFeed
@@ -2429,10 +3143,81 @@ export interface components {
             /** Reviewer Nome */
             reviewer_nome: string;
         };
+        /** ParteDoHistoricoOut */
+        ParteDoHistoricoOut: {
+            /** Rotulo */
+            rotulo: string;
+            /** Texto */
+            texto: string;
+        };
+        /** PasswordResetConfirmIn */
+        PasswordResetConfirmIn: {
+            /** Nova Senha */
+            nova_senha: string;
+            /** Token */
+            token: string;
+        };
         /** PasswordResetIn */
         PasswordResetIn: {
             /** Nova Senha */
             nova_senha: string;
+        };
+        /** PasswordResetRequestIn */
+        PasswordResetRequestIn: {
+            /**
+             * Email
+             * Format: email
+             */
+            email: string;
+            /** Tenant Slug */
+            tenant_slug?: string | null;
+        };
+        /**
+         * PendenteDaEquipeOut
+         * @description Um pedido que a equipe ainda deve — a linha de SCR-0027/0031.
+         */
+        PendenteDaEquipeOut: {
+            /** Atrasado */
+            atrasado: boolean;
+            /** Due Date */
+            due_date: string | null;
+            /**
+             * Giver Id
+             * Format: uuid
+             */
+            giver_id: string;
+            /** Giver Name */
+            giver_name: string;
+            /** Receiver Name */
+            receiver_name: string;
+            /**
+             * Request Id
+             * Format: uuid
+             */
+            request_id: string;
+            /** Status */
+            status: string;
+        };
+        /** PendentesDaEquipeOut */
+        PendentesDaEquipeOut: {
+            /** Cycle Id */
+            cycle_id: string | null;
+            /** Cycle Name */
+            cycle_name: string | null;
+            /** Pendentes */
+            pendentes: components["schemas"]["PendenteDaEquipeOut"][];
+        };
+        /**
+         * PermissionBulkIn
+         * @description Um lote de permissões, como o "Importar em Massa" do legado.
+         *
+         *     Uma chamada e não N: montar uma matriz de 40 pessoas são centenas de pares, e
+         *     centenas de requisições transformariam a importação numa espera de minutos com meia
+         *     matriz gravada se o navegador fechasse no meio.
+         */
+        PermissionBulkIn: {
+            /** Permissoes */
+            permissoes: components["schemas"]["PermissionIn"][];
         };
         /** PermissionIn */
         PermissionIn: {
@@ -2526,6 +3311,8 @@ export interface components {
         ProfileSummary: {
             /** Department Id */
             department_id: string | null;
+            /** Email */
+            email?: string | null;
             /** Full Name */
             full_name: string;
             /**
@@ -2759,6 +3546,18 @@ export interface components {
             /** Senha */
             senha: string;
         };
+        /**
+         * ReordenarPerguntasIn
+         * @description A ordem inteira, e não um "mover para cima".
+         *
+         *     Mandar a lista toda faz a operação ser idempotente e livre de corrida: duas
+         *     reordenações simultâneas terminam numa das duas ordens pedidas, e não numa terceira
+         *     que ninguém escolheu (BR-MIGRAR-020).
+         */
+        ReordenarPerguntasIn: {
+            /** Question Ids */
+            question_ids: string[];
+        };
         /** ReorderIn */
         ReorderIn: {
             /** Question Ids */
@@ -2790,6 +3589,8 @@ export interface components {
              * Format: uuid
              */
             giver_id: string;
+            /** Giver Name */
+            giver_name?: string | null;
             /**
              * Id
              * Format: uuid
@@ -2802,6 +3603,8 @@ export interface components {
              * Format: uuid
              */
             receiver_id: string;
+            /** Receiver Name */
+            receiver_name?: string | null;
             /** Status */
             status: string;
             /** Submitted At */
@@ -2851,7 +3654,16 @@ export interface components {
              */
             token_expires_at: string;
         };
-        /** RequestOut */
+        /**
+         * RequestOut
+         * @description Pedido de feedback, com os nomes das duas pontas resolvidos.
+         *
+         *     Os nomes não são enfeite: sem eles a lista "Meus Feedbacks" vira um punhado de
+         *     linhas idênticas — mesmo status, mesmo prazo — e quem responde não descobre sobre
+         *     quem é cada uma. Resolver do lado da API é o caminho barato: o repositório já traz
+         *     os perfis pelo join, e a alternativa seria o front pedir `/profiles` inteiro só para
+         *     traduzir uuid em nome.
+         */
         RequestOut: {
             /** Cancel Justification */
             cancel_justification: string | null;
@@ -2872,6 +3684,8 @@ export interface components {
              * Format: uuid
              */
             giver_id: string;
+            /** Giver Name */
+            giver_name?: string | null;
             /**
              * Id
              * Format: uuid
@@ -2882,10 +3696,41 @@ export interface components {
              * Format: uuid
              */
             receiver_id: string;
+            /** Receiver Name */
+            receiver_name?: string | null;
             /** Status */
             status: string;
             /** Submitted At */
             submitted_at: string | null;
+        };
+        /** ResultadoDaImportacaoOut */
+        ResultadoDaImportacaoOut: {
+            /** Criadas */
+            criadas: number;
+            /** Erros */
+            erros: string[];
+            /** Ja Existiam */
+            ja_existiam: number;
+        };
+        /**
+         * ResumoDeAuditoriaOut
+         * @description Os cartões e o gráfico do painel de auditoria (#34 a #37 da conferência).
+         */
+        ResumoDeAuditoriaOut: {
+            /** Atividade */
+            atividade: components["schemas"]["DiaDeAuditoriaOut"][];
+            /** Hoje */
+            hoje: number;
+            /** Mais Ativo Acoes */
+            mais_ativo_acoes: number;
+            /** Mais Ativo Nome */
+            mais_ativo_nome: string | null;
+            /** Sensiveis Sete Dias */
+            sensiveis_sete_dias: number;
+            /** Sete Dias */
+            sete_dias: number;
+            /** Total */
+            total: number;
         };
         /** RoleIn */
         RoleIn: {
@@ -2926,6 +3771,29 @@ export interface components {
             expected_updated_at?: string | null;
             /** Value */
             value?: string | null;
+        };
+        /**
+         * TeamProgressOut
+         * @description Acompanhamento da equipe no ciclo aberto (SCR-0030).
+         *
+         *     Sem ciclo aberto os membros vêm com as contagens zeradas em vez de a tela cair num
+         *     estado vazio: a equipe continua existindo entre um ciclo e outro.
+         */
+        TeamProgressOut: {
+            /** Cycle Id */
+            cycle_id: string | null;
+            /** Cycle Name */
+            cycle_name: string | null;
+            /** Enviados */
+            enviados: number;
+            /** Esperados */
+            esperados: number;
+            /** Membros */
+            membros: components["schemas"]["MembroDaEquipeOut"][];
+            /** Percentual */
+            percentual: number;
+            /** Total Membros */
+            total_membros: number;
         };
         /** TeamRequestIn */
         TeamRequestIn: {
@@ -3031,6 +3899,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    audit_summary_api_v1_audit_logs_summary_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResumoDeAuditoriaOut"];
                 };
             };
         };
@@ -3287,6 +4175,68 @@ export interface operations {
             };
         };
     };
+    confirmar_reset_api_v1_auth_reset_password_confirm_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasswordResetConfirmIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    solicitar_reset_api_v1_auth_reset_password_request_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasswordResetRequestIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_evaluations_api_v1_client_eval_evaluations_get: {
         parameters: {
             query?: {
@@ -3391,6 +4341,74 @@ export interface operations {
             };
         };
     };
+    update_client_form_api_v1_client_eval_forms__form_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                form_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ClientFormIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClientFormOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_client_questions_api_v1_client_eval_forms__form_id__questions_get: {
+        parameters: {
+            query?: {
+                incluir_arquivadas?: boolean;
+            };
+            header?: never;
+            path: {
+                form_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClientQuestionOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     add_client_question_api_v1_client_eval_forms__form_id__questions_post: {
         parameters: {
             query?: never;
@@ -3408,6 +4426,109 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClientQuestionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reorder_client_questions_api_v1_client_eval_forms__form_id__questions_order_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                form_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReordenarPerguntasIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClientQuestionOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_client_question_api_v1_client_eval_forms__form_id__questions__question_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                form_id: string;
+                question_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ClientQuestionUpdateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClientQuestionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    remove_client_question_api_v1_client_eval_forms__form_id__questions__question_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                form_id: string;
+                question_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3475,6 +4596,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ServiceTagOut"][];
+                };
+            };
+        };
+    };
+    list_colleagues_api_v1_colleagues_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ColleagueOut"][];
                 };
             };
         };
@@ -3800,6 +4941,41 @@ export interface operations {
             };
         };
     };
+    update_cycle_api_v1_cycles__cycle_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cycle_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CycleIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CycleOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     archive_cycle_api_v1_cycles__cycle_id__archive_post: {
         parameters: {
             query?: never;
@@ -4021,6 +5197,26 @@ export interface operations {
             };
         };
     };
+    dashboard_api_v1_dashboard_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DashboardOut"];
+                };
+            };
+        };
+    };
     list_departments_api_v1_departments_get: {
         parameters: {
             query?: never;
@@ -4074,7 +5270,7 @@ export interface operations {
             };
         };
     };
-    rename_department_api_v1_departments__department_id__put: {
+    update_department_api_v1_departments__department_id__put: {
         parameters: {
             query?: never;
             header?: never;
@@ -4144,6 +5340,41 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FormOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_form_api_v1_forms__form_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                form_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FormIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4292,6 +5523,37 @@ export interface operations {
             };
         };
     };
+    unarchive_form_api_v1_forms__form_id__unarchive_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                form_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FormOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     send_free_feedback_api_v1_free_feedbacks_post: {
         parameters: {
             query?: never;
@@ -4361,6 +5623,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["FreeFeedbackOut"][];
+                };
+            };
+        };
+    };
+    sent_free_feedbacks_api_v1_free_feedbacks_sent_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FreeFeedbackSentOut"][];
                 };
             };
         };
@@ -4525,6 +5807,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PermissionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    import_permissions_api_v1_permissions_bulk_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PermissionBulkIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResultadoDaImportacaoOut"];
                 };
             };
             /** @description Validation Error */
@@ -5418,6 +6733,57 @@ export interface operations {
             };
         };
     };
+    relatorio_de_livres_api_v1_reports_free_feedbacks_get: {
+        parameters: {
+            query?: {
+                preview?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LinhaFeedbackLivreOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    meu_historico_api_v1_reports_my_history_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HistoricoDaEquipeOut"];
+                };
+            };
+        };
+    };
     historico_da_equipe_api_v1_reports_team_history_get: {
         parameters: {
             query?: never;
@@ -5736,6 +7102,59 @@ export interface operations {
             };
         };
     };
+    download_logo_api_v1_settings_logo_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    upload_logo_api_v1_settings_logo_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_upload_logo_api_v1_settings_logo_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SettingOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     update_setting_api_v1_settings__key__put: {
         parameters: {
             query?: never;
@@ -5875,6 +7294,106 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TeamRequestOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    team_pending_api_v1_team_pending_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PendentesDaEquipeOut"];
+                };
+            };
+        };
+    };
+    team_progress_api_v1_team_progress_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamProgressOut"];
+                };
+            };
+        };
+    };
+    remove_from_my_team_api_v1_team__profile_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                profile_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    send_reminder_api_v1_team__profile_id__reminder_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                profile_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LembreteOut"];
                 };
             };
             /** @description Validation Error */

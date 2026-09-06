@@ -57,6 +57,24 @@ class PermissionIn(BaseModel):
     active: bool = True
 
 
+class PermissionBulkIn(BaseModel):
+    """Um lote de permissões, como o "Importar em Massa" do legado.
+
+    Uma chamada e não N: montar uma matriz de 40 pessoas são centenas de pares, e
+    centenas de requisições transformariam a importação numa espera de minutos com meia
+    matriz gravada se o navegador fechasse no meio.
+    """
+
+    permissoes: list[PermissionIn] = Field(min_length=1, max_length=2000)
+
+
+class ResultadoDaImportacaoOut(BaseModel):
+    criadas: int
+    ja_existiam: int
+    # Uma linha por erro, com o índice de entrada — sem isso, "3 falharam" não diz qual.
+    erros: list[str]
+
+
 class PermissionOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -112,6 +130,93 @@ class ProgressOut(BaseModel):
     pendentes: int
     atrasados: int
     excluidos: int
+    percentual: float
+
+
+class LembreteOut(BaseModel):
+    """Resposta do lembrete. `pendentes` = 0 significa que não havia o que lembrar."""
+
+    pendentes: int
+    mensagem: str
+
+
+class ConclusaoDoDepartamentoOut(BaseModel):
+    nome: str
+    esperados: int
+    enviados: int
+    percentual: float
+
+
+class AtividadeDoCicloOut(BaseModel):
+    quando: datetime | None
+    avaliador: str
+    avaliado: str
+
+
+class DashboardOut(BaseModel):
+    """Os agregados do painel inicial (SCR-0003), numa chamada só."""
+
+    cycle_id: UUID | None
+    cycle_name: str | None
+    cycle_end_date: date | None
+    progresso: ProgressOut
+    pessoas_ativas: int
+    pessoas_inativas: int
+    por_departamento: list[ConclusaoDoDepartamentoOut]
+    atividade: list[AtividadeDoCicloOut]
+    total_de_feedbacks: int
+    total_enviados: int
+
+
+class MembroDaEquipeOut(BaseModel):
+    """Uma linha da tela de acompanhamento da equipe."""
+
+    profile_id: UUID
+    full_name: str
+    job_title: str | None
+    role: str
+    is_coordinator: bool
+    status: str
+    # O que a pessoa ainda deve **escrever** no ciclo.
+    pendentes_de_enviar: int
+    enviados: int
+    # O que escreveram sobre ela e ela ainda não **leu**. Métrica diferente da de cima,
+    # e é por isso que o legado as mostra em colunas separadas.
+    pendentes_de_leitura: int
+    percentual: float
+
+
+class PendenteDaEquipeOut(BaseModel):
+    """Um pedido que a equipe ainda deve — a linha de SCR-0027/0031."""
+
+    request_id: UUID
+    giver_id: UUID
+    giver_name: str
+    receiver_name: str
+    status: str
+    due_date: date | None
+    atrasado: bool
+
+
+class PendentesDaEquipeOut(BaseModel):
+    cycle_id: UUID | None
+    cycle_name: str | None
+    pendentes: list[PendenteDaEquipeOut]
+
+
+class TeamProgressOut(BaseModel):
+    """Acompanhamento da equipe no ciclo aberto (SCR-0030).
+
+    Sem ciclo aberto os membros vêm com as contagens zeradas em vez de a tela cair num
+    estado vazio: a equipe continua existindo entre um ciclo e outro.
+    """
+
+    cycle_id: UUID | None
+    cycle_name: str | None
+    membros: list[MembroDaEquipeOut]
+    total_membros: int
+    enviados: int
+    esperados: int
     percentual: float
 
 
@@ -183,17 +288,35 @@ class CancelIn(BaseModel):
 
 
 class RequestOut(BaseModel):
+    """Pedido de feedback, com os nomes das duas pontas resolvidos.
+
+    Os nomes não são enfeite: sem eles a lista "Meus Feedbacks" vira um punhado de
+    linhas idênticas — mesmo status, mesmo prazo — e quem responde não descobre sobre
+    quem é cada uma. Resolver do lado da API é o caminho barato: o repositório já traz
+    os perfis pelo join, e a alternativa seria o front pedir `/profiles` inteiro só para
+    traduzir uuid em nome.
+    """
+
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
     cycle_id: UUID
     form_id: UUID
     giver_id: UUID
+    giver_name: str | None = None
     receiver_id: UUID
+    receiver_name: str | None = None
     status: str
     due_date: date | None
     submitted_at: datetime | None
     cancel_justification: str | None
+
+    @classmethod
+    def de_modelo(cls, request: object, nomes: dict[UUID, str]) -> RequestOut:
+        saida = cls.model_validate(request)
+        saida.giver_name = nomes.get(saida.giver_id)
+        saida.receiver_name = nomes.get(saida.receiver_id)
+        return saida
 
 
 class RequestDetailOut(RequestOut):
@@ -227,6 +350,16 @@ class FreeFeedbackOut(BaseModel):
     message: str | None
     read_at: datetime | None
     created_at: datetime
+
+
+class FreeFeedbackSentOut(FreeFeedbackOut):
+    """O que a pessoa enviou, com o nome de quem recebeu.
+
+    O nome não entra em `FreeFeedbackOut` porque lá a outra ponta é o autor, e autor de
+    anônimo é justamente o que não se conta.
+    """
+
+    receiver_name: str | None = None
 
 
 class CycleNoteIn(BaseModel):

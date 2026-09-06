@@ -22,6 +22,7 @@ import {
 } from "@/components/ui";
 import { ApiError, api, apiVoid } from "@/lib/api";
 import { useSessao } from "@/lib/sessao";
+import type { Departamento } from "@/lib/tipos";
 
 const CAPACIDADES: Record<string, string> = {
   can_request_client_feedback: "Pedir avaliação de cliente",
@@ -36,7 +37,16 @@ export default function MeuPerfil() {
   const router = useRouter();
   const [dados, setDados] = useState({ full_name: "", job_title: "", whatsapp: "" });
   const [senhas, setSenhas] = useState({ senha_atual: "", nova_senha: "" });
+  const [departamentos, setDepartamentos] = useState<Departamento[]>([]);
   const [mensagem, setMensagem] = useState<{ tom: "erro" | "sucesso"; texto: string } | null>(null);
+
+  useEffect(() => {
+    // Só para traduzir o `department_id` do perfil em nome. Falha aqui não estraga a
+    // tela: o campo cai para "Sem departamento", que é o pior caso aceitável.
+    api<Departamento[]>("/departments")
+      .then(setDepartamentos)
+      .catch(() => setDepartamentos([]));
+  }, []);
 
   useEffect(() => {
     if (usuario) {
@@ -95,12 +105,15 @@ export default function MeuPerfil() {
     ? Object.entries(usuario.flags as unknown as Record<string, boolean>).filter(([, v]) => v)
     : [];
 
+  const nomeDoDepartamento =
+    departamentos.find((d) => d.id === usuario?.department_id)?.name ?? "Sem departamento";
+
   return (
     <PaginaAutenticada titulo="Meu perfil" descricao="Seus dados de contato e sua senha.">
       <div className="space-y-6">
         {mensagem && <Aviso tom={mensagem.tom}>{mensagem.texto}</Aviso>}
 
-        <Cartao titulo="Dados">
+        <Cartao titulo="Dados Pessoais">
           <form onSubmit={salvarDados} className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <Campo rotulo="Nome completo" obrigatorio>
@@ -125,6 +138,11 @@ export default function MeuPerfil() {
               </Campo>
               <Campo rotulo="E-mail" dica="Alterado apenas pela administração.">
                 <Entrada value={usuario?.email ?? ""} disabled />
+              </Campo>
+              {/* Só leitura: mudar de departamento é ato da administração, e a pessoa
+                  precisa ver em qual está para saber por onde os relatórios a agrupam. */}
+              <Campo rotulo="Departamento" dica="Definido pela administração.">
+                <Entrada value={nomeDoDepartamento} disabled />
               </Campo>
             </div>
             <Botao tipo="submit">Salvar</Botao>
