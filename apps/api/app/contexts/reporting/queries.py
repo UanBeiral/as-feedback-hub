@@ -61,6 +61,24 @@ class LinhaDeCliente:
 
 
 @dataclass(frozen=True, slots=True)
+class LinhaDeFeedbackLivre:
+    """Feedback livre agregado por pessoa — a aba "Livres" do legado.
+
+    Recebidos e enviados na mesma linha porque a pergunta que o relatório responde é
+    sobre reciprocidade: quem recebe muito e não escreve nada é um caso; quem escreve
+    muito e não recebe é outro, e nenhum dos dois aparece se as duas colunas viverem
+    em relatórios separados.
+    """
+
+    profile_id: UUID
+    nome: str
+    recebidos: int
+    enviados: int
+    anonimos: int
+    sensiveis: int
+
+
+@dataclass(frozen=True, slots=True)
 class LinhaDeEngajamento:
     profile_id: UUID
     nome: str
@@ -195,6 +213,69 @@ class ClientReportQuery(TenantScopedRepository[ClientEvaluation]):
                 negativas=neg,
             )
             for pid, nome, total, resp, media, neg in resultado.all()
+        ]
+
+
+class FreeFeedbackReportQuery(TenantScopedRepository[FreeFeedback]):
+    """Feedback livre por pessoa: o que recebeu e o que enviou."""
+
+    model = FreeFeedback
+
+    async def linhas(self, *, limite: int = LIMITE_TABELA) -> list[LinhaDeFeedbackLivre]:
+        # Duas agregações com chaves diferentes (recebedor e autor) não cabem num
+        # `GROUP BY` só: são feitas separadas e casadas por id em Python, que é barato
+        # porque cada uma devolve uma linha por pessoa, não por feedback.
+        recebidos = (
+            select(
+                FreeFeedback.receiver_id.label("pid"),
+                func.count().label("total"),
+                func.count(case((FreeFeedback.is_anonymous.is_(True), 1))).label("anon"),
+                func.count(case((FreeFeedback.is_sensitive.is_(True), 1))).label("sens"),
+            )
+            .where(FreeFeedback.tenant_id == self.tenant_id)
+            .group_by(FreeFeedback.receiver_id)
+        )
+        enviados = (
+            select(FreeFeedback.giver_id.label("pid"), func.count().label("total"))
+            .where(
+                FreeFeedback.tenant_id == self.tenant_id,
+                # Anônimo não tem autor no banco (AMB-001), então não conta para
+                # ninguém — contá-lo em algum lugar seria reinventar o autor.
+                FreeFeedback.giver_id.is_not(None),
+            )
+            .group_by(FreeFeedback.giver_id)
+        )
+
+        por_recebido = {
+            linha.pid: linha for linha in (await self._session.execute(recebidos)).all()
+        }
+        por_enviado = {
+            linha.pid: linha.total for linha in (await self._session.execute(enviados)).all()
+        }
+
+        ids = set(por_recebido) | set(por_enviado)
+        if not ids:
+            return []
+
+        perfis = (
+            await self._session.execute(
+                select(Profile.id, Profile.full_name)
+                .where(Profile.tenant_id == self.tenant_id, Profile.id.in_(ids))
+                .order_by(Profile.full_name)
+                .limit(limite)
+            )
+        ).all()
+
+        return [
+            LinhaDeFeedbackLivre(
+                profile_id=pid,
+                nome=nome,
+                recebidos=por_recebido[pid].total if pid in por_recebido else 0,
+                enviados=por_enviado.get(pid, 0),
+                anonimos=por_recebido[pid].anon if pid in por_recebido else 0,
+                sensiveis=por_recebido[pid].sens if pid in por_recebido else 0,
+            )
+            for pid, nome in perfis
         ]
 
 

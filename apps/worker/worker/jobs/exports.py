@@ -14,7 +14,7 @@ explícito em que falha de email **não invalida o relatório gerado**. Por isso
 from __future__ import annotations
 
 import logging
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from pathlib import Path
 from uuid import UUID
 
@@ -99,8 +99,14 @@ async def _dados(session: AsyncSession, job: ExportJob) -> tuple[list[str], list
 
     if job.kind == "client":
         alvo = filtros.get("target_user_id")
+        desde = filtros.get("desde")
+        ate = filtros.get("ate")
         linhas = await ClientReportQuery(session, contexto).linhas(
             target_user_id=UUID(alvo) if alvo else None,
+            # O período vem da tela e precisa chegar aqui: sem ele o arquivo sairia com
+            # o relatório inteiro, e quem pediu compararia com o que viu filtrado.
+            desde=date.fromisoformat(desde) if desde else None,
+            ate=date.fromisoformat(ate) if ate else None,
             apenas_negativas=bool(filtros.get("apenas_negativas")),
         )
         return (

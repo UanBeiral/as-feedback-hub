@@ -1465,6 +1465,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/reports/free-feedbacks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Relatorio De Livres
+         * @description A aba "Livres" do legado: quem recebe e quem escreve feedback fora do ciclo.
+         */
+        get: operations["relatorio_de_livres_api_v1_reports_free_feedbacks_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/reports/team-history": {
         parameters: {
             query?: never;
@@ -2704,6 +2724,24 @@ export interface components {
             profile_id: string;
             /** Solicitados */
             solicitados: number;
+        };
+        /** LinhaFeedbackLivreOut */
+        LinhaFeedbackLivreOut: {
+            /** Anonimos */
+            anonimos: number;
+            /** Enviados */
+            enviados: number;
+            /** Nome */
+            nome: string;
+            /**
+             * Profile Id
+             * Format: uuid
+             */
+            profile_id: string;
+            /** Recebidos */
+            recebidos: number;
+            /** Sensiveis */
+            sensiveis: number;
         };
         /** LoginRequest */
         LoginRequest: {
@@ -6230,6 +6268,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    relatorio_de_livres_api_v1_reports_free_feedbacks_get: {
+        parameters: {
+            query?: {
+                preview?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LinhaFeedbackLivreOut"][];
                 };
             };
             /** @description Validation Error */

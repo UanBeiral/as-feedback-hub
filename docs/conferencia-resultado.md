@@ -465,6 +465,8 @@ Rota `/relatorios` · oráculo `reports/screenshots/relatorios-dados-filtros.png
 | 87 | Sem ordenação por coluna | ação |
 | 88 | Descrição: "Gere relatórios personalizados com filtros, escolha de colunas e exportação em CSV" → "Os mesmos números que aparecem nos painéis" | texto |
 
+#82 a #87 resolvidas — ver "Resolvidas — Relatórios" no fim.
+
 ## SCR-0002 · Meu Perfil
 
 Rota `/meu-perfil` · oráculo `auth/screenshots/meu-perfil.png`
@@ -760,3 +762,57 @@ todos com Exportar Excel ou CSV) e **filtra quase tudo**. O sistema novo tem exp
 só em Relatórios. Se a decisão for implementar, um componente de exportação e outro de
 filtro resolvem sete das divergências acima de uma vez — #16, #20, #21, #30, #34 e os
 filtros de #15, #32 e #42.
+
+## Resolvidas — Relatórios
+
+06/09/2026. Fecha #82 a #87, e com elas a última tela que ainda tinha divergência de
+ação.
+
+### A aba Livres (#82)
+
+O legado tem quatro abas e o novo tinha três: feedback livre não aparecia em relatório
+nenhum. `GET /reports/free-feedbacks` agrega por pessoa, e a linha traz **recebidos e
+enviados lado a lado** — a pergunta que o relatório responde é sobre reciprocidade
+(BR-MIGRAR-002), e quem recebe muito sem escrever nada só se enxerga com as duas colunas
+juntas.
+
+São duas agregações com chaves diferentes (`receiver_id` e `giver_id`), casadas por id em
+Python. Não cabem num `GROUP BY` só, e o custo é irrisório porque cada uma devolve uma
+linha por pessoa, não por feedback.
+
+**Anônimo conta para quem recebeu e para ninguém como remetente.** Não há autor no banco
+(AMB-001); atribuí-lo a alguém na hora do relatório seria reinventar o autor que o
+anonimato apagou de propósito.
+
+### Uma aba só, quatro vezes (#83 a #87)
+
+As quatro abas mostram a mesma coisa com dados diferentes: uma tabela agregada por pessoa.
+Escritas à mão quatro vezes, foi o que fez a tela nascer sem filtro, sem ordenação e sem
+contador — cada melhoria custava quatro edições, e por isso nenhuma acontecia. Agora é
+`AbaDeRelatorio<T>`, e o que vale para uma vale para as quatro.
+
+A coluna declara `valor` (o que ordena e o que vai para o CSV) e, quando o visual não é o
+valor cru, `celula`. Separar os dois é o que impede o CSV de sair com `—` no lugar de
+vazio, ou com uma barra de progresso virando `[object Object]`.
+
+**Os filtros são de dois tipos, e a divisão não é arbitrária.** Ciclo, departamento e
+período mudam *o que o servidor agrega* — filtrar depois daria média de gente que o filtro
+devia ter tirado da conta. Busca e ordenação mexem só na apresentação das linhas já
+agregadas, e por isso ficam no navegador. As rotas já aceitavam esses parâmetros desde o
+começo; o que faltava era a tela oferecê-los.
+
+O **Preview** (#85) sai das linhas já carregadas, não de uma segunda consulta: a tabela na
+tela nasceu destes mesmos filtros, e perguntar de novo ao servidor só somaria a chance de
+as duas respostas discordarem. Ele existe porque XLSX vira job no worker — sem prévia, o
+erro de filtro só aparece no arquivo, minutos depois.
+
+O **seletor de colunas** (#84) usa `details`/`summary`: abre, fecha ao clicar fora e é
+navegável por teclado sem uma linha de JS. A coluna que identifica a linha é `fixa` e
+aparece desabilitada em vez de sumir da lista — esconder o nome deixaria a tabela
+ilegível, e omitir a caixa faria parecer que a coluna não existe.
+
+### O filtro de período faltava no worker
+
+Achado ao ligar os filtros: `POST /reports/exports` guardava `desde` e `ate`, e o job de
+`client` os ignorava. O XLSX sairia com o relatório inteiro enquanto a tela mostrava o
+período escolhido — a discordância exata que o Preview existe para evitar.

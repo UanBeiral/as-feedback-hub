@@ -2171,6 +2171,45 @@
         "title": "LinhaEngajamentoOut",
         "type": "object"
       },
+      "LinhaFeedbackLivreOut": {
+        "properties": {
+          "anonimos": {
+            "title": "Anonimos",
+            "type": "integer"
+          },
+          "enviados": {
+            "title": "Enviados",
+            "type": "integer"
+          },
+          "nome": {
+            "title": "Nome",
+            "type": "string"
+          },
+          "profile_id": {
+            "format": "uuid",
+            "title": "Profile Id",
+            "type": "string"
+          },
+          "recebidos": {
+            "title": "Recebidos",
+            "type": "integer"
+          },
+          "sensiveis": {
+            "title": "Sensiveis",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "profile_id",
+          "nome",
+          "recebidos",
+          "enviados",
+          "anonimos",
+          "sensiveis"
+        ],
+        "title": "LinhaFeedbackLivreOut",
+        "type": "object"
+      },
       "LoginRequest": {
         "properties": {
           "email": {
@@ -8632,6 +8671,59 @@
           }
         ],
         "summary": "Relatorio 360 Csv",
+        "tags": [
+          "reporting"
+        ]
+      }
+    },
+    "/api/v1/reports/free-feedbacks": {
+      "get": {
+        "description": "A aba \"Livres\" do legado: quem recebe e quem escreve feedback fora do ciclo.",
+        "operationId": "relatorio_de_livres_api_v1_reports_free_feedbacks_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "preview",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Preview",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/LinhaFeedbackLivreOut"
+                  },
+                  "title": "Response Relatorio De Livres Api V1 Reports Free Feedbacks Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Relatorio De Livres",
         "tags": [
           "reporting"
         ]

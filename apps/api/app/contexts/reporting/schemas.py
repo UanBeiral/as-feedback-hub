@@ -28,6 +28,15 @@ class LinhaClienteOut(BaseModel):
     negativas: int
 
 
+class LinhaFeedbackLivreOut(BaseModel):
+    profile_id: UUID
+    nome: str
+    recebidos: int
+    enviados: int
+    anonimos: int
+    sensiveis: int
+
+
 class LinhaEngajamentoOut(BaseModel):
     profile_id: UUID
     nome: str

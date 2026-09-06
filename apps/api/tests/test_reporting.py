@@ -116,7 +116,7 @@ class FakeQuery:
 async def test_preview_e_tabela_usam_limites_diferentes() -> None:
     """BR-MIGRAR-029: preview 50, tabela 100 — aplicados na query."""
     q360, clientes, engajamento = FakeQuery(), FakeQuery(), FakeQuery()
-    service = ReportService(q360, clientes, engajamento)  # type: ignore[arg-type]
+    service = ReportService(q360, clientes, engajamento, FakeQuery())  # type: ignore[arg-type]
 
     await service.feedback_360(cycle_id=None, department_id=None, preview=True)
     assert q360.limite_recebido == LIMITE_PREVIEW
@@ -130,7 +130,7 @@ async def test_preview_e_tabela_usam_limites_diferentes() -> None:
 
 async def test_relatorio_de_cliente_exige_a_capacidade() -> None:
     """BR-MIGRAR-029: `can_generate_reports` é capacidade individual, não papel."""
-    service = ReportService(FakeQuery(), FakeQuery(), FakeQuery())  # type: ignore[arg-type]
+    service = ReportService(FakeQuery(), FakeQuery(), FakeQuery(), FakeQuery())  # type: ignore[arg-type]
 
     with pytest.raises(AuthorizationError):
         await service.clientes(_contexto())

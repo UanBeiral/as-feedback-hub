@@ -385,6 +385,67 @@ export function FiltroSelecao({
 }
 
 /**
+ * Escolha de colunas visíveis.
+ *
+ * `details`/`summary` em vez de um popover próprio: abre, fecha ao clicar fora do
+ * conteúdo pelo comportamento nativo, é navegável por teclado sem uma linha de JS e não
+ * some quando o React remonta a tabela ao lado.
+ *
+ * Colunas `fixa` aparecem desabilitadas em vez de sumirem da lista: esconder a coluna
+ * que identifica a linha deixa a tabela ilegível, e omitir a caixa faria parecer que a
+ * coluna não existe.
+ */
+export function SeletorDeColunas({
+  colunas,
+  ocultas,
+  aoAlternar,
+}: {
+  colunas: { chave: string; rotulo: string; fixa?: boolean }[];
+  ocultas: string[];
+  aoAlternar: (chave: string) => void;
+}) {
+  const mostrando = colunas.length - ocultas.length;
+
+  return (
+    <details className="relative">
+      <summary
+        className={
+          "inline-flex h-9 cursor-pointer list-none items-center rounded-md border " +
+          "border-input bg-card px-3 text-sm text-foreground hover:bg-muted"
+        }
+      >
+        Colunas ({mostrando})
+      </summary>
+      <div
+        className={
+          "absolute right-0 z-10 mt-1 w-52 rounded-md border border-border bg-card p-2 " +
+          "shadow-lg"
+        }
+      >
+        {colunas.map((coluna) => (
+          <label
+            key={coluna.chave}
+            className={
+              "flex items-center gap-2 rounded px-2 py-1.5 text-sm text-foreground " +
+              (coluna.fixa ? "opacity-60" : "cursor-pointer hover:bg-muted")
+            }
+          >
+            <input
+              type="checkbox"
+              checked={coluna.fixa || !ocultas.includes(coluna.chave)}
+              disabled={coluna.fixa}
+              onChange={() => aoAlternar(coluna.chave)}
+              className="h-4 w-4 rounded border-input"
+            />
+            {coluna.rotulo}
+          </label>
+        ))}
+      </div>
+    </details>
+  );
+}
+
+/**
  * Botão de exportar CSV.
  *
  * Desabilitado quando não há linha: exportar um arquivo vazio é o tipo de coisa que a

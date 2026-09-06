@@ -23,6 +23,7 @@ from app.contexts.identity.service import TeamScopeService
 from app.contexts.reporting.queries import (
     ClientReportQuery,
     EngagementQuery,
+    FreeFeedbackReportQuery,
     Report360Query,
     TeamHistoryQuery,
 )
@@ -36,6 +37,7 @@ from app.contexts.reporting.schemas import (
     Linha360Out,
     LinhaClienteOut,
     LinhaEngajamentoOut,
+    LinhaFeedbackLivreOut,
 )
 from app.contexts.reporting.service import (
     ExportService,
@@ -56,6 +58,7 @@ def get_report_service(session: SessionDep, tenant: TenantDep) -> ReportService:
         report_360=Report360Query(session, tenant),
         clientes=ClientReportQuery(session, tenant),
         engajamento=EngagementQuery(session, tenant),
+        livres=FreeFeedbackReportQuery(session, tenant),
     )
 
 
@@ -130,6 +133,26 @@ async def relatorio_de_clientes(
             negativas=linha.negativas,
         )
         for linha in linhas
+    ]
+
+
+@router.get("/free-feedbacks", response_model=list[LinhaFeedbackLivreOut])
+async def relatorio_de_livres(
+    tenant: TenantDep,
+    service: ReportServiceDep,
+    preview: Annotated[bool, Query()] = False,
+) -> list[LinhaFeedbackLivreOut]:
+    """A aba "Livres" do legado: quem recebe e quem escreve feedback fora do ciclo."""
+    return [
+        LinhaFeedbackLivreOut(
+            profile_id=linha.profile_id,
+            nome=linha.nome,
+            recebidos=linha.recebidos,
+            enviados=linha.enviados,
+            anonimos=linha.anonimos,
+            sensiveis=linha.sensiveis,
+        )
+        for linha in await service.livres(tenant, preview=preview)
     ]
 
 

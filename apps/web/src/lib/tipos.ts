@@ -49,6 +49,7 @@ export type TagDeServico = S["ServiceTagOut"];
 export type Linha360 = S["Linha360Out"];
 export type LinhaDeCliente = S["LinhaClienteOut"];
 export type LinhaDeEngajamento = S["LinhaEngajamentoOut"];
+export type LinhaDeFeedbackLivre = S["LinhaFeedbackLivreOut"];
 export type JobDeExportacao = S["ExportJobOut"];
 export type HistoricoDaEquipe = S["HistoricoDaEquipeOut"];
 export type ItemDeHistorico = S["ItemDeHistoricoOut"];

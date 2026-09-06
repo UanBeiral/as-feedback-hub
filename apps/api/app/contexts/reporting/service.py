@@ -26,6 +26,7 @@ from app.contexts.reporting.queries import (
     LIMITE_TABELA,
     ClientReportQuery,
     EngagementQuery,
+    FreeFeedbackReportQuery,
     Report360Query,
 )
 from app.contexts.reporting.repository import ExportJobRepository
@@ -54,10 +55,12 @@ class ReportService:
         report_360: Report360Query,
         clientes: ClientReportQuery,
         engajamento: EngagementQuery,
+        livres: FreeFeedbackReportQuery,
     ) -> None:
         self._360 = report_360
         self._clientes = clientes
         self._engajamento = engajamento
+        self._livres = livres
 
     async def feedback_360(
         self,
@@ -70,6 +73,17 @@ class ReportService:
             cycle_id=cycle_id,
             department_id=department_id,
             limite=LIMITE_PREVIEW if preview else LIMITE_TABELA,
+        )
+
+    async def livres(self, tenant: TenantContext, *, preview: bool = False) -> list[Any]:
+        """Feedback livre por pessoa.
+
+        Sem `can_generate_reports`: diferente do relatório de cliente, aqui não há dado
+        de terceiro — são contagens do próprio escritório, e o legado mostra a aba a
+        quem abre Relatórios.
+        """
+        return await self._livres.linhas(
+            limite=LIMITE_PREVIEW if preview else LIMITE_TABELA
         )
 
     async def clientes(
