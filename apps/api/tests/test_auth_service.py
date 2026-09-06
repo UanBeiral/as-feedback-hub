@@ -13,7 +13,13 @@ from uuid import UUID, uuid4
 
 import pytest
 
-from app.contexts.identity.models import Profile, RefreshToken, Tenant, User
+from app.contexts.identity.models import (
+    PasswordResetToken,
+    Profile,
+    RefreshToken,
+    Tenant,
+    User,
+)
 from app.contexts.identity.repository import AuthRepository
 from app.contexts.identity.schemas import TokenPair
 from app.contexts.identity.service import AuthService
@@ -33,6 +39,7 @@ class FakeAuthRepository:
         self._user = user
         self._profile = profile
         self.refresh_tokens: list[RefreshToken] = []
+        self.reset_tokens: list[PasswordResetToken] = []
         self.revogacoes: list[tuple[UUID, UUID]] = []
         self.last_login_tocado = False
 
@@ -66,6 +73,19 @@ class FakeAuthRepository:
             return False
         alvo.used_at = datetime.now(UTC)
         return True
+
+    def add_reset_token(self, token: PasswordResetToken) -> PasswordResetToken:
+        self.reset_tokens.append(token)
+        return token
+
+    async def reivindicar_reset_token(self, digest: str) -> PasswordResetToken | None:
+        """Reproduz o UPDATE condicional: gasto e vencido saem pela mesma porta."""
+        agora = datetime.now(UTC)
+        alvo = next((t for t in self.reset_tokens if t.token_digest == digest), None)
+        if alvo is None or alvo.used_at is not None or alvo.expires_at <= agora:
+            return None
+        alvo.used_at = agora
+        return alvo
 
     async def revoke_all_for_user(self, tenant_id: UUID, user_id: UUID) -> None:
         self.revogacoes.append((tenant_id, user_id))
@@ -309,3 +329,75 @@ async def test_revogacao_roda_em_transacao_propria(monkeypatch) -> None:
     await AuthRepository(_SessaoDoRequest()).revoke_all_for_user(uuid4(), uuid4())  # type: ignore[arg-type]
 
     assert registro == ["abriu", "execute", "commitou"]
+
+
+# ---------------------------------------------------------------- reset de senha
+
+
+async def test_reset_de_conta_inexistente_nao_denuncia(hasher, tokens) -> None:
+    """A rota devolve 204 nos dois casos; o service diz `None` em vez de levantar."""
+    repo = _cenario(hasher)
+    resultado = await _service(repo, hasher, tokens).solicitar_reset(
+        email="ninguem@exemplo.com"
+    )
+
+    assert resultado is None
+    assert repo.reset_tokens == []
+
+
+async def test_reset_de_conta_desligada_nao_gera_token(hasher, tokens) -> None:
+    """Quem foi desligado não volta por um link de senha (BR-MIGRAR-016/018)."""
+    repo = _cenario(hasher, user_status="inactive")
+    assert await _service(repo, hasher, tokens).solicitar_reset(email="pessoa@exemplo.com") is None
+    assert repo.reset_tokens == []
+
+
+async def test_reset_guarda_so_o_digest(hasher, tokens) -> None:
+    repo = _cenario(hasher)
+    resultado = await _service(repo, hasher, tokens).solicitar_reset(email="pessoa@exemplo.com")
+
+    assert resultado is not None
+    _, _, token = resultado
+    assert len(repo.reset_tokens) == 1
+    assert repo.reset_tokens[0].token_digest == hash_refresh_token(token)
+    assert token not in repo.reset_tokens[0].token_digest
+
+
+async def test_confirmar_troca_senha_e_derruba_sessoes(hasher, tokens) -> None:
+    """Quem redefine ou esqueceu a senha ou desconfia que alguém a tem."""
+    repo = _cenario(hasher)
+    service = _service(repo, hasher, tokens)
+    await service.authenticate(email="pessoa@exemplo.com", password=SENHA)
+    resultado = await service.solicitar_reset(email="pessoa@exemplo.com")
+    assert resultado is not None
+
+    await service.confirmar_reset(token=resultado[2], nova_senha="senha-nova-forte")
+
+    assert repo.revogacoes, "as sessões abertas deviam cair junto"
+    par = await service.authenticate(email="pessoa@exemplo.com", password="senha-nova-forte")
+    assert par.access_token
+    with pytest.raises(AuthenticationError):
+        await service.authenticate(email="pessoa@exemplo.com", password=SENHA)
+
+
+async def test_link_de_reset_e_de_uso_unico(hasher, tokens) -> None:
+    repo = _cenario(hasher)
+    service = _service(repo, hasher, tokens)
+    resultado = await service.solicitar_reset(email="pessoa@exemplo.com")
+    assert resultado is not None
+
+    await service.confirmar_reset(token=resultado[2], nova_senha="senha-nova-forte")
+    with pytest.raises(AuthenticationError):
+        await service.confirmar_reset(token=resultado[2], nova_senha="outra-senha-ainda")
+
+
+async def test_link_de_reset_expirado_e_recusado(hasher, tokens) -> None:
+    """Expirado e já usado dão a mesma resposta — a diferença seria sinal."""
+    repo = _cenario(hasher)
+    service = _service(repo, hasher, tokens)
+    resultado = await service.solicitar_reset(email="pessoa@exemplo.com")
+    assert resultado is not None
+    repo.reset_tokens[0].expires_at = datetime.now(UTC) - timedelta(minutes=1)
+
+    with pytest.raises(AuthenticationError):
+        await service.confirmar_reset(token=resultado[2], nova_senha="senha-nova-forte")

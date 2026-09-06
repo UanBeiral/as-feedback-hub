@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.contexts.identity.models import (
     CoordinatorMember,
     Department,
+    PasswordResetToken,
     Profile,
     ProfileDepartment,
     RefreshToken,
@@ -83,6 +84,34 @@ class AuthRepository:
             .values(used_at=datetime.now(UTC))
         )
         return resultado.rowcount == 1
+
+    def add_reset_token(self, token: PasswordResetToken) -> PasswordResetToken:
+        self._session.add(token)
+        return token
+
+    async def reivindicar_reset_token(self, digest: str) -> PasswordResetToken | None:
+        """Gasta o token **num passo só**, e devolve a linha se foi este quem conseguiu.
+
+        Mesmo raciocínio do refresh token: ler, decidir e depois gravar é uma corrida.
+        Aqui ela é pior — dois cliques no mesmo link deixariam duas senhas novas
+        disputando qual fica, e a pessoa não saberia com qual entrou.
+
+        `expires_at` entra na condição do UPDATE, e não num `if` depois: expirado e
+        gasto têm de ser a mesma resposta para quem apresenta o token, senão a diferença
+        entre "esse link já foi usado" e "esse link nunca existiu" vira sinal.
+        """
+        agora = datetime.now(UTC)
+        resultado = await self._session.execute(
+            update(PasswordResetToken)
+            .where(
+                PasswordResetToken.token_digest == digest,
+                PasswordResetToken.used_at.is_(None),
+                PasswordResetToken.expires_at > agora,
+            )
+            .values(used_at=agora)
+            .returning(PasswordResetToken)
+        )
+        return resultado.scalar_one_or_none()
 
     async def revoke_all_for_user(self, tenant_id: UUID, user_id: UUID) -> None:
         """Derruba todas as sessões do usuário, em transação própria.

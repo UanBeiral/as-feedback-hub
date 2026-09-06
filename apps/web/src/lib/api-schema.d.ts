@@ -205,6 +205,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/reset-password/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirmar Reset
+         * @description Gasta o link e grava a senha nova. Expirado e já usado dão a mesma resposta.
+         */
+        post: operations["confirmar_reset_api_v1_auth_reset_password_confirm_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/reset-password/request": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Solicitar Reset
+         * @description Pede o link de redefinição (SCR-0038).
+         *
+         *     **204 sempre**, exista a conta ou não. A tela que responde "esse e-mail não está
+         *     cadastrado" é um verificador de quem trabalha no escritório — e o custo de não
+         *     dizer é zero, porque quem tem a conta recebe o e-mail.
+         */
+        post: operations["solicitar_reset_api_v1_auth_reset_password_request_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/client-eval/evaluations": {
         parameters: {
             query?: never;
@@ -3060,10 +3104,27 @@ export interface components {
             /** Texto */
             texto: string;
         };
+        /** PasswordResetConfirmIn */
+        PasswordResetConfirmIn: {
+            /** Nova Senha */
+            nova_senha: string;
+            /** Token */
+            token: string;
+        };
         /** PasswordResetIn */
         PasswordResetIn: {
             /** Nova Senha */
             nova_senha: string;
+        };
+        /** PasswordResetRequestIn */
+        PasswordResetRequestIn: {
+            /**
+             * Email
+             * Format: email
+             */
+            email: string;
+            /** Tenant Slug */
+            tenant_slug?: string | null;
         };
         /**
          * PendenteDaEquipeOut
@@ -4056,6 +4117,68 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["TokenPair"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    confirmar_reset_api_v1_auth_reset_password_confirm_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasswordResetConfirmIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    solicitar_reset_api_v1_auth_reset_password_request_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasswordResetRequestIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

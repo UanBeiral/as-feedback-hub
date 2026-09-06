@@ -9,6 +9,7 @@
  * dava porque tinha um tenant só.
  */
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -119,7 +120,12 @@ export default function PaginaDeLogin() {
         </Cartao>
 
         <p className="mt-4 text-center text-xs text-muted-foreground">
-          Esqueceu a senha? Fale com o administrador do escritório.
+          <Link
+            href="/esqueci-senha"
+            className="text-primary underline-offset-4 hover:underline"
+          >
+            Esqueci minha senha
+          </Link>
         </p>
       </div>
     </main>

@@ -875,3 +875,82 @@ guardar. A tela diz isso na descrição, em vez de deixar a pessoa contando os q
 
 "Ver Detalhes" abria um modal com o conteúdo que o novo já mostra inline, com os três
 campos rotulados. Um clique para revelar o que já está na tela não é ação, é obstáculo.
+
+## Resolvidas — o resto da conferência
+
+06/09/2026. Fecha #5, #21, #24, #44, #48, #49, #52, #57 e a parte de período da #79, e
+implementa **SCR-0038 · Reset de Senha**.
+
+### Reset de senha (#5 / SCR-0038)
+
+O login dizia "Fale com o administrador do escritório". Era honesto e era a ausência da
+tela. Agora são duas: `/esqueci-senha` pede o link, `/redefinir-senha` gasta.
+
+Quatro decisões que o teste segura:
+
+**A resposta é 204 exista a conta ou não.** Dizer "esse e-mail não está cadastrado"
+transformaria a página num verificador de quem trabalha no escritório, aberto a qualquer
+um — e não haveria ganho, porque quem tem a conta recebe o e-mail de qualquer jeito. É a
+mesma decisão do `_CREDENCIAIS_INVALIDAS` do login.
+
+**Expirado e já usado dão a mesma resposta**, e pelo mesmo motivo: a diferença entre
+"esse link já foi usado" e "esse link nunca existiu" é sinal para quem está testando
+links.
+
+**O token é gasto num UPDATE condicional**, como o refresh. Ler, decidir e depois gravar
+é uma corrida — e aqui ela é pior que na renovação de sessão: dois cliques no mesmo link
+deixariam duas senhas novas disputando qual fica, e a pessoa não saberia com qual entrou.
+
+**Redefinir derruba todas as sessões.** Quem redefine ou esqueceu a senha ou desconfia
+que alguém a tem; nos dois casos, deixar de pé a sessão aberta noutro lugar é deixar de pé
+exatamente o que o reset veio fechar.
+
+O e-mail sai pelo outbox, na mesma transação do token: link enviado sem token gravado é
+link que não funciona, e token gravado sem link é ninguém avisado. Tabela própria, e não
+coluna em `users`, porque o token tem vida própria — um pedido novo não pode apagar o
+anterior sem que se saiba qual dos dois links chegou primeiro à caixa da pessoa.
+
+### O logo (#49)
+
+Sobe arquivo **ou** aponta URL. O campo continua sendo uma URL no banco; o que muda é que
+agora existe uma para apontar sem o escritório ter onde hospedar a imagem — pedir só a URL
+era não ter o recurso para quem só tem o arquivo. PNG e SVG, 2 MB, conferidos pelo tamanho
+**lido** e não pelo `content-length`, que é declaração do cliente.
+
+A gravação da chave não passa pela concorrência otimista de BR-MIGRAR-027, e é o único
+lugar onde isso vale: o carimbo que o cliente leu não diz nada sobre um arquivo mandado
+depois, e recusar por conflito deixaria o arquivo no disco com a configuração apontando
+para o anterior.
+
+### O tipo do Fale Conosco (#44)
+
+`contact_messages.type` virou catálogo. O sintoma estava nas duas pontas: o formulário
+público oferecia "Problema" e "Dúvida", que a triagem nunca soube exibir, e um seed
+inventado gravou "suporte" e "comercial" sem o servidor reclamar. O filtro passa a listar
+o catálogo inteiro em vez do que existe no banco — um filtro montado a partir das linhas
+some quando a caixa esvazia e volta quando alguém escreve.
+
+### Editar ciclo (#24) e reativar formulário (#48)
+
+Editar ciclo vale **só para rascunho**. Depois de aberto há requests apontando para o
+formulário e prazos que as pessoas já viram: trocar o formulário mudaria as perguntas
+embaixo de quem responde, e mudar a data faria o atraso de BR-MIGRAR-007 mudar de resposta
+para o passado. Corrigir ciclo em curso é estender, que é outra operação e tem outro nome.
+
+Arquivar formulário ganhou volta. O legado chamava o par de "Ativar/Desativar", e sem o
+outro lado um clique errado obrigava a recriar formulário e perguntas — com os ciclos
+antigos apontando para um e os novos para outro de mesmo nome.
+
+### O selo de papel (#57)
+
+Mostra "Gestor (Admin)" enquanto a troca de contexto está em curso. Junto veio um defeito:
+o seletor "Ver como…" lia o papel persistido, então voltava sozinho ao original depois de
+trocar. `/auth/me` passou a devolver `active_role` — o papel que autoriza continua sendo o
+persistido, e essa distinção é a própria BR-MIGRAR-016.
+
+### #2 fica como desvio deliberado
+
+O logo no login exigiria um endpoint público que diga de quem é a instalação. O legado
+podia porque tinha um tenant só; aqui, estampar a marca antes do login é publicar o nome
+do cliente para quem só abriu a URL. O nome do produto fica; a marca do escritório aparece
+depois de entrar.

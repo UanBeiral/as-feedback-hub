@@ -26,6 +26,7 @@ import {
   Cartao,
   Celula,
   EstadoVazio,
+  FiltroDeData,
   FiltroSelecao,
   Linha,
   Progresso,
@@ -305,8 +306,8 @@ export default function Relatorios() {
             }}
             filtros={
               <>
-                <CampoDeData rotulo="De" valor={desde} aoMudar={setDesde} />
-                <CampoDeData rotulo="Até" valor={ate} aoMudar={setAte} />
+                <FiltroDeData rotulo="De" valor={desde} aoMudar={setDesde} />
+                <FiltroDeData rotulo="Até" valor={ate} aoMudar={setAte} />
                 <label className="flex items-center gap-2 text-sm text-foreground">
                   <input
                     type="checkbox"
@@ -419,31 +420,5 @@ export default function Relatorios() {
         </Cartao>
       </div>
     </PaginaAutenticada>
-  );
-}
-
-/** Data com rótulo à esquerda, para caber na barra de filtros sem virar formulário. */
-function CampoDeData({
-  rotulo,
-  valor,
-  aoMudar,
-}: {
-  rotulo: string;
-  valor: string;
-  aoMudar: (valor: string) => void;
-}) {
-  return (
-    <label className="flex items-center gap-2 text-sm text-muted-foreground">
-      {rotulo}
-      <input
-        type="date"
-        value={valor}
-        onChange={(e) => aoMudar(e.target.value)}
-        className={
-          "h-9 rounded-md border border-input bg-card px-2 text-sm text-foreground " +
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        }
-      />
-    </label>
   );
 }

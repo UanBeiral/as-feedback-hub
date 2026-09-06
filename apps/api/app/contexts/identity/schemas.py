@@ -109,6 +109,18 @@ class OwnPasswordIn(BaseModel):
     nova_senha: str = Field(min_length=8, max_length=72)
 
 
+class PasswordResetRequestIn(BaseModel):
+    email: EmailStr
+    tenant_slug: str | None = None
+
+
+class PasswordResetConfirmIn(BaseModel):
+    token: str = Field(min_length=1)
+    # O mesmo mínimo da troca autenticada: um caminho de redefinição mais frouxo que o
+    # normal seria o caminho preferido de quem quer uma senha fraca.
+    nova_senha: str = Field(min_length=8, max_length=72)
+
+
 class RoleIn(BaseModel):
     role: str = Field(pattern="^(admin|rh|gestor|colaborador)$")
 

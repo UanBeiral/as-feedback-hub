@@ -419,6 +419,32 @@ export function FiltroSelecao({
   );
 }
 
+/** Data com rótulo à esquerda, para caber na barra de filtros sem virar formulário. */
+export function FiltroDeData({
+  rotulo,
+  valor,
+  aoMudar,
+}: {
+  rotulo: string;
+  valor: string;
+  aoMudar: (valor: string) => void;
+}) {
+  return (
+    <label className="flex items-center gap-2 text-sm text-muted-foreground">
+      {rotulo}
+      <input
+        type="date"
+        value={valor}
+        onChange={(e) => aoMudar(e.target.value)}
+        className={
+          "h-9 rounded-md border border-input bg-card px-2 text-sm text-foreground " +
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        }
+      />
+    </label>
+  );
+}
+
 /**
  * Escolha de colunas visíveis.
  *

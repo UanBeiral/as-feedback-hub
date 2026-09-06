@@ -2706,6 +2706,27 @@
         "title": "ParteDoHistoricoOut",
         "type": "object"
       },
+      "PasswordResetConfirmIn": {
+        "properties": {
+          "nova_senha": {
+            "maxLength": 72,
+            "minLength": 8,
+            "title": "Nova Senha",
+            "type": "string"
+          },
+          "token": {
+            "minLength": 1,
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "nova_senha"
+        ],
+        "title": "PasswordResetConfirmIn",
+        "type": "object"
+      },
       "PasswordResetIn": {
         "properties": {
           "nova_senha": {
@@ -2719,6 +2740,31 @@
           "nova_senha"
         ],
         "title": "PasswordResetIn",
+        "type": "object"
+      },
+      "PasswordResetRequestIn": {
+        "properties": {
+          "email": {
+            "format": "email",
+            "title": "Email",
+            "type": "string"
+          },
+          "tenant_slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tenant Slug"
+          }
+        },
+        "required": [
+          "email"
+        ],
+        "title": "PasswordResetRequestIn",
         "type": "object"
       },
       "PendenteDaEquipeOut": {
@@ -4984,6 +5030,76 @@
           }
         },
         "summary": "Refresh",
+        "tags": [
+          "identity"
+        ]
+      }
+    },
+    "/api/v1/auth/reset-password/confirm": {
+      "post": {
+        "description": "Gasta o link e grava a senha nova. Expirado e já usado dão a mesma resposta.",
+        "operationId": "confirmar_reset_api_v1_auth_reset_password_confirm_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordResetConfirmIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Confirmar Reset",
+        "tags": [
+          "identity"
+        ]
+      }
+    },
+    "/api/v1/auth/reset-password/request": {
+      "post": {
+        "description": "Pede o link de redefinição (SCR-0038).\n\n**204 sempre**, exista a conta ou não. A tela que responde \"esse e-mail não está\ncadastrado\" é um verificador de quem trabalha no escritório — e o custo de não\ndizer é zero, porque quem tem a conta recebe o e-mail.",
+        "operationId": "solicitar_reset_api_v1_auth_reset_password_request_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordResetRequestIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Solicitar Reset",
         "tags": [
           "identity"
         ]

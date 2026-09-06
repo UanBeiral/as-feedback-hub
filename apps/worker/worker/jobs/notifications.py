@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.contexts.engagement.models import Notification, OutboxMessage, PlatformUpdate
 from app.contexts.identity.models import Profile, User
+from app.core.config import get_settings
 from worker.handlers import RegistroDeHandlers
 from worker.jobs.avisos import registra_avisos
 from worker.jobs.email import EmailAdapter
@@ -101,6 +102,45 @@ def registra_handlers(email: EmailAdapter) -> RegistroDeHandlers:
             to=destinatario,
             subject=f"Novidade: {comunicado.title}",
             body=comunicado.content,
+        )
+
+    @registro_local.registra("auth.password_reset")
+    async def mandar_link_de_reset(session: AsyncSession, mensagem: OutboxMessage) -> None:
+        """O link de redefinição de senha (SCR-0038).
+
+        Só e-mail, sem notificação no app: quem não consegue entrar não vê o sino, e um
+        aviso lá dentro contando que alguém pediu a senha de outra pessoa seria vazar o
+        pedido para quem já está com a sessão aberta.
+
+        O e-mail vai para `users.email` direto, e não pela junção com `profiles` do
+        `_email_do_perfil`: o payload traz `user_id`, e a conta desligada já foi barrada
+        no serviço — repetir a checagem aqui só criaria um segundo lugar para ela mudar.
+        """
+        user_id = _uuid(mensagem, "user_id")
+        token = str(mensagem.payload.get("token") or "")
+        if not token:
+            raise PayloadInvalidoError("payload sem `token`")
+
+        destinatario = (
+            await session.execute(
+                select(User.email).where(User.id == user_id, User.status == "active")
+            )
+        ).scalar_one_or_none()
+        if destinatario is None:
+            logger.info("outbox: reset de senha para %s sem conta ativa", user_id)
+            return
+
+        link = f"{get_settings().public_base_url}/redefinir-senha?token={token}"
+        await email.send(
+            to=destinatario,
+            subject="Redefinir sua senha",
+            body=(
+                "Alguém pediu a redefinição da senha desta conta.\n\n"
+                f"Para escolher uma senha nova, abra: {link}\n\n"
+                "O link vale por uma hora e só funciona uma vez. "
+                "Se não foi você quem pediu, ignore este e-mail — nada muda até que "
+                "alguém use o link."
+            ),
         )
 
     @registro_local.registra("export.requested")

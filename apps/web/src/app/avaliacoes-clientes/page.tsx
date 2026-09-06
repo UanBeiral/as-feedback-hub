@@ -28,6 +28,7 @@ import {
   Entrada,
   EstadoVazio,
   Estatistica,
+  FiltroDeData,
   FiltroSelecao,
   Linha,
   Selecao,
@@ -49,6 +50,8 @@ export default function AvaliacoesDeClientes() {
   const [mensagem, setMensagem] = useState<{ tom: "erro" | "sucesso"; texto: string } | null>(null);
   const [pedido, setPedido] = useState({ target_user_id: "", client_name: "", client_whatsapp: "" });
   const [buscaDePessoa, setBuscaDePessoa] = useState("");
+  const [desde, setDesde] = useState("");
+  const [ate, setAte] = useState("");
 
   const podePedir = temCapacidade(usuario, "can_request_client_feedback");
   const equipeFiltrada = equipe.filter((membro) =>
@@ -115,7 +118,15 @@ export default function AvaliacoesDeClientes() {
     (a, valor) => a.target_user_id === valor,
   );
   const porStatus = tabela.filtro("status", (a, valor) => a.status === valor);
-  const visiveis = tabela.visiveis([porProfissional, porStatus]);
+  const visiveis = tabela.visiveis([porProfissional, porStatus]).filter((a) => {
+    // Pelo envio, e não pela criação: a pergunta que o período responde é "o que os
+    // clientes disseram em março", e link gerado em fevereiro e respondido em março é
+    // resposta de março. Avaliação sem resposta fica de fora quando há período.
+    const dia = a.submitted_at?.slice(0, 10) ?? "";
+    if (desde && (!dia || dia < desde)) return false;
+    if (ate && (!dia || dia > ate)) return false;
+    return true;
+  });
 
   const pendentes = (avaliacoes ?? []).filter(
     (a) => a.status === "pending" || a.status === "in_progress",
@@ -245,6 +256,8 @@ export default function AvaliacoesDeClientes() {
                 aoMudar={porProfissional.aoMudar}
                 opcoes={equipe.map((p) => ({ valor: p.id, rotulo: p.full_name }))}
               />
+              <FiltroDeData rotulo="De" valor={desde} aoMudar={setDesde} />
+              <FiltroDeData rotulo="Até" valor={ate} aoMudar={setAte} />
               <FiltroSelecao
                 rotuloDeTodos="Todos os status"
                 valor={porStatus.valor}

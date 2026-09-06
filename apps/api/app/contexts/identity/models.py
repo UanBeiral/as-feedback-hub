@@ -88,6 +88,35 @@ class User(UUIDPrimaryKeyMixin, TenantScopedMixin, TimestampMixin, Base):
         return self.status == "active"
 
 
+class PasswordResetToken(UUIDPrimaryKeyMixin, TenantScopedMixin, Base):
+    """Token de redefinição de senha (SCR-0038).
+
+    Tabela própria e não uma coluna em `users` porque o token tem vida própria: nasce,
+    expira e é gasto, e um pedido novo não pode apagar o anterior sem que se saiba qual
+    dos dois links chegou primeiro ao e-mail da pessoa.
+
+    Guardamos só o digest, como no refresh token — quem lê o banco não consegue montar o
+    link. E `used_at` é de uso único pelo mesmo motivo: um link de redefinição que
+    funciona duas vezes é um link que continua valendo depois de a pessoa ter entrado.
+    """
+
+    __tablename__ = "password_reset_tokens"
+
+    tenant_id: Mapped[UUID] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True
+    )
+    user_id: Mapped[UUID] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    token_digest: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    requested_ip: Mapped[str | None] = mapped_column(String(45))
+
+
 class RefreshToken(UUIDPrimaryKeyMixin, TenantScopedMixin, Base):
     """Sessão renovável. Guardamos só o digest — ver `core/security.py`.
 
