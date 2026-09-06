@@ -994,3 +994,25 @@ opção seria montar um caminho que termina em erro.
 "Usuários removidos" renderizava **duas vezes** na Auditoria: uma dentro do bloco do
 resumo e outra abaixo dele. Sobra de um lote anterior — a seção foi inserida no lugar novo
 sem a antiga sair.
+
+## Verificado rodando — 06/09/2026
+
+O que os testes não pegam, conferido contra a stack local com o seed de demonstração:
+
+| O quê | Resultado |
+|---|---|
+| Relatório de feedback livre | Diego 1 recebido, Marina 1 enviado, Rafael 1 recebido / 1 anônimo / 1 sensível — bate com o seed |
+| Meu Histórico do Rafael | o feedback sensível **sobre ele** não aparece; ciclo e cliente aparecem |
+| Histórico da equipe do gestor | só o feedback livre do Diego |
+| Histórico da equipe do admin | os dois, inclusive o sensível anônimo |
+| Marcar ciente | 204, e a marca volta como "Ciente em … por Rafael Antunes" |
+| Reset: pedido para conta existente e inexistente | 204 nos dois |
+| Reset: link no e-mail do worker | chegou, com `?token=…` |
+| Reset: usar o link | 204; reusar o mesmo link → 401 |
+| Reset: senha antiga depois da troca | 401; senha nova → 200 |
+| Logo: upload PNG | 200, e `GET /settings/logo` devolve `image/png` |
+| Logo: reenvio | 200 — é o caso que a concorrência otimista teria recusado |
+| Logo: `text/plain` | 422, "O logo precisa ser PNG ou SVG" |
+| Fale Conosco: tipo `duvida` | 422; `critica` → 201 |
+| Editar ciclo aberto | 422, "Só rascunho pode ser editado" |
+| Editar rascunho | 200 |

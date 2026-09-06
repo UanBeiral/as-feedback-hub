@@ -188,6 +188,26 @@ export function Shell({ children }: { children: React.ReactNode }) {
 
         <main className="flex-1 px-6 py-6">{children}</main>
       </div>
+
+      {/* O botão flutuante do caderno de ciclo (SCR-0022). Fica em toda tela autenticada
+          porque a anotação nasce no meio de outra coisa — numa reunião, lendo um
+          relatório — e um caderno que exige navegar até ele é um caderno que ninguém
+          abre. Some na própria tela de anotações, onde seria um atalho para onde a
+          pessoa já está. */}
+      {temEquipe && caminho !== "/anotacoes" && (
+        <Link
+          href="/anotacoes"
+          title="Anotar sobre alguém"
+          className={
+            "fixed bottom-6 right-6 z-20 flex h-12 w-12 items-center justify-center " +
+            "rounded-full bg-primary text-xl text-primary-foreground shadow-lg " +
+            "transition hover:brightness-110"
+          }
+        >
+          <span aria-hidden="true">✎</span>
+          <span className="sr-only">Anotar sobre alguém</span>
+        </Link>
+      )}
     </div>
   );
 }

@@ -25,11 +25,11 @@ Leitura obrigatória antes de mexer, nesta ordem:
 
 | Parte | Estado |
 |---|---|
-| API (FastAPI) | 5 contextos, 91 rotas, 30 tabelas |
+| API (FastAPI) | 5 contextos, 102 rotas, 31 tabelas |
 | Worker | despacho do outbox + 3 jobs agendados |
-| Front (Next.js) | 25 rotas, client tipado gerado do OpenAPI; fluxo público em wizard |
-| Testes | 353, todos verdes |
-| Migrations | 0001→0007, aplicam do zero |
+| Front (Next.js) | 30 rotas, client tipado gerado do OpenAPI; fluxo público em wizard |
+| Testes | 367, todos verdes |
+| Migrations | 0001→0008, aplicam do zero |
 | CI | lint + testes + migrations + build do front |
 
 Os cinco contextos: `identity` (sessão, pessoas, equipe, papel ativo), `engagement`
@@ -52,23 +52,19 @@ como decidido.
 
 **Não bloqueia, mas está aberto:**
 
-- **A comparação com o oráculo está em curso.** 17 das 35 telas do subset literal foram
-  conferidas — Administração inteira e metade de Equipe/Feedback — e renderam 76
-  divergências em [`docs/conferencia-resultado.md`](conferencia-resultado.md); 18 seguem
-  pendentes. É a validação que `parity_specs.md` exige e que nenhum teste automatizado
-  substitui.
-  Os três padrões que a conferência revelou já foram fechados: **as telas de
-  acompanhamento voltaram a acompanhar**, **exportação, filtros e ordenação** entraram em
-  seis tabelas, e as **três decisões do cliente** de 06/09 (remoção pelo gestor, descrição
-  de departamento, sensibilidade na auditoria) viraram a migration `0006` — 40
-  divergências no total, e as duas telas que **não existiam** foram feitas: Feedbacks
-  Pendentes da equipe e a aba de Formulários de Cliente Externo — esta tirou as perguntas
-  do wizard público de "só editáveis por SQL".
+- **A comparação com o oráculo terminou.** As 18 telas literais foram conferidas e
+  renderam **90 divergências e 8 defeitos próprios**, todos registrados em
+  [`docs/conferencia-resultado.md`](conferencia-resultado.md). 87 divergências foram
+  implementadas; 3 ficaram como desvio deliberado, com o motivo escrito (#2 logo no
+  login, #43 e #67 modais que revelam o que já está na tela). Os 8 defeitos foram
+  corrigidos — e dois deles justificam a conferência sozinhos: recarregar a página
+  deslogava, e `can_view_team_history` decidia o menu sem que a rota a exigisse.
+  Cinco telas nasceram dela: Feedbacks Pendentes da equipe, a aba de Formulários de
+  Cliente Externo, Meu Histórico, Reset de Senha e Dar Feedback.
 - **Os 10 arquivos `.feature` de paridade não rodam.** Os cenários estão cobertos por
   testes de service, mas o roteiro formal da homologação ainda não é executável.
-- **Telas secundárias**: 24 das 43. Falta o detalhe de avaliação de cliente, o envio de
-  feedback livre pela interface e a Agenda — esta última fora do corte por decisão
-  (AMB-007, fase 2).
+- **Telas secundárias**: 29 das 43. Falta o detalhe de avaliação de cliente e a Agenda —
+  esta última fora do corte por decisão (AMB-007, fase 2).
 - **Três pontos do wizard público dependem do cliente, não de código**: qual pergunta era
   a Q6 do legado, qual pergunta alimenta a coluna "Nota Geral" dos relatórios e o que
   fazer com o chip "+ Outro…" do tipo de serviço. Estão em `spec-deviations.md`
@@ -82,26 +78,24 @@ como decidido.
 
 Em ordem de valor, para quem for continuar. Cada item diz o que fazer e onde olhar.
 
-1. **Conferir as 18 telas literais que faltam contra o oráculo.** O roteiro está em
-   [`docs/conferencia-oraculo.md`](conferencia-oraculo.md) e o retorno vai para
-   [`docs/conferencia-resultado.md`](conferencia-resultado.md). Suba o ambiente com
-   `deploy/seed_demo.py` antes: contra tabela vazia a conferência não prova nada.
-   O que já saiu mostra o que a conferência rende: a reescrita do fluxo público como
-   wizard, 76 divergências e cinco defeitos que nenhum teste pegava — um derrubando a
-   sessão a cada F5, outro deixando "Meus Feedbacks" com quatro linhas idênticas e sem
-   dizer sobre quem era cada uma.
+A conferência contra o oráculo saiu da fila: terminou em 06/09/2026, com as 90
+divergências resolvidas ou registradas como desvio. O que ela rendeu está em
+[`docs/conferencia-resultado.md`](conferencia-resultado.md), e vale ler antes de mexer em
+qualquer tela — a maioria das decisões de comportamento do sistema está justificada lá.
+
+1. **Provedor de email real.** Hoje só `console`; Resend e SMTP levantam erro explícito
+   e a mensagem vai para a DLQ. Nenhum email chega a ninguém até isso mudar
+   (BR-MIGRAR-030) — e agora isso inclui o link de redefinição de senha, que é a única
+   forma de alguém recuperar o acesso sozinho.
 2. **Tornar os `.feature` executáveis.** Os 10 arquivos em
    `docs/reversa/migration/parity_tests/` são o roteiro formal da homologação e hoje não
    rodam. Os cenários estão cobertos por testes de service, mas o cliente vai homologar
    pelo roteiro, não pela suíte.
-3. **Telas que faltam**: detalhe da avaliação de cliente, envio de feedback livre pela
-   interface. A Agenda está fora do corte por decisão (AMB-007).
+3. **Telas que faltam**: detalhe da avaliação de cliente. A Agenda está fora do corte
+   por decisão (AMB-007).
    Junto: perguntar ao cliente os três pontos em aberto do wizard público (Q6, origem da
    "Nota Geral", chip "+ Outro…").
-4. **Provedor de email real.** Hoje só `console`; Resend e SMTP levantam erro explícito
-   e a mensagem vai para a DLQ. Nenhum email chega a ninguém até isso mudar
-   (BR-MIGRAR-030).
-5. **Os três itens do runbook** — dependem de acesso à produção e bloqueiam o cutover,
+4. **Os três itens do runbook** — dependem de acesso à produção e bloqueiam o cutover,
    não o desenvolvimento. Detalhe abaixo.
 
 Antes de qualquer entrega grande, subir o Postgres e rodar os fluxos de ponta a ponta.
