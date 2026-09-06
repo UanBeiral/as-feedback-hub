@@ -1,7 +1,7 @@
 # Estado do projeto — onde paramos
 
 > Escrito em 02/09/2026, ao fim da sessão que construiu o sistema.
-> Atualizado em 06/09/2026, no fecho da conferência contra o oráculo.
+> Atualizado em 06/09/2026, quando a fila de implementação esvaziou.
 > Serve para quem chegar depois (pessoa ou agente) entender em uma leitura o que existe,
 > o que falta e por que certas coisas são do jeito que são.
 
@@ -28,7 +28,7 @@ Leitura obrigatória antes de mexer, nesta ordem:
 |---|---|
 | API (FastAPI) | 5 contextos, 104 rotas, 30 tabelas |
 | Worker | despacho do outbox + 3 jobs agendados |
-| Front (Next.js) | 32 rotas, client tipado gerado do OpenAPI; fluxo público em wizard |
+| Front (Next.js) | 31 telas mais o 404, client tipado gerado do OpenAPI |
 | Testes | 385, todos verdes |
 | Migrations | 0001→0008, aplicam do zero |
 | CI | lint + testes + migrations + build do front |
@@ -39,6 +39,38 @@ Os cinco contextos: `identity` (sessão, pessoas, equipe, papel ativo), `engagem
 
 As 30 regras BR-MIGRAR têm implementação e teste. As 7 BR-DESCARTAR foram descartadas
 como decidido.
+
+**As 42 telas do corte existem.** Falta só a Agenda, fora por decisão (AMB-007, fase 2) —
+e com ela o callback do Google e a agenda conectada, que só existem para servi-la.
+
+### A conferência contra o oráculo
+
+Terminou em 06/09/2026. As 18 telas do subset literal foram comparadas com os screenshots
+do legado e renderam **90 divergências e 8 defeitos próprios**, todos em
+[`conferencia-resultado.md`](conferencia-resultado.md) com a razão de cada decisão. 87
+divergências foram implementadas e 3 ficaram como desvio deliberado, com o motivo escrito
+(#2 o logo no login, #43 e #67 modais que revelam o que já está na tela).
+
+Cinco telas nasceram dela — Feedbacks Pendentes da equipe, Formulários de Cliente Externo,
+Meu Histórico, Reset de Senha e Dar Feedback — e dois defeitos a pagaram sozinhos:
+recarregar a página deslogava, e `can_view_team_history` decidia o menu sem que a rota a
+exigisse.
+
+Vale ler antes de mexer em qualquer tela: a maior parte das decisões de comportamento do
+sistema está justificada lá, e não no código.
+
+### Depois dela
+
+Três buracos que a conferência não cobria, porque não eram divergência com o legado:
+
+- **As respostas do cliente não podiam ser lidas.** O wizard gravava as nove respostas e
+  endpoint nenhum as lia de volta — o escritório via a nota e o texto ficava no banco.
+  Junto veio o recorte que faltava: a listagem devolvia todas as avaliações do escritório
+  para qualquer autenticado.
+- **O provedor de email só tinha `console`.** Agora `resend` e `smtp` funcionam, com
+  Mailpit no compose para exercitar o caminho sem domínio verificado.
+- **Quatro telas sem interface**: Emitir Relatório, Novidades, Histórico por Pessoa e o
+  404. A de Novidades consertou um link que levava todo mundo a uma página inexistente.
 
 ## O que falta
 
@@ -53,20 +85,8 @@ como decidido.
 
 **Não bloqueia, mas está aberto:**
 
-- **A comparação com o oráculo terminou.** As 18 telas literais foram conferidas e
-  renderam **90 divergências e 8 defeitos próprios**, todos registrados em
-  [`docs/conferencia-resultado.md`](conferencia-resultado.md). 87 divergências foram
-  implementadas; 3 ficaram como desvio deliberado, com o motivo escrito (#2 logo no
-  login, #43 e #67 modais que revelam o que já está na tela). Os 8 defeitos foram
-  corrigidos — e dois deles justificam a conferência sozinhos: recarregar a página
-  deslogava, e `can_view_team_history` decidia o menu sem que a rota a exigisse.
-  Cinco telas nasceram dela: Feedbacks Pendentes da equipe, a aba de Formulários de
-  Cliente Externo, Meu Histórico, Reset de Senha e Dar Feedback.
 - **Os 10 arquivos `.feature` de paridade não rodam.** Os cenários estão cobertos por
   testes de service, mas o roteiro formal da homologação ainda não é executável.
-- **Telas: 42 das 43.** Falta só a **Agenda**, fora do corte por decisão (AMB-007,
-  fase 2) — com ela ficam de fora o callback do Google (SCR-0040) e a agenda conectada
-  (SCR-0045), que só existem para servi-la.
 - **Três pontos do wizard público dependem do cliente, não de código**: qual pergunta era
   a Q6 do legado, qual pergunta alimenta a coluna "Nota Geral" dos relatórios e o que
   fazer com o chip "+ Outro…" do tipo de serviço. Estão em `spec-deviations.md`
@@ -82,10 +102,9 @@ como decidido.
 
 Em ordem de valor, para quem for continuar. Cada item diz o que fazer e onde olhar.
 
-A conferência contra o oráculo saiu da fila: terminou em 06/09/2026, com as 90
-divergências resolvidas ou registradas como desvio. O que ela rendeu está em
-[`docs/conferencia-resultado.md`](conferencia-resultado.md), e vale ler antes de mexer em
-qualquer tela — a maioria das decisões de comportamento do sistema está justificada lá.
+**A fila de implementação esvaziou em 06/09/2026.** O que sobrou não é código: é
+decisão do cliente, acesso à produção, ou roteiro de homologação. Quem chegar agora não
+tem uma tela para escrever — tem quatro conversas para ter.
 
 1. **Escolher e verificar o provedor de email em produção.** O código está pronto
    (`resend` e `smtp`, com o teste de fumaça em `deploy/testar_email.py`); o que falta é
