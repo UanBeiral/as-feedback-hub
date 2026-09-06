@@ -335,10 +335,27 @@ async def test_adapter_console_nao_explode(caplog: pytest.LogCaptureFixture) -> 
 
 
 def _settings(**campos):
+    """`Settings` de teste com o bloco de email zerado.
+
+    `Settings` lê o `.env` da máquina, e quem estiver com o Mailpit configurado tem
+    `SMTP_HOST` preenchido — o teste de "sem host" passaria a depender de quem o roda.
+    Zerar aqui é o que faz o caso ser sobre o código e não sobre o ambiente.
+    """
     from app.core.config import Settings
 
     return Settings(  # type: ignore[call-arg]
-        jwt_secret="chave-de-teste-com-mais-de-32-caracteres-ok", **campos
+        jwt_secret="chave-de-teste-com-mais-de-32-caracteres-ok",
+        **{
+            "email_provider": "console",
+            "resend_api_key": "",
+            "smtp_host": "",
+            "smtp_port": 587,
+            "smtp_user": "",
+            "smtp_password": "",
+            "smtp_tls": True,
+            "email_from": "nao-responda@exemplo.com",
+            **campos,
+        },
     )
 
 
