@@ -4,7 +4,16 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { PaginaAutenticada } from "@/components/pagina";
-import { Carregando, Cartao, Celula, EstadoVazio, Linha, Selo, Tabela } from "@/components/ui";
+import {
+  Carregando,
+  Cartao,
+  Celula,
+  EstadoVazio,
+  Estatistica,
+  Linha,
+  Selo,
+  Tabela,
+} from "@/components/ui";
 import { api } from "@/lib/api";
 import { formatarData, ROTULO_DO_REQUEST } from "@/lib/formato";
 import type { Requisicao } from "@/lib/tipos";
@@ -29,11 +38,41 @@ export default function MeusFeedbacks() {
 
   const hoje = new Date().toISOString().slice(0, 10);
 
+  /**
+   * Os três números do topo, com o mesmo recorte do progresso do ciclo
+   * (BR-MIGRAR-009): `cancelled` e `waived` saem do que se espera de você, e abdicado
+   * ganha contador próprio em vez de sumir. Contar aqui, e não no servidor, é seguro
+   * porque a lista já veio inteira — o que a tela mostra e o que ela soma são a mesma
+   * coisa, e não duas verdades que podem divergir.
+   */
+  const resumo = {
+    atencao: (requisicoes ?? []).filter((r) => ["pending", "draft"].includes(r.status)).length,
+    enviados: (requisicoes ?? []).filter((r) => r.status === "submitted").length,
+    abdicados: (requisicoes ?? []).filter((r) => ["waived", "cancelled"].includes(r.status))
+      .length,
+  };
+
   return (
     <PaginaAutenticada
       titulo="Meus feedbacks"
-      descricao="O que você precisa responder e o que já enviou neste ciclo."
+      descricao="O que você precisa responder, o que já enviou e o que saiu da sua conta."
     >
+      {requisicoes !== null && requisicoes.length > 0 && (
+        <div className="mb-6 grid gap-4 sm:grid-cols-3">
+          <Estatistica
+            rotulo="Precisam da sua atenção"
+            valor={resumo.atencao}
+            detalhe={resumo.atencao === 0 ? "Você está em dia." : "Pendentes e rascunhos."}
+          />
+          <Estatistica rotulo="Enviados com sucesso" valor={resumo.enviados} />
+          <Estatistica
+            rotulo="Abdicados"
+            valor={resumo.abdicados}
+            detalhe="Não contam contra você."
+          />
+        </div>
+      )}
+
       <Cartao>
         {requisicoes === null ? (
           <Carregando />

@@ -259,6 +259,59 @@ export function Progresso({ valor }: { valor: number }) {
   );
 }
 
+/**
+ * Barras horizontais para comparar poucas categorias.
+ *
+ * O legado usava barras verticais e uma rosca, com biblioteca de gráfico. Aqui são
+ * `div`s: os dados destas telas cabem em menos de dez linhas, a leitura horizontal
+ * acomoda nomes longos de departamento sem girar o texto, e uma dependência de gráfico
+ * é peso que só se paga quando há gráfico de verdade a desenhar.
+ *
+ * `total` fixa a escala. Sem ele cada barra viraria percentual de si mesma e a maior
+ * ficaria sempre cheia — que é como um gráfico mente sem errar nenhum número.
+ */
+export function BarrasHorizontais({
+  itens,
+  total,
+  tom = "accent",
+}: {
+  itens: { rotulo: string; valor: number; detalhe?: string }[];
+  total?: number;
+  tom?: "accent" | "primary" | "success";
+}) {
+  const maximo = Math.max(total ?? 0, ...itens.map((i) => i.valor), 1);
+  const cores = {
+    accent: "bg-accent",
+    primary: "bg-primary",
+    success: "bg-success",
+  } as const;
+
+  if (itens.length === 0) {
+    return <p className="py-6 text-center text-sm text-muted-foreground">Nada a mostrar ainda.</p>;
+  }
+
+  return (
+    <ul className="space-y-3">
+      {itens.map((item) => (
+        <li key={item.rotulo}>
+          <div className="mb-1 flex items-baseline justify-between gap-3">
+            <span className="truncate text-sm text-foreground">{item.rotulo}</span>
+            <span className="shrink-0 text-xs text-muted-foreground">
+              {item.detalhe ?? item.valor}
+            </span>
+          </div>
+          <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+            <div
+              className={cn("h-full rounded-full", cores[tom])}
+              style={{ width: `${(item.valor / maximo) * 100}%` }}
+            />
+          </div>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export function Aviso({
   children,
   tom = "neutro",

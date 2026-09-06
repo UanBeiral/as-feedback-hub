@@ -25,10 +25,10 @@ Leitura obrigatória antes de mexer, nesta ordem:
 
 | Parte | Estado |
 |---|---|
-| API (FastAPI) | 5 contextos, 82 rotas, 30 tabelas |
+| API (FastAPI) | 5 contextos, 84 rotas, 30 tabelas |
 | Worker | despacho do outbox + 3 jobs agendados |
 | Front (Next.js) | 24 rotas, client tipado gerado do OpenAPI; fluxo público em wizard |
-| Testes | 323, todos verdes |
+| Testes | 335, todos verdes |
 | Migrations | 0001→0005, aplicam do zero |
 | CI | lint + testes + migrations + build do front |
 
@@ -57,11 +57,11 @@ como decidido.
   divergências em [`docs/conferencia-resultado.md`](conferencia-resultado.md); 18 seguem
   pendentes. É a validação que `parity_specs.md` exige e que nenhum teste automatizado
   substitui.
-  Três padrões já se repetem: **o legado exporta e filtra quase tudo**, e o novo quase
-  nada; **as telas de acompanhamento viraram listagens** (Minha Equipe perdeu progresso e
-  contadores, Meus Feedbacks perdeu os cards); e quatro divergências não se resolvem no
-  front, porque mexem em schema. Uma tela do gestor — **Feedbacks Pendentes da equipe** —
-  simplesmente não existe.
+  Dos três padrões que a conferência revelou, um já foi fechado: **as telas de
+  acompanhamento voltaram a acompanhar** (Início, Minha Equipe e Meus Feedbacks — 14
+  divergências). Seguem abertos **exportação e filtros**, que o legado tem em quase toda
+  tela e o novo só em Relatórios, e **quatro divergências que mexem em schema**. Uma tela
+  do gestor — **Feedbacks Pendentes da equipe** — simplesmente não existe.
 - **Os 10 arquivos `.feature` de paridade não rodam.** Os cenários estão cobertos por
   testes de service, mas o roteiro formal da homologação ainda não é executável.
 - **Telas secundárias**: 24 das 43. Falta o detalhe de avaliação de cliente, o envio de

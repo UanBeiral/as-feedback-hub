@@ -115,6 +115,68 @@ class ProgressOut(BaseModel):
     percentual: float
 
 
+class ConclusaoDoDepartamentoOut(BaseModel):
+    nome: str
+    esperados: int
+    enviados: int
+    percentual: float
+
+
+class AtividadeDoCicloOut(BaseModel):
+    quando: datetime | None
+    avaliador: str
+    avaliado: str
+
+
+class DashboardOut(BaseModel):
+    """Os agregados do painel inicial (SCR-0003), numa chamada só."""
+
+    cycle_id: UUID | None
+    cycle_name: str | None
+    cycle_end_date: date | None
+    progresso: ProgressOut
+    pessoas_ativas: int
+    pessoas_inativas: int
+    por_departamento: list[ConclusaoDoDepartamentoOut]
+    atividade: list[AtividadeDoCicloOut]
+    total_de_feedbacks: int
+    total_enviados: int
+
+
+class MembroDaEquipeOut(BaseModel):
+    """Uma linha da tela de acompanhamento da equipe."""
+
+    profile_id: UUID
+    full_name: str
+    job_title: str | None
+    role: str
+    is_coordinator: bool
+    status: str
+    # O que a pessoa ainda deve **escrever** no ciclo.
+    pendentes_de_enviar: int
+    enviados: int
+    # O que escreveram sobre ela e ela ainda não **leu**. Métrica diferente da de cima,
+    # e é por isso que o legado as mostra em colunas separadas.
+    pendentes_de_leitura: int
+    percentual: float
+
+
+class TeamProgressOut(BaseModel):
+    """Acompanhamento da equipe no ciclo aberto (SCR-0030).
+
+    Sem ciclo aberto os membros vêm com as contagens zeradas em vez de a tela cair num
+    estado vazio: a equipe continua existindo entre um ciclo e outro.
+    """
+
+    cycle_id: UUID | None
+    cycle_name: str | None
+    membros: list[MembroDaEquipeOut]
+    total_membros: int
+    enviados: int
+    esperados: int
+    percentual: float
+
+
 class ParDePermissaoOut(BaseModel):
     permission_id: UUID
     reviewer_id: UUID

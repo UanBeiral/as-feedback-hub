@@ -129,6 +129,20 @@ class ProfileRepository(TenantScopedRepository[Profile]):
         result = await self._session.execute(stmt)
         return list(result.scalars().all())
 
+    async def contagem_por_status(self) -> dict[str, int]:
+        """Quantas pessoas em cada estado — o "Status dos Usuários" do painel.
+
+        `deleted` entra na conta: soft-delete guarda o histórico (BR-MIGRAR-018), e o
+        painel que só somasse ativos e inativos daria um total menor que o real sem
+        explicar onde foi parar a diferença.
+        """
+        stmt = (
+            select(Profile.status, func.count())
+            .where(Profile.tenant_id == self.tenant_id)
+            .group_by(Profile.status)
+        )
+        return {status: total for status, total in (await self._session.execute(stmt)).all()}
+
     async def list_by_ids(self, profile_ids: set[UUID]) -> list[Profile]:
         """Perfis ativos de um conjunto já resolvido pelo `TeamScopeService`.
 

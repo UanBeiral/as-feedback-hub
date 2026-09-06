@@ -34,17 +34,21 @@ from app.contexts.feedback.repository import (
 from app.contexts.feedback.schemas import (
     AnswerOut,
     AnswersIn,
+    AtividadeDoCicloOut,
     CancelIn,
+    ConclusaoDoDepartamentoOut,
     CycleIn,
     CycleNoteIn,
     CycleNoteOut,
     CycleOut,
+    DashboardOut,
     DiagnosticoOut,
     ExtendIn,
     FormIn,
     FormOut,
     FreeFeedbackIn,
     FreeFeedbackOut,
+    MembroDaEquipeOut,
     OpenCycleOut,
     ParDePermissaoOut,
     PermissionIn,
@@ -56,17 +60,21 @@ from app.contexts.feedback.schemas import (
     ReorderIn,
     RequestDetailOut,
     RequestOut,
+    TeamProgressOut,
 )
 from app.contexts.feedback.service import (
     CycleNoteService,
     CycleProgressService,
     CycleService,
+    DashboardService,
     FormService,
     FreeFeedbackService,
     PermissionService,
     RequestService,
+    TeamProgressService,
 )
-from app.contexts.identity.repository import ProfileRepository
+from app.contexts.identity.repository import CoordinatorMemberRepository, ProfileRepository
+from app.contexts.identity.service import TeamScopeService
 from app.core.di import SessionDep, TenantDep, require_role
 from app.core.tenancy import TenantContext
 
@@ -112,11 +120,44 @@ def get_progress_service(session: SessionDep, tenant: TenantDep) -> CycleProgres
     return CycleProgressService(RequestRepository(session, tenant))
 
 
+def get_dashboard_service(session: SessionDep, tenant: TenantDep) -> DashboardService:
+    requests = RequestRepository(session, tenant)
+    return DashboardService(
+        requests=requests,
+        cycles=CycleRepository(session, tenant),
+        profiles=ProfileRepository(session, tenant),
+        progresso=CycleProgressService(requests),
+    )
+
+
+def get_team_progress_service(session: SessionDep, tenant: TenantDep) -> TeamProgressService:
+    return TeamProgressService(
+        requests=RequestRepository(session, tenant),
+        cycles=CycleRepository(session, tenant),
+        profiles=ProfileRepository(session, tenant),
+    )
+
+
+def get_team_scope(session: SessionDep, tenant: TenantDep) -> TeamScopeService:
+    """Mesma construção de `identity`: o escopo é resolvido lá e consumido aqui.
+
+    Não é duplicação de regra — a regra continua sendo uma só, em `TeamScopeService`.
+    É só a fábrica, que o FastAPI precisa ter no módulo que declara a rota.
+    """
+    return TeamScopeService(
+        profiles=ProfileRepository(session, tenant),
+        coordinator_members=CoordinatorMemberRepository(session, tenant),
+    )
+
+
 FormServiceDep = Annotated[FormService, Depends(get_form_service)]
 PermissionServiceDep = Annotated[PermissionService, Depends(get_permission_service)]
 CycleServiceDep = Annotated[CycleService, Depends(get_cycle_service)]
 RequestServiceDep = Annotated[RequestService, Depends(get_request_service)]
 ProgressServiceDep = Annotated[CycleProgressService, Depends(get_progress_service)]
+TeamProgressServiceDep = Annotated[TeamProgressService, Depends(get_team_progress_service)]
+TeamScopeDep = Annotated[TeamScopeService, Depends(get_team_scope)]
+DashboardServiceDep = Annotated[DashboardService, Depends(get_dashboard_service)]
 
 
 # ---------------------------------------------------------------- formulários
@@ -358,6 +399,89 @@ async def cycle_progress(
         atrasados=progresso.atrasados,
         excluidos=progresso.excluidos,
         percentual=progresso.percentual,
+    )
+
+
+@router.get("/dashboard", response_model=DashboardOut)
+async def dashboard(service: DashboardServiceDep) -> DashboardOut:
+    """Agregados do painel inicial (SCR-0003).
+
+    Aberta a qualquer sessão, e não só ao admin: os números são do escritório inteiro e
+    o legado já os mostrava ao gestor. Nada de pessoa sai daqui além de contagens e do
+    par avaliador/avaliado da atividade recente, que qualquer um do escritório já vê.
+    """
+    painel = await service.montar()
+    return DashboardOut(
+        cycle_id=painel.ciclo.id if painel.ciclo else None,
+        cycle_name=painel.ciclo.name if painel.ciclo else None,
+        cycle_end_date=painel.ciclo.end_date if painel.ciclo else None,
+        progresso=ProgressOut(
+            total=painel.progresso.total,
+            concluidos=painel.progresso.concluidos,
+            pendentes=painel.progresso.pendentes,
+            atrasados=painel.progresso.atrasados,
+            excluidos=painel.progresso.excluidos,
+            percentual=painel.progresso.percentual,
+        ),
+        pessoas_ativas=painel.pessoas_por_status.get("active", 0),
+        # Inativo e removido caem juntos: para o painel a pergunta é "quem não está
+        # trabalhando", e a diferença entre desligado e suspenso é da tela de usuários.
+        pessoas_inativas=(
+            painel.pessoas_por_status.get("inactive", 0)
+            + painel.pessoas_por_status.get("deleted", 0)
+        ),
+        por_departamento=[
+            ConclusaoDoDepartamentoOut(
+                nome=d.nome, esperados=d.esperados, enviados=d.enviados, percentual=d.percentual
+            )
+            for d in painel.por_departamento
+        ],
+        atividade=[
+            AtividadeDoCicloOut(quando=a.quando, avaliador=a.avaliador, avaliado=a.avaliado)
+            for a in painel.atividade
+        ],
+        total_de_feedbacks=painel.total_de_feedbacks,
+        total_enviados=painel.total_enviados,
+    )
+
+
+@router.get("/team/progress", response_model=TeamProgressOut)
+async def team_progress(
+    tenant: TenantDep,
+    scope: TeamScopeDep,
+    service: TeamProgressServiceDep,
+) -> TeamProgressOut:
+    """Acompanhamento da equipe no ciclo aberto (SCR-0030).
+
+    O escopo sai de `TeamScopeService`, o mesmo de `/auth/my-team` — nada aqui amplia o
+    que aquele serviço devolveu (R-04 / R-09). Quem está olhando sai da própria lista:
+    o escopo inclui a pessoa porque ela pode ver o próprio histórico, e esta tela
+    responde outra pergunta.
+    """
+    visiveis = await scope.resolve_visible_profile_ids(tenant)
+    acompanhamento = await service.acompanhar(visiveis, exceto=tenant.user_id)
+    return TeamProgressOut(
+        cycle_id=acompanhamento.ciclo_id,
+        cycle_name=acompanhamento.ciclo_nome,
+        membros=[
+            MembroDaEquipeOut(
+                profile_id=m.profile_id,
+                full_name=m.full_name,
+                job_title=m.job_title,
+                role=m.role,
+                is_coordinator=m.is_coordinator,
+                status=m.status,
+                pendentes_de_enviar=m.pendentes_de_enviar,
+                enviados=m.enviados,
+                pendentes_de_leitura=m.pendentes_de_leitura,
+                percentual=m.percentual,
+            )
+            for m in acompanhamento.membros
+        ],
+        total_membros=acompanhamento.total_membros,
+        enviados=acompanhamento.enviados,
+        esperados=acompanhamento.esperados,
+        percentual=acompanhamento.percentual,
     )
 
 

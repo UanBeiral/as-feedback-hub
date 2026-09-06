@@ -16,6 +16,8 @@ export type Perfil = S["ProfileSummary"];
 export type ParDeTokens = S["TokenPair"];
 export type Departamento = S["DepartmentOut"];
 export type PedidoDeEquipe = S["TeamRequestOut"];
+export type AcompanhamentoDaEquipe = S["TeamProgressOut"];
+export type MembroDaEquipe = S["MembroDaEquipeOut"];
 
 export type Notificacao = S["NotificationOut"];
 export type FeedNotificacoes = S["NotificationFeed"];
@@ -33,6 +35,7 @@ export type Formulario = S["FormOut"];
 export type PermissaoDeFeedback = S["PermissionOut"];
 export type FeedbackLivre = S["FreeFeedbackOut"];
 export type AnotacaoDeCiclo = S["CycleNoteOut"];
+export type Painel = S["DashboardOut"];
 
 export type AvaliacaoDeCliente = S["EvaluationOut"];
 export type FormularioPublico = S["PublicFormOut"];

@@ -17,6 +17,7 @@
 | Conferidas | 17 de 35 |
 | Defeitos próprios encontrados | 5 (um bloqueava a conferência; todos corrigidos) |
 | Divergências contra o oráculo | 76 registradas abaixo |
+| **Já resolvidas** | **14** — a frente das telas de acompanhamento |
 
 O bloco de **Administração** está fechado (SCR-0003, 0007, 0008, 0009, 0010, 0011, 0012,
 0013, 0015, 0018 e 0024) e o de **Equipe/Feedback** está a meio caminho (SCR-0029, 0030,
@@ -403,6 +404,71 @@ Rota `/anotacoes` · oráculo `feedback/screenshots/minhas-anotacoes.png`
 O legado organiza as anotações **por ciclo e pessoa**; o novo lista em ordem cronológica.
 Com três anotações dá na mesma; com um ciclo inteiro, não. O formulário inline no lugar
 do modal "+ Nova Anotação" é o padrão já adotado em todo o sistema novo.
+
+---
+
+## Resolvidas — telas de acompanhamento restauradas
+
+Frente escolhida em 06/09/2026, depois que a conferência mostrou que a mesma decisão se
+repetia em quatro telas: **o que no legado era acompanhamento virou listagem**. Fecha as
+divergências #9, #10, #11, #12, #13, #54, #55, #56, #58, #61, #62, #63, #70 e #74, mais
+os defeitos BUG-04 e BUG-05.
+
+Duas escolhas de fundo valem registro.
+
+**Um endpoint por tela, não cinco chamadas.** `GET /dashboard` e `GET /team/progress`
+montam cada painel de uma vez. A alternativa — o front pedir ciclo, progresso, perfis,
+departamentos e atividade em paralelo — deixaria a primeira tela que todo mundo abre
+esperando pela mais lenta das cinco.
+
+**Todo número novo sai do mesmo denominador** de `CycleProgressService`: `cancelled` e
+`waived` fora, `submitted` como concluído (BR-MIGRAR-009). Foi o legado ter três contas
+divergentes que criou a regra, e um painel com conta própria a quebraria na tela mais
+visível do sistema.
+
+### O que mudou em cada tela
+
+**Minha equipe** deixou de listar nomes e voltou a acompanhar. Ganhou as colunas
+**A enviar**, **Enviados**, **A ler** e **Progresso**, o rodapé com progresso geral e
+"Total de membros na equipe", o selo de status traduzido, e parou de incluir quem está
+olhando na própria lista.
+
+As duas contagens são separadas de propósito, como no legado: "a enviar" é o que a pessoa
+deve escrever, "a ler" é o que escreveram sobre ela e ela não viu. Num número só, quem já
+fez a parte dele e apenas não leu ficaria escondido atrás de quem não fez nada.
+
+Quem não tem pedido no ciclo mostra **"fora do ciclo"** em vez de barra cheia. O serviço
+trata "0 de 0" como 100% para não dividir por zero — mas na tabela, ao lado de quem tem
+trabalho de verdade, a barra cheia leria como "está ótimo" quando o caso é outro.
+
+**Meus feedbacks** ganhou os três cartões — Precisam da sua atenção, Enviados com
+sucesso, Abdicados. Contados no cliente sobre a lista que já veio inteira: o que a tela
+mostra e o que ela soma são a mesma coisa, e não duas verdades que podem divergir.
+
+**Início** ganhou a data por extenso, os quatro cartões do legado (Pessoas ativas, Ciclo
+atual, Taxa de conclusão, Pendências), o cartão "Minhas anotações" com total e pessoas
+anotadas, e as quatro seções que faltavam: **Conclusão por departamento**, **Atividade no
+ciclo atual**, **Status das pessoas** e **Resumo geral**.
+
+Os quatro cartões antigos (Concluídos / Pendentes / Atrasados / Fora da conta) **ficaram**,
+agora abaixo, no cartão do ciclo. Eles são mais precisos que os do legado e ninguém pediu
+para tirá-los — a divergência #9 era sobre o que faltava, não sobre o que sobrava.
+
+**Sobre os gráficos**: o legado usa barras verticais e uma rosca, com biblioteca de
+gráfico. Aqui são barras horizontais feitas com `div`. Os dados destas telas cabem em
+menos de dez linhas, a leitura horizontal acomoda nome longo de departamento sem girar
+texto, e uma dependência de gráfico é peso que só se paga quando há gráfico de verdade a
+desenhar. **Divergência de forma, deliberada** — o conteúdo é o mesmo.
+
+### O que continua faltando nestas telas
+
+- **#59** — as três ações por membro em Minha equipe. "Dar feedback" depende da SCR-0023,
+  que não existe; "remover" já vive em Usuários; e **enviar lembrete** não tem endpoint em
+  lugar nenhum. É o único item do legado sem correspondente no sistema novo.
+- **#60** — Exportar Excel e Adicionar Membro, que entram na frente de exportação.
+- **#71, #72, #73** — busca, filtros, ordenação e a seção de feedback livre enviado, em
+  Meus feedbacks. Também da frente de exportação e filtros.
+- **#8** — o banner "Dar Feedback para alguém", que é a entrada da SCR-0023.
 
 ---
 

@@ -530,6 +530,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/dashboard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Dashboard
+         * @description Agregados do painel inicial (SCR-0003).
+         *
+         *     Aberta a qualquer sessão, e não só ao admin: os números são do escritório inteiro e
+         *     o legado já os mostrava ao gestor. Nada de pessoa sai daqui além de contagens e do
+         *     par avaliador/avaliado da atividade recente, que qualquer um do escritório já vê.
+         */
+        get: operations["dashboard_api_v1_dashboard_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/departments": {
         parameters: {
             query?: never;
@@ -1564,6 +1588,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/team/progress": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Team Progress
+         * @description Acompanhamento da equipe no ciclo aberto (SCR-0030).
+         *
+         *     O escopo sai de `TeamScopeService`, o mesmo de `/auth/my-team` — nada aqui amplia o
+         *     que aquele serviço devolveu (R-04 / R-09). Quem está olhando sai da própria lista:
+         *     o escopo inclui a pessoa porque ela pode ver o próprio histórico, e esta tela
+         *     responde outra pergunta.
+         */
+        get: operations["team_progress_api_v1_team_progress_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -1640,6 +1689,15 @@ export interface components {
         AnswersIn: {
             /** Answers */
             answers?: components["schemas"]["AnswerIn"][];
+        };
+        /** AtividadeDoCicloOut */
+        AtividadeDoCicloOut: {
+            /** Avaliado */
+            avaliado: string;
+            /** Avaliador */
+            avaliador: string;
+            /** Quando */
+            quando: string | null;
         };
         /** AuditLogOut */
         AuditLogOut: {
@@ -1761,6 +1819,17 @@ export interface components {
             question_text: string;
             /** Question Type */
             question_type: string;
+        };
+        /** ConclusaoDoDepartamentoOut */
+        ConclusaoDoDepartamentoOut: {
+            /** Enviados */
+            enviados: number;
+            /** Esperados */
+            esperados: number;
+            /** Nome */
+            nome: string;
+            /** Percentual */
+            percentual: number;
         };
         /** ContactMessageIn */
         ContactMessageIn: {
@@ -1981,6 +2050,31 @@ export interface components {
             start_date: string;
             /** Status */
             status: string;
+        };
+        /**
+         * DashboardOut
+         * @description Os agregados do painel inicial (SCR-0003), numa chamada só.
+         */
+        DashboardOut: {
+            /** Atividade */
+            atividade: components["schemas"]["AtividadeDoCicloOut"][];
+            /** Cycle End Date */
+            cycle_end_date: string | null;
+            /** Cycle Id */
+            cycle_id: string | null;
+            /** Cycle Name */
+            cycle_name: string | null;
+            /** Pessoas Ativas */
+            pessoas_ativas: number;
+            /** Pessoas Inativas */
+            pessoas_inativas: number;
+            /** Por Departamento */
+            por_departamento: components["schemas"]["ConclusaoDoDepartamentoOut"][];
+            progresso: components["schemas"]["ProgressOut"];
+            /** Total De Feedbacks */
+            total_de_feedbacks: number;
+            /** Total Enviados */
+            total_enviados: number;
         };
         /** DepartmentIn */
         DepartmentIn: {
@@ -2344,6 +2438,35 @@ export interface components {
         ManagerIn: {
             /** Manager Id */
             manager_id?: string | null;
+        };
+        /**
+         * MembroDaEquipeOut
+         * @description Uma linha da tela de acompanhamento da equipe.
+         */
+        MembroDaEquipeOut: {
+            /** Enviados */
+            enviados: number;
+            /** Full Name */
+            full_name: string;
+            /** Is Coordinator */
+            is_coordinator: boolean;
+            /** Job Title */
+            job_title: string | null;
+            /** Pendentes De Enviar */
+            pendentes_de_enviar: number;
+            /** Pendentes De Leitura */
+            pendentes_de_leitura: number;
+            /** Percentual */
+            percentual: number;
+            /**
+             * Profile Id
+             * Format: uuid
+             */
+            profile_id: string;
+            /** Role */
+            role: string;
+            /** Status */
+            status: string;
         };
         /**
          * NotificationFeed
@@ -2943,6 +3066,29 @@ export interface components {
             expected_updated_at?: string | null;
             /** Value */
             value?: string | null;
+        };
+        /**
+         * TeamProgressOut
+         * @description Acompanhamento da equipe no ciclo aberto (SCR-0030).
+         *
+         *     Sem ciclo aberto os membros vêm com as contagens zeradas em vez de a tela cair num
+         *     estado vazio: a equipe continua existindo entre um ciclo e outro.
+         */
+        TeamProgressOut: {
+            /** Cycle Id */
+            cycle_id: string | null;
+            /** Cycle Name */
+            cycle_name: string | null;
+            /** Enviados */
+            enviados: number;
+            /** Esperados */
+            esperados: number;
+            /** Membros */
+            membros: components["schemas"]["MembroDaEquipeOut"][];
+            /** Percentual */
+            percentual: number;
+            /** Total Membros */
+            total_membros: number;
         };
         /** TeamRequestIn */
         TeamRequestIn: {
@@ -4034,6 +4180,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    dashboard_api_v1_dashboard_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DashboardOut"];
                 };
             };
         };
@@ -5901,6 +6067,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    team_progress_api_v1_team_progress_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamProgressOut"];
                 };
             };
         };

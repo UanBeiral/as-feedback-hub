@@ -132,6 +132,37 @@
         "title": "AnswersIn",
         "type": "object"
       },
+      "AtividadeDoCicloOut": {
+        "properties": {
+          "avaliado": {
+            "title": "Avaliado",
+            "type": "string"
+          },
+          "avaliador": {
+            "title": "Avaliador",
+            "type": "string"
+          },
+          "quando": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quando"
+          }
+        },
+        "required": [
+          "quando",
+          "avaliador",
+          "avaliado"
+        ],
+        "title": "AtividadeDoCicloOut",
+        "type": "object"
+      },
       "AuditLogOut": {
         "properties": {
           "action": {
@@ -397,6 +428,34 @@
           "placeholder"
         ],
         "title": "ClientQuestionOut",
+        "type": "object"
+      },
+      "ConclusaoDoDepartamentoOut": {
+        "properties": {
+          "enviados": {
+            "title": "Enviados",
+            "type": "integer"
+          },
+          "esperados": {
+            "title": "Esperados",
+            "type": "integer"
+          },
+          "nome": {
+            "title": "Nome",
+            "type": "string"
+          },
+          "percentual": {
+            "title": "Percentual",
+            "type": "number"
+          }
+        },
+        "required": [
+          "nome",
+          "esperados",
+          "enviados",
+          "percentual"
+        ],
+        "title": "ConclusaoDoDepartamentoOut",
         "type": "object"
       },
       "ContactMessageIn": {
@@ -903,6 +962,93 @@
           "published_at"
         ],
         "title": "CycleOut",
+        "type": "object"
+      },
+      "DashboardOut": {
+        "description": "Os agregados do painel inicial (SCR-0003), numa chamada só.",
+        "properties": {
+          "atividade": {
+            "items": {
+              "$ref": "#/components/schemas/AtividadeDoCicloOut"
+            },
+            "title": "Atividade",
+            "type": "array"
+          },
+          "cycle_end_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cycle End Date"
+          },
+          "cycle_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cycle Id"
+          },
+          "cycle_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cycle Name"
+          },
+          "pessoas_ativas": {
+            "title": "Pessoas Ativas",
+            "type": "integer"
+          },
+          "pessoas_inativas": {
+            "title": "Pessoas Inativas",
+            "type": "integer"
+          },
+          "por_departamento": {
+            "items": {
+              "$ref": "#/components/schemas/ConclusaoDoDepartamentoOut"
+            },
+            "title": "Por Departamento",
+            "type": "array"
+          },
+          "progresso": {
+            "$ref": "#/components/schemas/ProgressOut"
+          },
+          "total_de_feedbacks": {
+            "title": "Total De Feedbacks",
+            "type": "integer"
+          },
+          "total_enviados": {
+            "title": "Total Enviados",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "cycle_id",
+          "cycle_name",
+          "cycle_end_date",
+          "progresso",
+          "pessoas_ativas",
+          "pessoas_inativas",
+          "por_departamento",
+          "atividade",
+          "total_de_feedbacks",
+          "total_enviados"
+        ],
+        "title": "DashboardOut",
         "type": "object"
       },
       "DepartmentIn": {
@@ -1949,6 +2095,73 @@
           }
         },
         "title": "ManagerIn",
+        "type": "object"
+      },
+      "MembroDaEquipeOut": {
+        "description": "Uma linha da tela de acompanhamento da equipe.",
+        "properties": {
+          "enviados": {
+            "title": "Enviados",
+            "type": "integer"
+          },
+          "full_name": {
+            "title": "Full Name",
+            "type": "string"
+          },
+          "is_coordinator": {
+            "title": "Is Coordinator",
+            "type": "boolean"
+          },
+          "job_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Title"
+          },
+          "pendentes_de_enviar": {
+            "title": "Pendentes De Enviar",
+            "type": "integer"
+          },
+          "pendentes_de_leitura": {
+            "title": "Pendentes De Leitura",
+            "type": "integer"
+          },
+          "percentual": {
+            "title": "Percentual",
+            "type": "number"
+          },
+          "profile_id": {
+            "format": "uuid",
+            "title": "Profile Id",
+            "type": "string"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "profile_id",
+          "full_name",
+          "job_title",
+          "role",
+          "is_coordinator",
+          "status",
+          "pendentes_de_enviar",
+          "enviados",
+          "pendentes_de_leitura",
+          "percentual"
+        ],
+        "title": "MembroDaEquipeOut",
         "type": "object"
       },
       "NotificationFeed": {
@@ -3572,6 +3785,68 @@
           }
         },
         "title": "SettingUpdate",
+        "type": "object"
+      },
+      "TeamProgressOut": {
+        "description": "Acompanhamento da equipe no ciclo aberto (SCR-0030).\n\nSem ciclo aberto os membros vêm com as contagens zeradas em vez de a tela cair num\nestado vazio: a equipe continua existindo entre um ciclo e outro.",
+        "properties": {
+          "cycle_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cycle Id"
+          },
+          "cycle_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cycle Name"
+          },
+          "enviados": {
+            "title": "Enviados",
+            "type": "integer"
+          },
+          "esperados": {
+            "title": "Esperados",
+            "type": "integer"
+          },
+          "membros": {
+            "items": {
+              "$ref": "#/components/schemas/MembroDaEquipeOut"
+            },
+            "title": "Membros",
+            "type": "array"
+          },
+          "percentual": {
+            "title": "Percentual",
+            "type": "number"
+          },
+          "total_membros": {
+            "title": "Total Membros",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "cycle_id",
+          "cycle_name",
+          "membros",
+          "total_membros",
+          "enviados",
+          "esperados",
+          "percentual"
+        ],
+        "title": "TeamProgressOut",
         "type": "object"
       },
       "TeamRequestIn": {
@@ -5290,6 +5565,33 @@
           }
         ],
         "summary": "Regenerate Requests",
+        "tags": [
+          "feedback"
+        ]
+      }
+    },
+    "/api/v1/dashboard": {
+      "get": {
+        "description": "Agregados do painel inicial (SCR-0003).\n\nAberta a qualquer sessão, e não só ao admin: os números são do escritório inteiro e\no legado já os mostrava ao gestor. Nada de pessoa sai daqui além de contagens e do\npar avaliador/avaliado da atividade recente, que qualquer um do escritório já vê.",
+        "operationId": "dashboard_api_v1_dashboard_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Dashboard",
         "tags": [
           "feedback"
         ]
@@ -8255,6 +8557,33 @@
         "summary": "Reject Team Request",
         "tags": [
           "identity-admin"
+        ]
+      }
+    },
+    "/api/v1/team/progress": {
+      "get": {
+        "description": "Acompanhamento da equipe no ciclo aberto (SCR-0030).\n\nO escopo sai de `TeamScopeService`, o mesmo de `/auth/my-team` — nada aqui amplia o\nque aquele serviço devolveu (R-04 / R-09). Quem está olhando sai da própria lista:\no escopo inclui a pessoa porque ela pode ver o próprio histórico, e esta tela\nresponde outra pergunta.",
+        "operationId": "team_progress_api_v1_team_progress_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeamProgressOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Team Progress",
+        "tags": [
+          "feedback"
         ]
       }
     },

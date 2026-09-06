@@ -22,6 +22,13 @@ export const ROTULO_DO_REQUEST: Record<string, string> = {
   cancelled: "Cancelado",
 };
 
+/** Rótulos de status de pessoa. `deleted` é soft-delete (BR-MIGRAR-018). */
+export const ROTULO_DO_STATUS_DE_PESSOA: Record<string, string> = {
+  active: "Ativo",
+  inactive: "Inativo",
+  deleted: "Removido",
+};
+
 /** Rótulos do ciclo (BR-MIGRAR-004). */
 export const ROTULO_DO_CICLO: Record<string, string> = {
   draft: "Rascunho",
