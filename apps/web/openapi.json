@@ -2464,6 +2464,101 @@
         "title": "PasswordResetIn",
         "type": "object"
       },
+      "PendenteDaEquipeOut": {
+        "description": "Um pedido que a equipe ainda deve — a linha de SCR-0027/0031.",
+        "properties": {
+          "atrasado": {
+            "title": "Atrasado",
+            "type": "boolean"
+          },
+          "due_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date"
+          },
+          "giver_id": {
+            "format": "uuid",
+            "title": "Giver Id",
+            "type": "string"
+          },
+          "giver_name": {
+            "title": "Giver Name",
+            "type": "string"
+          },
+          "receiver_name": {
+            "title": "Receiver Name",
+            "type": "string"
+          },
+          "request_id": {
+            "format": "uuid",
+            "title": "Request Id",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "request_id",
+          "giver_id",
+          "giver_name",
+          "receiver_name",
+          "status",
+          "due_date",
+          "atrasado"
+        ],
+        "title": "PendenteDaEquipeOut",
+        "type": "object"
+      },
+      "PendentesDaEquipeOut": {
+        "properties": {
+          "cycle_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cycle Id"
+          },
+          "cycle_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cycle Name"
+          },
+          "pendentes": {
+            "items": {
+              "$ref": "#/components/schemas/PendenteDaEquipeOut"
+            },
+            "title": "Pendentes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "cycle_id",
+          "cycle_name",
+          "pendentes"
+        ],
+        "title": "PendentesDaEquipeOut",
+        "type": "object"
+      },
       "PermissionIn": {
         "properties": {
           "active": {
@@ -8722,6 +8817,33 @@
         "summary": "Reject Team Request",
         "tags": [
           "identity-admin"
+        ]
+      }
+    },
+    "/api/v1/team/pending": {
+      "get": {
+        "description": "O que a equipe ainda deve no ciclo, pedido a pedido (SCR-0027/0031).\n\nRota antes de `/team/{profile_id}` de propósito: `pending` casaria com o parâmetro\nde caminho, e o FastAPI resolve pela ordem de declaração.",
+        "operationId": "team_pending_api_v1_team_pending_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PendentesDaEquipeOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Team Pending",
+        "tags": [
+          "feedback"
         ]
       }
     },

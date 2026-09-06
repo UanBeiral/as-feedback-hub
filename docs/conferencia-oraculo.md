@@ -90,12 +90,13 @@ Legenda: ✅ tela existe · ⚠️ existe parcialmente · ❌ não implementada
       `coordenador/screenshots/historico-equipe.png` ·
       `gestor/screenshots/historico-equipe.png` (+ `-2`)
 
-- [x] **SCR-0027 / 0031 · Feedbacks Pendentes (coordenador / gestor)** ❌ **não existe**
+- [x] **SCR-0027 / 0031 · Feedbacks Pendentes (coordenador / gestor)** ✅
+      `/feedbacks-pendentes` — **feita em 06/09/2026**
       `coordenador/screenshots/feedbacks-pendentes.png` ·
       `gestor/screenshots/feedbacks-pendentes.png`
       *Correção do roteiro*: esta tela **não** é `/meus-feedbacks`. O legado diz
       "Feedbacks que **sua equipe** ainda precisa enviar no ciclo atual" — é a visão do
-      gestor sobre a equipe, e o sistema novo não tem nada equivalente.
+      gestor sobre a equipe, e a rota nova é a que responde isso.
 
 - [x] **SCR-0029 · Início (gestor)** ✅ `/` — **conferida**, 4 divergências.
       Faltam as variantes de coordenador (SCR-0025) e colaborador (SCR-0033).

@@ -1619,6 +1619,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/team/pending": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Team Pending
+         * @description O que a equipe ainda deve no ciclo, pedido a pedido (SCR-0027/0031).
+         *
+         *     Rota antes de `/team/{profile_id}` de propósito: `pending` casaria com o parâmetro
+         *     de caminho, e o FastAPI resolve pela ordem de declaração.
+         */
+        get: operations["team_pending_api_v1_team_pending_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/team/progress": {
         parameters: {
             query?: never;
@@ -2666,6 +2689,41 @@ export interface components {
         PasswordResetIn: {
             /** Nova Senha */
             nova_senha: string;
+        };
+        /**
+         * PendenteDaEquipeOut
+         * @description Um pedido que a equipe ainda deve — a linha de SCR-0027/0031.
+         */
+        PendenteDaEquipeOut: {
+            /** Atrasado */
+            atrasado: boolean;
+            /** Due Date */
+            due_date: string | null;
+            /**
+             * Giver Id
+             * Format: uuid
+             */
+            giver_id: string;
+            /** Giver Name */
+            giver_name: string;
+            /** Receiver Name */
+            receiver_name: string;
+            /**
+             * Request Id
+             * Format: uuid
+             */
+            request_id: string;
+            /** Status */
+            status: string;
+        };
+        /** PendentesDaEquipeOut */
+        PendentesDaEquipeOut: {
+            /** Cycle Id */
+            cycle_id: string | null;
+            /** Cycle Name */
+            cycle_name: string | null;
+            /** Pendentes */
+            pendentes: components["schemas"]["PendenteDaEquipeOut"][];
         };
         /** PermissionIn */
         PermissionIn: {
@@ -6219,6 +6277,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    team_pending_api_v1_team_pending_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PendentesDaEquipeOut"];
                 };
             };
         };

@@ -168,6 +168,24 @@ class MembroDaEquipeOut(BaseModel):
     percentual: float
 
 
+class PendenteDaEquipeOut(BaseModel):
+    """Um pedido que a equipe ainda deve — a linha de SCR-0027/0031."""
+
+    request_id: UUID
+    giver_id: UUID
+    giver_name: str
+    receiver_name: str
+    status: str
+    due_date: date | None
+    atrasado: bool
+
+
+class PendentesDaEquipeOut(BaseModel):
+    cycle_id: UUID | None
+    cycle_name: str | None
+    pendentes: list[PendenteDaEquipeOut]
+
+
 class TeamProgressOut(BaseModel):
     """Acompanhamento da equipe no ciclo aberto (SCR-0030).
 

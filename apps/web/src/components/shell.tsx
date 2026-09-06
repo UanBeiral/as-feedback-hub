@@ -63,6 +63,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
     { href: "/meus-feedbacks", rotulo: "Meus feedbacks", visivel: true },
     { href: "/anotacoes", rotulo: "Anotações", visivel: temEquipe },
     { href: "/minha-equipe", rotulo: "Minha equipe", visivel: temEquipe },
+    { href: "/feedbacks-pendentes", rotulo: "Feedbacks pendentes", visivel: temEquipe },
     {
       href: "/historico-equipe",
       rotulo: "Histórico da equipe",

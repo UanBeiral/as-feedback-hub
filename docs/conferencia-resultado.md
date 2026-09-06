@@ -17,7 +17,7 @@
 | Conferidas | 17 de 35 |
 | Defeitos próprios encontrados | 5 (um bloqueava a conferência; todos corrigidos) |
 | Divergências contra o oráculo | 76 registradas abaixo |
-| **Já resolvidas** | **35** — acompanhamento (15), exportação/filtros (12) e as três decisões do cliente (8) |
+| **Já resolvidas** | **36** — acompanhamento (15), exportação/filtros (12), as três decisões do cliente (8) e a tela de Feedbacks Pendentes |
 
 O bloco de **Administração** está fechado (SCR-0003, 0007, 0008, 0009, 0010, 0011, 0012,
 0013, 0015, 0018 e 0024) e o de **Equipe/Feedback** está a meio caminho (SCR-0029, 0030,
@@ -384,14 +384,22 @@ escopo.
 
 | # | Divergência | Peso |
 |---|---|---|
-| 75 | A tela **não existe** no sistema novo: nada mostra o que a equipe deve ao ciclo | conteúdo, **grave** |
+| 75 | A tela **não existia** no sistema novo | conteúdo, **grave** — ✅ **feita em 06/09/2026** |
 
-Some junto com a #58: as duas eram como o gestor acompanhava quem estava atrasado. Sem
-elas, o gestor sabe o que *ele* deve e não o que a equipe dele deve — e o lembrete da #59
-perde o lugar de onde era disparado.
+Some junto com a #58: as duas eram como o gestor acompanhava quem estava atrasado.
 
-Corrigir o roteiro faz parte do resultado: `conferencia-oraculo.md` passou a apontar que
-a rota não existe, em vez de mandar conferir a errada.
+**Resolvida.** A tela nasceu em `/feedbacks-pendentes`, com `GET /team/pending`. Foi a
+decisão do cliente de 06/09: a coluna "A enviar" de Minha equipe responde *quanto*, e a
+lista responde *o quê* — "Diego deve o feedback sobre a Bruna, com prazo 15/09". Com
+quatro pessoas dá no mesmo; com trinta, é a lista que permite cobrar item a item.
+
+Quem está olhando sai da lista, e sai **na consulta**, não peneirado depois: o que o
+gestor deve tem tela própria, e misturar faria ele cobrar a si mesmo no meio da equipe.
+O "Lembrar" de cada linha reaproveita o endpoint de #59 — é por pessoa, não por pedido,
+porque um aviso por linha encheria o sino de quem já sabe que está devendo.
+
+Corrigir o roteiro fez parte do resultado: `conferencia-oraculo.md` mandava conferir em
+`/meus-feedbacks`, que é outra tela e outro escopo.
 
 ## SCR-0019 · Minhas Anotações
 

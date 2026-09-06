@@ -405,3 +405,61 @@ async def test_sem_ciclo_aberto_o_lembrete_e_recusado() -> None:
 
     with pytest.raises(ValidationError):
         await servico.lembrar(profile_id=uuid4())
+
+
+# ---------------------------------------------------------------- pendentes da equipe
+
+
+class FakeRequestsPendentes(FakeRequestRepository):
+    def __init__(self, pedidos: list[Any]) -> None:
+        super().__init__()
+        self.pedidos = pedidos
+        self.pedido_por: set[UUID] | None = None
+
+    async def list_pendentes_de(self, cycle_id: UUID, avaliadores: set[UUID]) -> list[Any]:
+        self.pedido_por = set(avaliadores)
+        return [p for p in self.pedidos if p.giver_id in avaliadores]
+
+
+def _pendente(giver_id: UUID, receiver_id: UUID):
+    return type("R", (), {"id": uuid4(), "giver_id": giver_id, "receiver_id": receiver_id})()
+
+
+async def test_pendentes_da_equipe_nomeiam_as_duas_pontas() -> None:
+    """A tela existe para cobrar item a item: sem os dois nomes ela não cobra nada."""
+    ana, bruno = _perfil("Ana"), _perfil("Bruno")
+    requests = FakeRequestsPendentes([_pendente(ana.id, bruno.id)])
+    servico = _servico([ana, bruno], requests)
+
+    _, pendentes = await servico.pendentes_da_equipe({ana.id, bruno.id})
+
+    (_, avaliador, avaliado) = pendentes[0]
+    assert (avaliador, avaliado) == ("Ana", "Bruno")
+
+
+async def test_quem_olha_nao_se_cobra_na_lista_da_equipe() -> None:
+    """O que **eu** devo tem tela própria; misturar faria o gestor cobrar a si mesmo."""
+    gestora, ana = _perfil("Marina"), _perfil("Ana")
+    requests = FakeRequestsPendentes(
+        [_pendente(gestora.id, ana.id), _pendente(ana.id, gestora.id)]
+    )
+    servico = _servico([gestora, ana], requests)
+
+    _, pendentes = await servico.pendentes_da_equipe(
+        {gestora.id, ana.id}, exceto=gestora.id
+    )
+
+    assert [linha[1] for linha in pendentes] == ["Ana"]
+    assert requests.pedido_por == {ana.id}, "o filtro tem que ir ao banco, não peneirar depois"
+
+
+async def test_sem_ciclo_aberto_nao_ha_o_que_cobrar() -> None:
+    ana = _perfil("Ana")
+    servico = _servico(
+        [ana], FakeRequestsPendentes([]), ciclos=FakeCycleRepository([])
+    )
+
+    ciclo, pendentes = await servico.pendentes_da_equipe({ana.id})
+
+    assert ciclo is None
+    assert pendentes == []

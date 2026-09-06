@@ -298,6 +298,27 @@ class RequestRepository(TenantScopedRepository[FeedbackRequest]):
         )
         return list((await self._session.execute(stmt)).scalars().all())
 
+    async def list_pendentes_de(
+        self, cycle_id: UUID, avaliadores: set[UUID]
+    ) -> list[FeedbackRequest]:
+        """Pedidos em aberto de um conjunto de avaliadores, no ciclo.
+
+        O conjunto vem resolvido de fora (`TeamScopeService`): esta consulta filtra
+        dentro do que já foi autorizado, nunca amplia (R-04 / R-09).
+        """
+        if not avaliadores:
+            return []
+        stmt = (
+            self._scoped()
+            .where(
+                FeedbackRequest.cycle_id == cycle_id,
+                FeedbackRequest.giver_id.in_(avaliadores),
+                FeedbackRequest.status.in_(STATUS_EM_ABERTO),
+            )
+            .order_by(FeedbackRequest.due_date.nulls_last(), FeedbackRequest.created_at)
+        )
+        return list((await self._session.execute(stmt)).scalars().all())
+
     async def contagem_por_avaliador(self, cycle_id: UUID) -> dict[tuple[UUID, str], int]:
         """Quantos pedidos cada pessoa tem no ciclo, por status.
 

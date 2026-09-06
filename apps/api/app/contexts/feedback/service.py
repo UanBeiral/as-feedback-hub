@@ -768,6 +768,37 @@ class TeamProgressService:
             membros=[self._linha(p, por_avaliador, nao_lidos) for p in perfis],
         )
 
+    async def pendentes_da_equipe(
+        self, visiveis: set[UUID], *, exceto: UUID | None = None
+    ) -> tuple[FeedbackCycle | None, list[tuple[FeedbackRequest, str, str]]]:
+        """O que a **equipe** ainda deve no ciclo, pedido a pedido.
+
+        Pergunta diferente da de `acompanhar`, e é por isso que são duas telas no legado:
+        lá se vê "Diego deve 1", aqui se vê "Diego deve o feedback sobre a Bruna, com
+        prazo tal". Com quatro pessoas dá no mesmo; com trinta, é a lista de pedidos que
+        permite cobrar item a item.
+
+        `exceto` tira quem está olhando: o que **eu** devo já tem tela própria, e
+        misturar as duas coisas faria o gestor cobrar a si mesmo na lista da equipe.
+        """
+        alvos = {pid for pid in visiveis if pid != exceto}
+        abertos = await self._cycles.list_by_status("open")
+        ciclo = abertos[0] if abertos else None
+        if ciclo is None or not alvos:
+            return ciclo, []
+
+        pedidos = await self._requests.list_pendentes_de(ciclo.id, alvos)
+        ids = {r.giver_id for r in pedidos} | {r.receiver_id for r in pedidos}
+        nomes = {p.id: p.full_name for p in await self._profiles.list_by_ids(ids)}
+        return ciclo, [
+            (
+                pedido,
+                nomes.get(pedido.giver_id, "Alguém que saiu"),
+                nomes.get(pedido.receiver_id, "Alguém que saiu"),
+            )
+            for pedido in pedidos
+        ]
+
     @staticmethod
     def _linha(
         perfil: object,

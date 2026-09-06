@@ -13,6 +13,7 @@ Duas coisas que a spec cobra e que ficam visíveis já na assinatura das rotas:
 from __future__ import annotations
 
 from dataclasses import asdict
+from datetime import UTC, datetime
 from typing import Annotated
 from uuid import UUID
 
@@ -52,6 +53,8 @@ from app.contexts.feedback.schemas import (
     MembroDaEquipeOut,
     OpenCycleOut,
     ParDePermissaoOut,
+    PendenteDaEquipeOut,
+    PendentesDaEquipeOut,
     PermissionIn,
     PermissionOut,
     PessoaComCargaOut,
@@ -495,6 +498,41 @@ async def team_progress(
         enviados=acompanhamento.enviados,
         esperados=acompanhamento.esperados,
         percentual=acompanhamento.percentual,
+    )
+
+
+@router.get("/team/pending", response_model=PendentesDaEquipeOut)
+async def team_pending(
+    tenant: TenantDep,
+    scope: TeamScopeDep,
+    service: TeamProgressServiceDep,
+) -> PendentesDaEquipeOut:
+    """O que a equipe ainda deve no ciclo, pedido a pedido (SCR-0027/0031).
+
+    Rota antes de `/team/{profile_id}` de propósito: `pending` casaria com o parâmetro
+    de caminho, e o FastAPI resolve pela ordem de declaração.
+    """
+    visiveis = await scope.resolve_visible_profile_ids(tenant)
+    ciclo, pendentes = await service.pendentes_da_equipe(visiveis, exceto=tenant.user_id)
+    hoje = datetime.now(UTC).date()
+    return PendentesDaEquipeOut(
+        cycle_id=ciclo.id if ciclo else None,
+        cycle_name=ciclo.name if ciclo else None,
+        pendentes=[
+            PendenteDaEquipeOut(
+                request_id=pedido.id,
+                giver_id=pedido.giver_id,
+                giver_name=avaliador,
+                receiver_name=avaliado,
+                status=pedido.status,
+                due_date=pedido.due_date,
+                # Atraso é derivação e sai do servidor (BR-MIGRAR-007): a tela marca o
+                # que o servidor já disse, em vez de recalcular com o relógio do
+                # navegador.
+                atrasado=pedido.due_date is not None and pedido.due_date < hoje,
+            )
+            for pedido, avaliador, avaliado in pendentes
+        ],
     )
 
 
