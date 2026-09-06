@@ -1,7 +1,12 @@
 "use client";
 
 /**
- * Formulários de feedback — perguntas e ordem.
+ * Formulários — os de feedback 360 e os de cliente externo, em duas abas.
+ *
+ * São dois questionários diferentes, respondidos por pessoas diferentes: o 360 é o
+ * colega avaliando o colega, o de cliente é quem contratou o escritório respondendo pelo
+ * link do WhatsApp. O legado separava nas mesmas duas abas, e o sistema novo tinha só a
+ * primeira — as perguntas do wizard público só existiam no banco (#45 da conferência).
  *
  * A ordem é o que a tela de resposta segue, então mexer nela muda o que a pessoa vê.
  * Reordenar manda a lista inteira: o servidor recusa uma ordem parcial, porque metade
@@ -31,7 +36,12 @@ import {
 import { ApiError, api, apiVoid } from "@/lib/api";
 import type { Formulario, Pergunta } from "@/lib/tipos";
 
+import { FormulariosDeCliente } from "./formulario-de-cliente";
+
+type Aba = "360" | "cliente";
+
 export default function AdminFormularios() {
+  const [aba, setAba] = useState<Aba>("360");
   const [formularios, setFormularios] = useState<Formulario[] | null>(null);
   const [aberto, setAberto] = useState<string | null>(null);
   const [perguntas, setPerguntas] = useState<Pergunta[]>([]);
@@ -130,11 +140,38 @@ export default function AdminFormularios() {
     }
   }
 
+  const abas: { chave: Aba; rotulo: string }[] = [
+    { chave: "360", rotulo: "Formulários 360°" },
+    { chave: "cliente", rotulo: "Formulários de cliente externo" },
+  ];
+
   return (
     <PaginaAutenticada
-      titulo="Formulários de feedback"
+      titulo="Formulários"
       descricao="As perguntas que aparecem para quem responde, na ordem em que aparecem."
+      acao={
+        <span className="flex gap-1 rounded-md bg-muted p-1">
+          {abas.map((item) => (
+            <button
+              key={item.chave}
+              type="button"
+              onClick={() => setAba(item.chave)}
+              className={
+                "rounded px-3 py-1.5 text-sm " +
+                (aba === item.chave
+                  ? "bg-card font-medium text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground")
+              }
+            >
+              {item.rotulo}
+            </button>
+          ))}
+        </span>
+      }
     >
+      {aba === "cliente" ? (
+        <FormulariosDeCliente />
+      ) : (
       <div className="space-y-6">
         {mensagem && <Aviso tom={mensagem.tom}>{mensagem.texto}</Aviso>}
 
@@ -301,6 +338,7 @@ export default function AdminFormularios() {
           </Cartao>
         )}
       </div>
+      )}
     </PaginaAutenticada>
   );
 }

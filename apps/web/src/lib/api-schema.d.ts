@@ -263,7 +263,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/client-eval/forms/{form_id}/questions": {
+    "/api/v1/client-eval/forms/{form_id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -271,10 +271,89 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
+        /**
+         * Update Client Form
+         * @description Renomeia, ativa/desativa e define o formulário padrão do fluxo espontâneo.
+         */
+        put: operations["update_client_form_api_v1_client_eval_forms__form_id__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/client-eval/forms/{form_id}/questions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Client Questions
+         * @description As perguntas que o cliente responde no wizard público (SCR-0043).
+         *
+         *     `tem_resposta` vem junto porque é o que a tela precisa para saber se "remover" apaga
+         *     ou arquiva — e para explicar à pessoa por que uma pergunta não some mais.
+         */
+        get: operations["list_client_questions_api_v1_client_eval_forms__form_id__questions_get"];
         put?: never;
         /** Add Client Question */
         post: operations["add_client_question_api_v1_client_eval_forms__form_id__questions_post"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/client-eval/forms/{form_id}/questions/order": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Reorder Client Questions
+         * @description Regrava a ordem inteira (BR-MIGRAR-020).
+         *
+         *     Ids que não são do formulário são ignorados em silêncio, e perguntas que ficaram de
+         *     fora da lista vão para o fim: a ordem resultante é sempre completa e sem buraco,
+         *     mesmo que a tela mande uma lista defasada.
+         */
+        put: operations["reorder_client_questions_api_v1_client_eval_forms__form_id__questions_order_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/client-eval/forms/{form_id}/questions/{question_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Update Client Question */
+        put: operations["update_client_question_api_v1_client_eval_forms__form_id__questions__question_id__put"];
+        post?: never;
+        /**
+         * Remove Client Question
+         * @description Apaga a pergunta, ou arquiva se alguém já respondeu.
+         *
+         *     Apagar uma pergunta respondida destruiria a resposta de um cliente para limpar um
+         *     formulário. Arquivada, ela sai dos formulários novos e continua explicando os
+         *     relatórios antigos — e a resposta segue lá.
+         *
+         *     Devolve a pergunta em vez de 204 justamente para a tela saber qual dos dois
+         *     aconteceu, sem ter que recarregar a lista para descobrir.
+         */
+        delete: operations["remove_client_question_api_v1_client_eval_forms__form_id__questions__question_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1918,10 +1997,31 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            /** Is Active */
+            is_active: boolean;
             /** Is Required */
             is_required: boolean;
             /** Placeholder */
             placeholder: string | null;
+            /** Question Text */
+            question_text: string;
+            /** Question Type */
+            question_type: string;
+            /**
+             * Tem Resposta
+             * @default false
+             */
+            tem_resposta: boolean;
+        };
+        /** ClientQuestionUpdateIn */
+        ClientQuestionUpdateIn: {
+            /**
+             * Is Required
+             * @default true
+             */
+            is_required: boolean;
+            /** Placeholder */
+            placeholder?: string | null;
             /** Question Text */
             question_text: string;
             /** Question Type */
@@ -3052,6 +3152,18 @@ export interface components {
             /** Senha */
             senha: string;
         };
+        /**
+         * ReordenarPerguntasIn
+         * @description A ordem inteira, e não um "mover para cima".
+         *
+         *     Mandar a lista toda faz a operação ser idempotente e livre de corrida: duas
+         *     reordenações simultâneas terminam numa das duas ordens pedidas, e não numa terceira
+         *     que ninguém escolheu (BR-MIGRAR-020).
+         */
+        ReordenarPerguntasIn: {
+            /** Question Ids */
+            question_ids: string[];
+        };
         /** ReorderIn */
         ReorderIn: {
             /** Question Ids */
@@ -3764,6 +3876,74 @@ export interface operations {
             };
         };
     };
+    update_client_form_api_v1_client_eval_forms__form_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                form_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ClientFormIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClientFormOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_client_questions_api_v1_client_eval_forms__form_id__questions_get: {
+        parameters: {
+            query?: {
+                incluir_arquivadas?: boolean;
+            };
+            header?: never;
+            path: {
+                form_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClientQuestionOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     add_client_question_api_v1_client_eval_forms__form_id__questions_post: {
         parameters: {
             query?: never;
@@ -3781,6 +3961,109 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClientQuestionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reorder_client_questions_api_v1_client_eval_forms__form_id__questions_order_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                form_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReordenarPerguntasIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClientQuestionOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_client_question_api_v1_client_eval_forms__form_id__questions__question_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                form_id: string;
+                question_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ClientQuestionUpdateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClientQuestionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    remove_client_question_api_v1_client_eval_forms__form_id__questions__question_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                form_id: string;
+                question_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };

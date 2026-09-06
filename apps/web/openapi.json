@@ -400,6 +400,10 @@
             "title": "Id",
             "type": "string"
           },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
           "is_required": {
             "title": "Is Required",
             "type": "boolean"
@@ -422,6 +426,11 @@
           "question_type": {
             "title": "Question Type",
             "type": "string"
+          },
+          "tem_resposta": {
+            "default": false,
+            "title": "Tem Resposta",
+            "type": "boolean"
           }
         },
         "required": [
@@ -430,9 +439,46 @@
           "question_type",
           "is_required",
           "display_order",
-          "placeholder"
+          "placeholder",
+          "is_active"
         ],
         "title": "ClientQuestionOut",
+        "type": "object"
+      },
+      "ClientQuestionUpdateIn": {
+        "properties": {
+          "is_required": {
+            "default": true,
+            "title": "Is Required",
+            "type": "boolean"
+          },
+          "placeholder": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Placeholder"
+          },
+          "question_text": {
+            "minLength": 1,
+            "title": "Question Text",
+            "type": "string"
+          },
+          "question_type": {
+            "pattern": "^(rating|text|textarea|yes_no|nps|multiple_choice)$",
+            "title": "Question Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "question_text",
+          "question_type"
+        ],
+        "title": "ClientQuestionUpdateIn",
         "type": "object"
       },
       "ConclusaoDoDepartamentoOut": {
@@ -3500,6 +3546,25 @@
         "title": "RegisterUserIn",
         "type": "object"
       },
+      "ReordenarPerguntasIn": {
+        "description": "A ordem inteira, e não um \"mover para cima\".\n\nMandar a lista toda faz a operação ser idempotente e livre de corrida: duas\nreordenações simultâneas terminam numa das duas ordens pedidas, e não numa terceira\nque ninguém escolheu (BR-MIGRAR-020).",
+        "properties": {
+          "question_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Question Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "question_ids"
+        ],
+        "title": "ReordenarPerguntasIn",
+        "type": "object"
+      },
       "ReorderIn": {
         "properties": {
           "question_ids": {
@@ -4835,7 +4900,127 @@
         ]
       }
     },
+    "/api/v1/client-eval/forms/{form_id}": {
+      "put": {
+        "description": "Renomeia, ativa/desativa e define o formulário padrão do fluxo espontâneo.",
+        "operationId": "update_client_form_api_v1_client_eval_forms__form_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "form_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Form Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClientFormIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClientFormOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update Client Form",
+        "tags": [
+          "client_eval"
+        ]
+      }
+    },
     "/api/v1/client-eval/forms/{form_id}/questions": {
+      "get": {
+        "description": "As perguntas que o cliente responde no wizard público (SCR-0043).\n\n`tem_resposta` vem junto porque é o que a tela precisa para saber se \"remover\" apaga\nou arquiva — e para explicar à pessoa por que uma pergunta não some mais.",
+        "operationId": "list_client_questions_api_v1_client_eval_forms__form_id__questions_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "form_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Form Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "incluir_arquivadas",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Incluir Arquivadas",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ClientQuestionOut"
+                  },
+                  "title": "Response List Client Questions Api V1 Client Eval Forms  Form Id  Questions Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Client Questions",
+        "tags": [
+          "client_eval"
+        ]
+      },
       "post": {
         "operationId": "add_client_question_api_v1_client_eval_forms__form_id__questions_post",
         "parameters": [
@@ -4888,6 +5073,194 @@
           }
         ],
         "summary": "Add Client Question",
+        "tags": [
+          "client_eval"
+        ]
+      }
+    },
+    "/api/v1/client-eval/forms/{form_id}/questions/order": {
+      "put": {
+        "description": "Regrava a ordem inteira (BR-MIGRAR-020).\n\nIds que não são do formulário são ignorados em silêncio, e perguntas que ficaram de\nfora da lista vão para o fim: a ordem resultante é sempre completa e sem buraco,\nmesmo que a tela mande uma lista defasada.",
+        "operationId": "reorder_client_questions_api_v1_client_eval_forms__form_id__questions_order_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "form_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Form Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReordenarPerguntasIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ClientQuestionOut"
+                  },
+                  "title": "Response Reorder Client Questions Api V1 Client Eval Forms  Form Id  Questions Order Put",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Reorder Client Questions",
+        "tags": [
+          "client_eval"
+        ]
+      }
+    },
+    "/api/v1/client-eval/forms/{form_id}/questions/{question_id}": {
+      "delete": {
+        "description": "Apaga a pergunta, ou arquiva se alguém já respondeu.\n\nApagar uma pergunta respondida destruiria a resposta de um cliente para limpar um\nformulário. Arquivada, ela sai dos formulários novos e continua explicando os\nrelatórios antigos — e a resposta segue lá.\n\nDevolve a pergunta em vez de 204 justamente para a tela saber qual dos dois\naconteceu, sem ter que recarregar a lista para descobrir.",
+        "operationId": "remove_client_question_api_v1_client_eval_forms__form_id__questions__question_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "form_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Form Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "question_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Question Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClientQuestionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Remove Client Question",
+        "tags": [
+          "client_eval"
+        ]
+      },
+      "put": {
+        "operationId": "update_client_question_api_v1_client_eval_forms__form_id__questions__question_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "form_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Form Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "question_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Question Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClientQuestionUpdateIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClientQuestionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update Client Question",
         "tags": [
           "client_eval"
         ]

@@ -52,13 +52,32 @@ class ClientFormRepository(TenantScopedRepository[ClientEvalForm]):
 class ClientQuestionRepository(TenantScopedRepository[ClientEvalFormQuestion]):
     model = ClientEvalFormQuestion
 
-    async def list_by_form(self, form_id: UUID) -> list[ClientEvalFormQuestion]:
-        stmt = (
-            self._scoped()
-            .where(ClientEvalFormQuestion.form_id == form_id)
-            .order_by(ClientEvalFormQuestion.display_order, ClientEvalFormQuestion.created_at)
+    async def list_by_form(
+        self, form_id: UUID, *, incluir_arquivadas: bool = False
+    ) -> list[ClientEvalFormQuestion]:
+        """Perguntas do formulário. O editor pede as arquivadas; o resto do sistema não.
+
+        O default é o seguro: quem esquecer o parâmetro recebe só as ativas, e não
+        ressuscita uma pergunta arquivada num formulário novo.
+        """
+        stmt = self._scoped().where(ClientEvalFormQuestion.form_id == form_id)
+        if not incluir_arquivadas:
+            stmt = stmt.where(ClientEvalFormQuestion.is_active.is_(True))
+        stmt = stmt.order_by(
+            ClientEvalFormQuestion.display_order, ClientEvalFormQuestion.created_at
         )
         return list((await self._session.execute(stmt)).scalars().all())
+
+    async def tem_resposta(self, question_id: UUID) -> bool:
+        """Se alguém já respondeu, a pergunta não pode ser apagada — só arquivada."""
+        stmt = select(ClientEvalAnswer.id).where(
+            ClientEvalAnswer.tenant_id == self.tenant_id,
+            ClientEvalAnswer.question_id == question_id,
+        ).limit(1)
+        return (await self._session.execute(stmt)).first() is not None
+
+    async def remove(self, pergunta: ClientEvalFormQuestion) -> None:
+        await self._session.delete(pergunta)
 
 
 class ClientEvaluationRepository(TenantScopedRepository[ClientEvaluation]):
@@ -182,6 +201,8 @@ class PublicEvaluationRepository:
             .where(
                 ClientEvalFormQuestion.tenant_id == tenant_id,
                 ClientEvalFormQuestion.form_id == form_id,
+                # Pergunta arquivada não volta a ser feita ao cliente.
+                ClientEvalFormQuestion.is_active.is_(True),
             )
             .order_by(ClientEvalFormQuestion.display_order, ClientEvalFormQuestion.created_at)
         )

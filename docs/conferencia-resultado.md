@@ -17,7 +17,7 @@
 | Conferidas | 17 de 35 |
 | Defeitos próprios encontrados | 5 (um bloqueava a conferência; todos corrigidos) |
 | Divergências contra o oráculo | 76 registradas abaixo |
-| **Já resolvidas** | **36** — acompanhamento (15), exportação/filtros (12), as três decisões do cliente (8) e a tela de Feedbacks Pendentes |
+| **Já resolvidas** | **40** — acompanhamento (15), exportação/filtros (12), as decisões do cliente (8) e as telas que não existiam (5) |
 
 O bloco de **Administração** está fechado (SCR-0003, 0007, 0008, 0009, 0010, 0011, 0012,
 0013, 0015, 0018 e 0024) e o de **Equipe/Feedback** está a meio caminho (SCR-0029, 0030,
@@ -279,15 +279,34 @@ Rota `/admin/formularios` · oráculo `feedback/screenshots/formularios.png`
 
 | # | Divergência | Peso |
 |---|---|---|
-| 45 | Falta a aba **"Formulários de Cliente Externo"** — o novo só administra os 360 | conteúdo, **grave** |
+| 45 | Falta a aba **"Formulários de Cliente Externo"** — o novo só administra os 360 | conteúdo, **grave** — ✅ **feita em 06/09/2026** |
 | 46 | Coluna **Descrição** ausente (`feedback_forms.description` existe no schema) | conteúdo |
 | 47 | Sem **Editar** (nome e descrição) | ação |
 | 48 | "Ativar/Desativar" virou "Arquivar" — nome e semântica diferentes | texto e função |
 
-A #45 é a mais séria do bloco. As nove perguntas que o cliente responde no wizard público
-saem de um formulário de cliente externo, e **hoje não há tela para editá-lo**: existe só
-o editor de perguntas dos 360. Conecta com a SCR-0043 (Editor de Perguntas), do subset
-modernizado, que a spec descreve atendendo aos dois tipos.
+A #45 era a mais séria do bloco, e **foi resolvida**. As nove perguntas que o cliente
+responde no wizard público saem de um formulário de cliente externo, e até aqui elas só
+existiam no banco: havia `GET/POST` de formulário e `POST` de pergunta, e nada para ler,
+editar, remover ou reordenar. Mudar o questionário do escritório era abrir o Postgres.
+
+A aba entrou com o editor inteiro, e com isso a **SCR-0043** também sai do papel. Duas
+diferenças em relação à aba dos 360, e as duas vêm de o formulário ser respondido por
+gente de fora:
+
+- **Os tipos são outros**: estrelas 0–10, NPS e sim/não existem aqui e não lá, porque é o
+  que o wizard público sabe desenhar. `multiple_choice` fica de fora mesmo aceito pelo
+  contrato — não há onde cadastrar as opções, e oferecê-lo daria uma pergunta sem
+  resposta possível.
+- **Remover pode não apagar.** Pergunta já respondida é **arquivada**: sai dos formulários
+  novos e continua explicando os relatórios antigos. Apagar destruiria a resposta de um
+  cliente para limpar um formulário — e o FK de `client_eval_answers` recusaria de
+  qualquer jeito, com um erro que não explica nada a quem clicou.
+
+A coluna `is_active` (migration `0007`) é o que permite distinguir os dois "remover". A
+tela avisa antes qual vai acontecer, porque a diferença muda o que a pessoa deve esperar.
+
+Verificado rodando: a pergunta respondida virou arquivada com as respostas intactas, a
+nunca respondida sumiu de vez, e o wizard público passou de 9 para 8 perguntas.
 
 ## SCR-0024 · Configurações
 

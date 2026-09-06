@@ -33,12 +33,14 @@ from app.contexts.client_eval.schemas import (
     ClientFormOut,
     ClientQuestionIn,
     ClientQuestionOut,
+    ClientQuestionUpdateIn,
     EvaluationOut,
     PublicFormOut,
     PublicQuestionOut,
     PublicSpontaneousIn,
     PublicSubmitIn,
     PublicSubmitOut,
+    ReordenarPerguntasIn,
     RequestEvaluationIn,
     RequestEvaluationOut,
     ServiceTagOut,
@@ -100,6 +102,145 @@ async def create_client_form(
     await session.flush()
     await session.refresh(form)
     return ClientFormOut.model_validate(form)
+
+
+@router.put("/client-eval/forms/{form_id}", response_model=ClientFormOut)
+async def update_client_form(
+    form_id: UUID, payload: ClientFormIn, tenant: AdminDep, session: SessionDep
+) -> ClientFormOut:
+    """Renomeia, ativa/desativa e define o formulário padrão do fluxo espontâneo."""
+    repo = ClientFormRepository(session, tenant)
+    form = await repo.get(form_id)
+    if form is None:
+        raise NotFoundError("Formulário não encontrado")
+
+    # Só um padrão por tenant: `get_default` devolve o primeiro que achar, e dois
+    # marcados fariam o fluxo espontâneo sortear qual formulário o cliente responde.
+    if payload.is_default and not form.is_default:
+        atual = await repo.get_default()
+        if atual is not None and atual.id != form_id:
+            atual.is_default = False
+
+    form.name = payload.name
+    form.is_default = payload.is_default
+    form.is_active = payload.is_active
+    await session.flush()
+    return ClientFormOut.model_validate(form)
+
+
+@router.get(
+    "/client-eval/forms/{form_id}/questions", response_model=list[ClientQuestionOut]
+)
+async def list_client_questions(
+    form_id: UUID,
+    tenant: AdminDep,
+    session: SessionDep,
+    incluir_arquivadas: Annotated[bool, Query(alias="incluir_arquivadas")] = False,
+) -> list[ClientQuestionOut]:
+    """As perguntas que o cliente responde no wizard público (SCR-0043).
+
+    `tem_resposta` vem junto porque é o que a tela precisa para saber se "remover" apaga
+    ou arquiva — e para explicar à pessoa por que uma pergunta não some mais.
+    """
+    repo = ClientQuestionRepository(session, tenant)
+    perguntas = await repo.list_by_form(form_id, incluir_arquivadas=incluir_arquivadas)
+    saida = []
+    for pergunta in perguntas:
+        item = ClientQuestionOut.model_validate(pergunta)
+        item.tem_resposta = await repo.tem_resposta(pergunta.id)
+        saida.append(item)
+    return saida
+
+
+@router.put(
+    "/client-eval/forms/{form_id}/questions/order",
+    response_model=list[ClientQuestionOut],
+)
+async def reorder_client_questions(
+    form_id: UUID, payload: ReordenarPerguntasIn, tenant: AdminDep, session: SessionDep
+) -> list[ClientQuestionOut]:
+    """Regrava a ordem inteira (BR-MIGRAR-020).
+
+    Ids que não são do formulário são ignorados em silêncio, e perguntas que ficaram de
+    fora da lista vão para o fim: a ordem resultante é sempre completa e sem buraco,
+    mesmo que a tela mande uma lista defasada.
+    """
+    repo = ClientQuestionRepository(session, tenant)
+    perguntas = {p.id: p for p in await repo.list_by_form(form_id, incluir_arquivadas=True)}
+
+    ordem = 0
+    for question_id in payload.question_ids:
+        pergunta = perguntas.pop(question_id, None)
+        if pergunta is not None:
+            pergunta.display_order = ordem
+            ordem += 1
+    for restante in perguntas.values():
+        restante.display_order = ordem
+        ordem += 1
+
+    await session.flush()
+    return [
+        ClientQuestionOut.model_validate(p)
+        for p in await repo.list_by_form(form_id, incluir_arquivadas=True)
+    ]
+
+
+@router.put(
+    "/client-eval/forms/{form_id}/questions/{question_id}",
+    response_model=ClientQuestionOut,
+)
+async def update_client_question(
+    form_id: UUID,
+    question_id: UUID,
+    payload: ClientQuestionUpdateIn,
+    tenant: AdminDep,
+    session: SessionDep,
+) -> ClientQuestionOut:
+    repo = ClientQuestionRepository(session, tenant)
+    pergunta = await repo.get(question_id)
+    if pergunta is None or pergunta.form_id != form_id:
+        raise NotFoundError("Pergunta não encontrada")
+
+    pergunta.question_text = payload.question_text
+    pergunta.question_type = payload.question_type
+    pergunta.is_required = payload.is_required
+    pergunta.placeholder = payload.placeholder
+    await session.flush()
+    return ClientQuestionOut.model_validate(pergunta)
+
+
+@router.delete(
+    "/client-eval/forms/{form_id}/questions/{question_id}",
+    response_model=ClientQuestionOut,
+)
+async def remove_client_question(
+    form_id: UUID, question_id: UUID, tenant: AdminDep, session: SessionDep
+) -> ClientQuestionOut:
+    """Apaga a pergunta, ou arquiva se alguém já respondeu.
+
+    Apagar uma pergunta respondida destruiria a resposta de um cliente para limpar um
+    formulário. Arquivada, ela sai dos formulários novos e continua explicando os
+    relatórios antigos — e a resposta segue lá.
+
+    Devolve a pergunta em vez de 204 justamente para a tela saber qual dos dois
+    aconteceu, sem ter que recarregar a lista para descobrir.
+    """
+    repo = ClientQuestionRepository(session, tenant)
+    pergunta = await repo.get(question_id)
+    if pergunta is None or pergunta.form_id != form_id:
+        raise NotFoundError("Pergunta não encontrada")
+
+    if await repo.tem_resposta(question_id):
+        pergunta.is_active = False
+        await session.flush()
+        saida = ClientQuestionOut.model_validate(pergunta)
+        saida.tem_resposta = True
+        return saida
+
+    saida = ClientQuestionOut.model_validate(pergunta)
+    await repo.remove(pergunta)
+    await session.flush()
+    return saida
 
 
 @router.post(

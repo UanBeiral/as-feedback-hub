@@ -25,11 +25,11 @@ Leitura obrigatória antes de mexer, nesta ordem:
 
 | Parte | Estado |
 |---|---|
-| API (FastAPI) | 5 contextos, 88 rotas, 30 tabelas |
+| API (FastAPI) | 5 contextos, 91 rotas, 30 tabelas |
 | Worker | despacho do outbox + 3 jobs agendados |
 | Front (Next.js) | 25 rotas, client tipado gerado do OpenAPI; fluxo público em wizard |
-| Testes | 351, todos verdes |
-| Migrations | 0001→0006, aplicam do zero |
+| Testes | 353, todos verdes |
+| Migrations | 0001→0007, aplicam do zero |
 | CI | lint + testes + migrations + build do front |
 
 Os cinco contextos: `identity` (sessão, pessoas, equipe, papel ativo), `engagement`
@@ -60,10 +60,10 @@ como decidido.
   Os três padrões que a conferência revelou já foram fechados: **as telas de
   acompanhamento voltaram a acompanhar**, **exportação, filtros e ordenação** entraram em
   seis tabelas, e as **três decisões do cliente** de 06/09 (remoção pelo gestor, descrição
-  de departamento, sensibilidade na auditoria) viraram a migration `0006` — 36
-  divergências no total, e a tela de **Feedbacks Pendentes da equipe** — que não existia —
-  foi feita. Segue aberta a aba de **Formulários de Cliente Externo**, a mais séria do que
-  sobrou: as perguntas do wizard público só são editáveis por SQL.
+  de departamento, sensibilidade na auditoria) viraram a migration `0006` — 40
+  divergências no total, e as duas telas que **não existiam** foram feitas: Feedbacks
+  Pendentes da equipe e a aba de Formulários de Cliente Externo — esta tirou as perguntas
+  do wizard público de "só editáveis por SQL".
 - **Os 10 arquivos `.feature` de paridade não rodam.** Os cenários estão cobertos por
   testes de service, mas o roteiro formal da homologação ainda não é executável.
 - **Telas secundárias**: 24 das 43. Falta o detalhe de avaliação de cliente, o envio de

@@ -40,6 +40,8 @@ export type AnotacaoDeCiclo = S["CycleNoteOut"];
 export type Painel = S["DashboardOut"];
 
 export type AvaliacaoDeCliente = S["EvaluationOut"];
+export type FormularioDeCliente = S["ClientFormOut"];
+export type PerguntaDeCliente = S["ClientQuestionOut"];
 export type FormularioPublico = S["PublicFormOut"];
 export type PerguntaPublica = S["PublicQuestionOut"];
 export type TagDeServico = S["ServiceTagOut"];

@@ -47,6 +47,28 @@ class ClientQuestionOut(BaseModel):
     is_required: bool
     display_order: int
     placeholder: str | None
+    is_active: bool
+    # Só o editor precisa: é o que decide se "remover" apaga ou arquiva, e o que explica
+    # à pessoa por que uma pergunta não pode mais sumir.
+    tem_resposta: bool = False
+
+
+class ClientQuestionUpdateIn(BaseModel):
+    question_text: str = Field(min_length=1)
+    question_type: str = Field(pattern="^(rating|text|textarea|yes_no|nps|multiple_choice)$")
+    is_required: bool = True
+    placeholder: str | None = None
+
+
+class ReordenarPerguntasIn(BaseModel):
+    """A ordem inteira, e não um "mover para cima".
+
+    Mandar a lista toda faz a operação ser idempotente e livre de corrida: duas
+    reordenações simultâneas terminam numa das duas ordens pedidas, e não numa terceira
+    que ninguém escolheu (BR-MIGRAR-020).
+    """
+
+    question_ids: list[UUID] = Field(min_length=1)
 
 
 class RequestEvaluationIn(BaseModel):

@@ -63,7 +63,8 @@ Legenda: ✅ tela existe · ⚠️ existe parcialmente · ❌ não implementada
       *Atenção*: o novo tem 11 chaves contra 8 do legado (DEV-A09). As três extras são
       esperadas.
 
-- [x] **SCR-0018 · Formulários** ✅ `/admin/formularios` — **conferida**, 4 divergências (falta a aba de cliente externo)
+- [x] **SCR-0018 · Formulários** ✅ `/admin/formularios` — **conferida**, 4 divergências
+      (a aba de cliente externo foi feita em 06/09/2026)
       `docs/reversa/feedback/screenshots/formularios.png` · `formularios-modal-novo.png`
 
 - **SCR-0014 · Agenda** ❌ fora do corte por decisão (AMB-007, fase 2).
