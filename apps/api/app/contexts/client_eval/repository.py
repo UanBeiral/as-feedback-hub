@@ -94,10 +94,23 @@ class ClientEvaluationRepository(TenantScopedRepository[ClientEvaluation]):
         )
         return list((await self._session.execute(stmt)).scalars().all())
 
-    async def list_por_status(self, *status: str, limit: int = 200) -> list[ClientEvaluation]:
+    async def list_por_status(
+        self,
+        *status: str,
+        visiveis: set[UUID] | None = None,
+        limit: int = 200,
+    ) -> list[ClientEvaluation]:
+        """`visiveis=None` significa "todas do tenant" — é o recorte da gestão.
+
+        Um conjunto vazio devolve lista vazia, e **não** todas: é o mesmo cuidado de
+        PAR-05 no histórico. Quem não tem ninguém no escopo não passa a ver o escritório
+        inteiro por causa de um `if` esquecido.
+        """
         stmt = self._scoped().order_by(ClientEvaluation.created_at.desc()).limit(limit)
         if status:
             stmt = stmt.where(ClientEvaluation.status.in_(status))
+        if visiveis is not None:
+            stmt = stmt.where(ClientEvaluation.target_user_id.in_(visiveis))
         return list((await self._session.execute(stmt)).scalars().all())
 
     async def contar_negativas(self) -> int:
@@ -119,6 +132,29 @@ class ClientAnswerRepository(TenantScopedRepository[ClientEvalAnswer]):
         stmt = self._scoped().where(ClientEvalAnswer.evaluation_id == evaluation_id)
         return list((await self._session.execute(stmt)).scalars().all())
 
+    async def list_com_pergunta(
+        self, evaluation_id: UUID
+    ) -> list[tuple[ClientEvalAnswer, ClientEvalFormQuestion]]:
+        """As respostas com a pergunta que cada uma responde, na ordem do formulário.
+
+        A junção é obrigatória, e não conveniência: sem o texto da pergunta a resposta
+        "3" não quer dizer nada. Inclui pergunta arquivada (`is_active=false`) de
+        propósito — foi ela que o cliente respondeu, e é ela que explica a resposta.
+        """
+        stmt = (
+            select(ClientEvalAnswer, ClientEvalFormQuestion)
+            .join(
+                ClientEvalFormQuestion,
+                ClientEvalFormQuestion.id == ClientEvalAnswer.question_id,
+            )
+            .where(
+                ClientEvalAnswer.tenant_id == self.tenant_id,
+                ClientEvalAnswer.evaluation_id == evaluation_id,
+            )
+            .order_by(ClientEvalFormQuestion.display_order)
+        )
+        return [(a, q) for a, q in (await self._session.execute(stmt)).all()]
+
 
 class ServiceTagRepository(TenantScopedRepository[ServiceTag]):
     model = ServiceTag
@@ -128,6 +164,24 @@ class ServiceTagRepository(TenantScopedRepository[ServiceTag]):
             self._scoped()
             .where(ServiceTag.is_active.is_(True))
             .order_by(ServiceTag.display_order, ServiceTag.name)
+        )
+        return list((await self._session.execute(stmt)).scalars().all())
+
+    async def nomes_da_avaliacao(self, evaluation_id: UUID) -> list[str]:
+        """Os serviços que o cliente marcou, pelo nome.
+
+        Junção com `service_tags` porque o vínculo guarda id, e id não diz nada a quem
+        lê a avaliação. Nome de tag apagada não aparece — o `join` a exclui —, e é o
+        certo: o vínculo órfão não descreve mais nada.
+        """
+        stmt = (
+            select(ServiceTag.name)
+            .join(ClientEvaluationTag, ClientEvaluationTag.tag_id == ServiceTag.id)
+            .where(
+                ServiceTag.tenant_id == self.tenant_id,
+                ClientEvaluationTag.evaluation_id == evaluation_id,
+            )
+            .order_by(ServiceTag.name)
         )
         return list((await self._session.execute(stmt)).scalars().all())
 

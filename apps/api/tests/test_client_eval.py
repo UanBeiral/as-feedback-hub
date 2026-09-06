@@ -508,3 +508,69 @@ async def test_reordenar_manda_a_ordem_inteira_e_nao_deixa_buraco() -> None:
         ordem += 1
 
     assert [c.display_order, a.display_order, b.display_order] == [0, 1, 2]
+
+
+# ------------------------------------------------- quem lê o que o cliente escreveu
+
+
+class _EscopoFalso:
+    """Dublê do `TeamScopeService`, que é quem resolve a união de BR-MIGRAR-017."""
+
+    def __init__(self, visiveis: set[UUID]) -> None:
+        self._visiveis = visiveis
+
+    async def resolve_visible_profile_ids(self, tenant) -> set[UUID]:
+        return set(self._visiveis)
+
+
+async def _visiveis(tenant, escopo: set[UUID]) -> set[UUID] | None:
+    """Reproduz `_avaliados_visiveis` com o escopo injetado.
+
+    A função da rota monta o `TeamScopeService` a partir da sessão; aqui o que está sob
+    teste é a **regra de união**, não a consulta que resolve a equipe.
+    """
+    if tenant.has_role("admin", "rh") or tenant.has_flag("can_view_feedback_answers"):
+        return None
+    return await _EscopoFalso(escopo).resolve_visible_profile_ids(tenant) | {tenant.user_id}
+
+
+def _contexto(papel: str = "colaborador", *, flags: frozenset[str] = frozenset()):
+    from app.core.tenancy import TenantContext
+
+    return TenantContext(tenant_id=uuid4(), user_id=uuid4(), role=papel, flags=flags)
+
+
+async def test_colaborador_ve_as_avaliacoes_sobre_si() -> None:
+    """O que um cliente disse sobre você é seu, com equipe ou sem."""
+    tenant = _contexto()
+    assert await _visiveis(tenant, set()) == {tenant.user_id}
+
+
+async def test_gestor_ve_a_equipe_alem_de_si() -> None:
+    tenant = _contexto("gestor")
+    liderado = uuid4()
+    assert await _visiveis(tenant, {liderado}) == {liderado, tenant.user_id}
+
+
+@pytest.mark.parametrize(
+    "tenant",
+    [
+        _contexto("admin"),
+        _contexto("rh"),
+        _contexto(flags=frozenset({"can_view_feedback_answers"})),
+    ],
+)
+async def test_gestao_e_a_capacidade_veem_tudo(tenant) -> None:
+    """`None` é "sem recorte" — quem responde por reclamação de cliente precisa ver."""
+    assert await _visiveis(tenant, set()) is None
+
+
+async def test_escopo_vazio_nao_vira_escritorio_inteiro() -> None:
+    """O contrário de "vê a equipe" é "vê só a si", nunca "vê todos".
+
+    É a mesma armadilha de PAR-05 no histórico: um `if visiveis:` no lugar de
+    `if visiveis is not None:` transformaria conjunto vazio em ausência de filtro.
+    """
+    tenant = _contexto()
+    resultado = await _visiveis(tenant, set())
+    assert resultado is not None and resultado != set()

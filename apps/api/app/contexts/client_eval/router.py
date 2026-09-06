@@ -21,6 +21,7 @@ from fastapi import APIRouter, Depends, Query, Request, status
 
 from app.contexts.client_eval.models import ClientEvaluationTag
 from app.contexts.client_eval.repository import (
+    ClientAnswerRepository,
     ClientEvaluationRepository,
     ClientEvaluationTagRepository,
     ClientFormRepository,
@@ -34,6 +35,7 @@ from app.contexts.client_eval.schemas import (
     ClientQuestionIn,
     ClientQuestionOut,
     ClientQuestionUpdateIn,
+    EvaluationDetailOut,
     EvaluationOut,
     PublicFormOut,
     PublicQuestionOut,
@@ -43,6 +45,7 @@ from app.contexts.client_eval.schemas import (
     ReordenarPerguntasIn,
     RequestEvaluationIn,
     RequestEvaluationOut,
+    RespostaDoClienteOut,
     ServiceTagOut,
 )
 from app.contexts.client_eval.service import (
@@ -52,7 +55,12 @@ from app.contexts.client_eval.service import (
 )
 from app.contexts.engagement.repository import OutboxRepository, TenantSettingRepository
 from app.contexts.engagement.service import OutboxService
-from app.contexts.identity.repository import AuthRepository, ProfileRepository
+from app.contexts.identity.repository import (
+    AuthRepository,
+    CoordinatorMemberRepository,
+    ProfileRepository,
+)
+from app.contexts.identity.service import TeamScopeService
 from app.core.config import get_settings
 from app.core.di import SessionDep, TenantDep, client_ip, require_flag, require_role
 from app.core.errors import NotFoundError
@@ -306,6 +314,29 @@ async def request_evaluation(
     )
 
 
+async def _avaliados_visiveis(session: SessionDep, tenant: TenantContext) -> set[UUID] | None:
+    """Sobre quem esta pessoa pode ler avaliação de cliente. `None` = todo o escritório.
+
+    A união é a mesma de sempre: **si mesma**, porque o que um cliente disse sobre você é
+    seu; **a equipe**, pelo escopo de BR-MIGRAR-017; e quem tem `can_view_feedback_answers`,
+    que é a capacidade criada exatamente para isso.
+
+    Admin e RH veem tudo — são eles que respondem por reclamação de cliente.
+
+    Antes disto a listagem devolvia **todas as avaliações do escritório para qualquer
+    autenticado**: quem tinha login via quais clientes reclamaram de quem. O detalhe, que
+    traz o texto, tornaria isso muito pior.
+    """
+    if tenant.has_role("admin", "rh") or tenant.has_flag("can_view_feedback_answers"):
+        return None
+
+    escopo = TeamScopeService(
+        profiles=ProfileRepository(session, tenant),
+        coordinator_members=CoordinatorMemberRepository(session, tenant),
+    )
+    return await escopo.resolve_visible_profile_ids(tenant) | {tenant.user_id}
+
+
 @router.get("/client-eval/evaluations", response_model=list[EvaluationOut])
 async def list_evaluations(
     tenant: TenantDep,
@@ -314,11 +345,15 @@ async def list_evaluations(
 ) -> list[EvaluationOut]:
     """WhatsApp completo só para admin/RH; para o resto, mascarado (BR-MIGRAR-022)."""
     repo = ClientEvaluationRepository(session, tenant)
-    avaliacoes = await repo.list_por_status(*(status_filtro or []))
+    avaliacoes = await repo.list_por_status(
+        *(status_filtro or []), visiveis=await _avaliados_visiveis(session, tenant)
+    )
     completo = tenant.has_role("admin", "rh")
     return [EvaluationOut.de_modelo(a, whatsapp_completo=completo) for a in avaliacoes]
 
 
+# `/mine` precisa vir **antes** da rota com placeholder: declarada depois, "mine" seria
+# lido como `evaluation_id` e o UUID inválido devolveria 422 em vez da lista.
 @router.get("/client-eval/evaluations/mine", response_model=list[EvaluationOut])
 async def my_evaluations(tenant: TenantDep, session: SessionDep) -> list[EvaluationOut]:
     """As avaliações que o próprio usuário recebeu de clientes."""
@@ -327,6 +362,49 @@ async def my_evaluations(tenant: TenantDep, session: SessionDep) -> list[Evaluat
         EvaluationOut.de_modelo(a, whatsapp_completo=False)
         for a in await repo.list_do_avaliado(tenant.user_id)
     ]
+
+
+@router.get("/client-eval/evaluations/{evaluation_id}", response_model=EvaluationDetailOut)
+async def evaluation_detail(
+    evaluation_id: UUID, tenant: TenantDep, session: SessionDep
+) -> EvaluationDetailOut:
+    """O que o cliente respondeu, pergunta por pergunta.
+
+    Fora do escopo é **404 e não 403**, como no detalhe de request: o erro não confirma
+    que a avaliação existe nem sobre quem ela é.
+
+    Avaliação ainda não respondida não tem o que mostrar, mas não é erro — a tela abre e
+    diz que está pendente. Recusar aqui obrigaria a lista a esconder o link, e o que a
+    pessoa quer saber é justamente se já respondeu.
+    """
+    avaliacao = await ClientEvaluationRepository(session, tenant).get(evaluation_id)
+    visiveis = await _avaliados_visiveis(session, tenant)
+    if avaliacao is None or (visiveis is not None and avaliacao.target_user_id not in visiveis):
+        raise NotFoundError("Avaliação não encontrada")
+
+    perfis = await ProfileRepository(session, tenant).list_by_ids({avaliacao.target_user_id})
+    respostas = await ClientAnswerRepository(session, tenant).list_com_pergunta(evaluation_id)
+    servicos = await ServiceTagRepository(session, tenant).nomes_da_avaliacao(evaluation_id)
+
+    return EvaluationDetailOut(
+        avaliacao=EvaluationOut.de_modelo(
+            avaliacao, whatsapp_completo=tenant.has_role("admin", "rh")
+        ),
+        avaliado_nome=perfis[0].full_name if perfis else "—",
+        motivacao=avaliacao.contact_motivation,
+        motivacao_texto=avaliacao.contact_motivation_text,
+        servicos=servicos,
+        respostas=[
+            RespostaDoClienteOut(
+                question_id=pergunta.id,
+                pergunta=pergunta.question_text,
+                tipo=pergunta.question_type,
+                nota=resposta.rating_value,
+                texto=resposta.text_value,
+            )
+            for resposta, pergunta in respostas
+        ],
+    )
 
 
 @router.get("/client-eval/service-tags", response_model=list[ServiceTagOut])

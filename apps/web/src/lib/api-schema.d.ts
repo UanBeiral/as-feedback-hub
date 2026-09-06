@@ -289,6 +289,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/client-eval/evaluations/{evaluation_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Evaluation Detail
+         * @description O que o cliente respondeu, pergunta por pergunta.
+         *
+         *     Fora do escopo é **404 e não 403**, como no detalhe de request: o erro não confirma
+         *     que a avaliação existe nem sobre quem ela é.
+         *
+         *     Avaliação ainda não respondida não tem o que mostrar, mas não é erro — a tela abre e
+         *     diz que está pendente. Recusar aqui obrigaria a lista a esconder o link, e o que a
+         *     pessoa quer saber é justamente se já respondeu.
+         */
+        get: operations["evaluation_detail_api_v1_client_eval_evaluations__evaluation_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/client-eval/forms": {
         parameters: {
             query?: never;
@@ -2642,6 +2669,27 @@ export interface components {
             usuarios_ativos: number;
         };
         /**
+         * EvaluationDetailOut
+         * @description A avaliação com o que o cliente efetivamente escreveu.
+         *
+         *     Existe porque o wizard público gravava nove respostas que endpoint nenhum lia de
+         *     volta: o escritório via a nota e o sinalizador de negativa, e o texto ficava no
+         *     banco. Era o dado que o fluxo inteiro existe para coletar.
+         */
+        EvaluationDetailOut: {
+            avaliacao: components["schemas"]["EvaluationOut"];
+            /** Avaliado Nome */
+            avaliado_nome: string;
+            /** Motivacao */
+            motivacao: string | null;
+            /** Motivacao Texto */
+            motivacao_texto: string | null;
+            /** Respostas */
+            respostas: components["schemas"]["RespostaDoClienteOut"][];
+            /** Servicos */
+            servicos: string[];
+        };
+        /**
          * EvaluationOut
          * @description Serialização interna, com WhatsApp mascarado por padrão (BR-MIGRAR-022).
          */
@@ -3703,6 +3751,29 @@ export interface components {
             /** Submitted At */
             submitted_at: string | null;
         };
+        /**
+         * RespostaDoClienteOut
+         * @description Uma resposta com a pergunta que ela responde.
+         *
+         *     A pergunta vem junto porque sem ela a resposta não quer dizer nada — e vem do
+         *     registro, não de uma constante no front: o formulário é editável, e uma lista fixa
+         *     de rótulos mostraria a pergunta de hoje ao lado da resposta de seis meses atrás.
+         */
+        RespostaDoClienteOut: {
+            /** Nota */
+            nota: number | null;
+            /** Pergunta */
+            pergunta: string;
+            /**
+             * Question Id
+             * Format: uuid
+             */
+            question_id: string;
+            /** Texto */
+            texto: string | null;
+            /** Tipo */
+            tipo: string;
+        };
         /** ResultadoDaImportacaoOut */
         ResultadoDaImportacaoOut: {
             /** Criadas */
@@ -4284,6 +4355,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EvaluationOut"][];
+                };
+            };
+        };
+    };
+    evaluation_detail_api_v1_client_eval_evaluations__evaluation_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                evaluation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvaluationDetailOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

@@ -93,6 +93,21 @@ class RequestEvaluationOut(BaseModel):
     public_path: str
 
 
+class RespostaDoClienteOut(BaseModel):
+    """Uma resposta com a pergunta que ela responde.
+
+    A pergunta vem junto porque sem ela a resposta não quer dizer nada — e vem do
+    registro, não de uma constante no front: o formulário é editável, e uma lista fixa
+    de rótulos mostraria a pergunta de hoje ao lado da resposta de seis meses atrás.
+    """
+
+    question_id: UUID
+    pergunta: str
+    tipo: str
+    nota: int | None
+    texto: str | None
+
+
 class EvaluationOut(BaseModel):
     """Serialização interna, com WhatsApp mascarado por padrão (BR-MIGRAR-022)."""
 
@@ -128,6 +143,22 @@ class EvaluationOut(BaseModel):
             submitted_at=avaliacao.submitted_at,  # type: ignore[attr-defined]
             created_at=avaliacao.created_at,  # type: ignore[attr-defined]
         )
+
+
+class EvaluationDetailOut(BaseModel):
+    """A avaliação com o que o cliente efetivamente escreveu.
+
+    Existe porque o wizard público gravava nove respostas que endpoint nenhum lia de
+    volta: o escritório via a nota e o sinalizador de negativa, e o texto ficava no
+    banco. Era o dado que o fluxo inteiro existe para coletar.
+    """
+
+    avaliacao: EvaluationOut
+    avaliado_nome: str
+    motivacao: str | None
+    motivacao_texto: str | None
+    servicos: list[str]
+    respostas: list[RespostaDoClienteOut]
 
 
 class ServiceTagOut(BaseModel):

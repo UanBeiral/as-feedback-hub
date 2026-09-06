@@ -1358,6 +1358,64 @@
         "title": "DiagnosticoOut",
         "type": "object"
       },
+      "EvaluationDetailOut": {
+        "description": "A avaliação com o que o cliente efetivamente escreveu.\n\nExiste porque o wizard público gravava nove respostas que endpoint nenhum lia de\nvolta: o escritório via a nota e o sinalizador de negativa, e o texto ficava no\nbanco. Era o dado que o fluxo inteiro existe para coletar.",
+        "properties": {
+          "avaliacao": {
+            "$ref": "#/components/schemas/EvaluationOut"
+          },
+          "avaliado_nome": {
+            "title": "Avaliado Nome",
+            "type": "string"
+          },
+          "motivacao": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Motivacao"
+          },
+          "motivacao_texto": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Motivacao Texto"
+          },
+          "respostas": {
+            "items": {
+              "$ref": "#/components/schemas/RespostaDoClienteOut"
+            },
+            "title": "Respostas",
+            "type": "array"
+          },
+          "servicos": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Servicos",
+            "type": "array"
+          }
+        },
+        "required": [
+          "avaliacao",
+          "avaliado_nome",
+          "motivacao",
+          "motivacao_texto",
+          "servicos",
+          "respostas"
+        ],
+        "title": "EvaluationDetailOut",
+        "type": "object"
+      },
       "EvaluationOut": {
         "description": "Serialização interna, com WhatsApp mascarado por padrão (BR-MIGRAR-022).",
         "properties": {
@@ -4213,6 +4271,55 @@
         "title": "RequestOut",
         "type": "object"
       },
+      "RespostaDoClienteOut": {
+        "description": "Uma resposta com a pergunta que ela responde.\n\nA pergunta vem junto porque sem ela a resposta não quer dizer nada — e vem do\nregistro, não de uma constante no front: o formulário é editável, e uma lista fixa\nde rótulos mostraria a pergunta de hoje ao lado da resposta de seis meses atrás.",
+        "properties": {
+          "nota": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nota"
+          },
+          "pergunta": {
+            "title": "Pergunta",
+            "type": "string"
+          },
+          "question_id": {
+            "format": "uuid",
+            "title": "Question Id",
+            "type": "string"
+          },
+          "texto": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Texto"
+          },
+          "tipo": {
+            "title": "Tipo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "question_id",
+          "pergunta",
+          "tipo",
+          "nota",
+          "texto"
+        ],
+        "title": "RespostaDoClienteOut",
+        "type": "object"
+      },
       "ResultadoDaImportacaoOut": {
         "properties": {
           "criadas": {
@@ -5225,6 +5332,55 @@
           }
         ],
         "summary": "My Evaluations",
+        "tags": [
+          "client_eval"
+        ]
+      }
+    },
+    "/api/v1/client-eval/evaluations/{evaluation_id}": {
+      "get": {
+        "description": "O que o cliente respondeu, pergunta por pergunta.\n\nFora do escopo é **404 e não 403**, como no detalhe de request: o erro não confirma\nque a avaliação existe nem sobre quem ela é.\n\nAvaliação ainda não respondida não tem o que mostrar, mas não é erro — a tela abre e\ndiz que está pendente. Recusar aqui obrigaria a lista a esconder o link, e o que a\npessoa quer saber é justamente se já respondeu.",
+        "operationId": "evaluation_detail_api_v1_client_eval_evaluations__evaluation_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "evaluation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Evaluation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvaluationDetailOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Evaluation Detail",
         "tags": [
           "client_eval"
         ]

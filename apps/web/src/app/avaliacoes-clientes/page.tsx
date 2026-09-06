@@ -12,6 +12,7 @@
  * responder no lugar do cliente.
  */
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
 import { PaginaAutenticada } from "@/components/pagina";
@@ -282,6 +283,7 @@ export default function AvaliacoesDeClientes() {
                 { rotulo: "Status", campo: "status" },
                 { rotulo: "Nota", campo: "nota" },
                 { rotulo: "Enviada em", campo: "enviada" },
+                "",
               ]}
             >
               {visiveis.map((avaliacao) => (
@@ -313,6 +315,21 @@ export default function AvaliacoesDeClientes() {
                   </Celula>
                   <Celula>{avaliacao.overall_rating ?? "—"}</Celula>
                   <Celula>{formatarDataHora(avaliacao.submitted_at)}</Celula>
+                  <Celula className="text-right">
+                    {/* Só respondida tem o que ler. Nas outras o link existiria para
+                        abrir uma tela que diz "ainda não respondeu", que é o que a
+                        própria coluna Status já disse. */}
+                    {avaliacao.status === "submitted" ? (
+                      <Link
+                        href={`/avaliacoes-clientes/${avaliacao.id}`}
+                        className="text-sm font-medium text-primary underline-offset-4 hover:underline"
+                      >
+                        Ver respostas
+                      </Link>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    )}
+                  </Celula>
                 </Linha>
               ))}
             </Tabela>
