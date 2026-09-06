@@ -76,6 +76,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
     { href: "/avaliacoes-clientes", rotulo: "Avaliações de clientes", visivel: true },
     { href: "/relatorios", rotulo: "Relatórios", visivel: podeRelatorios },
     { href: "/notificacoes", rotulo: "Notificações", visivel: true },
+    { href: "/atualizacoes", rotulo: "Novidades", visivel: true },
 
     { href: "/admin/usuarios", rotulo: "Usuários", visivel: administra },
     { href: "/admin/departamentos", rotulo: "Departamentos", visivel: administra },

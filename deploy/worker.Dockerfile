@@ -18,7 +18,10 @@ COPY apps/worker/worker apps/worker/worker
 # PYTHONPATH sombrearia o outro e este container subiria a API sem ninguém notar.
 ENV PYTHONPATH=/srv/apps/api:/srv/apps/worker
 
-RUN useradd --create-home --uid 10001 app && chown -R app:app /srv
+# `data/` existe na imagem, e vazio, para o volume nomeado nascer com o dono certo:
+# Docker copia dono e permissão do diretório da imagem ao criar o volume, e sem isto ele
+# nasceria de root e o processo sem privilégio não conseguiria gravar o relatório.
+RUN mkdir -p /srv/data && useradd --create-home --uid 10001 app && chown -R app:app /srv
 USER app
 
 CMD ["python", "-m", "worker.main"]

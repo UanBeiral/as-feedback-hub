@@ -39,6 +39,7 @@ export default function HistoricoDaEquipePagina() {
     >
       <Historico
         historico={historico}
+        comLinkParaPessoa
         vazio={{
           titulo: "Nenhum histórico encontrado",
           descricao: "Feedbacks aparecem aqui conforme forem enviados para a sua equipe.",

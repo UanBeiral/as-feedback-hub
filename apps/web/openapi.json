@@ -9349,6 +9349,55 @@
         ]
       }
     },
+    "/api/v1/reports/history/person/{profile_id}": {
+      "get": {
+        "description": "O histórico de **uma** pessoa do escopo (SCR-0037).\n\nMesma consulta do histórico da equipe com o conjunto reduzido a um id — e o id só\npassa se já estivesse no escopo. Recortar depois de consultar daria o mesmo resultado\nhoje e viraria vazamento no dia em que alguém trocasse o filtro por paginação.\n\nPessoa fora do escopo é **404**: o erro não confirma que ela existe no escritório.\n\nSensível segue a regra da tela da equipe — só admin/RH —, e não a de `my-history`:\naqui quem lê é a gestão olhando outra pessoa, não a pessoa lendo sobre si.",
+        "operationId": "historico_de_uma_pessoa_api_v1_reports_history_person__profile_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "profile_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Profile Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HistoricoDaEquipeOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Historico De Uma Pessoa",
+        "tags": [
+          "reporting"
+        ]
+      }
+    },
     "/api/v1/reports/my-history": {
       "get": {
         "description": "O histórico da própria pessoa (SCR-0021).\n\nMesma consulta do histórico da equipe com escopo de um: quem já enxerga a si mesmo\nnão precisa passar pelo `TeamScopeService`, e um segundo jeito de montar as mesmas\ntrês seções seria um segundo jeito de elas discordarem.\n\nSensível fica de fora sempre — aqui a pessoa é a destinatária, e o `admin` que abrir\na própria tela é destinatário como qualquer outro.",

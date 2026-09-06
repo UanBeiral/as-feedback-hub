@@ -217,6 +217,43 @@ async def historico_da_equipe(
     )
 
 
+@router.get("/history/person/{profile_id}", response_model=HistoricoDaEquipeOut)
+async def historico_de_uma_pessoa(
+    profile_id: UUID, tenant: PodeVerHistoricoDep, session: SessionDep
+) -> HistoricoDaEquipeOut:
+    """O histórico de **uma** pessoa do escopo (SCR-0037).
+
+    Mesma consulta do histórico da equipe com o conjunto reduzido a um id — e o id só
+    passa se já estivesse no escopo. Recortar depois de consultar daria o mesmo resultado
+    hoje e viraria vazamento no dia em que alguém trocasse o filtro por paginação.
+
+    Pessoa fora do escopo é **404**: o erro não confirma que ela existe no escritório.
+
+    Sensível segue a regra da tela da equipe — só admin/RH —, e não a de `my-history`:
+    aqui quem lê é a gestão olhando outra pessoa, não a pessoa lendo sobre si.
+    """
+    escopo = TeamScopeService(
+        profiles=ProfileRepository(session, tenant),
+        coordinator_members=CoordinatorMemberRepository(session, tenant),
+    )
+    if profile_id not in await escopo.resolve_visible_profile_ids(tenant):
+        raise NotFoundError("Pessoa não encontrada no seu escopo")
+
+    historico = TeamHistoryQuery(session, tenant)
+    alvo = {profile_id}
+
+    def converter(itens: list[Any]) -> list[ItemDeHistoricoOut]:
+        return [ItemDeHistoricoOut(**asdict(item)) for item in itens]
+
+    return HistoricoDaEquipeOut(
+        livre=converter(
+            await historico.livre(alvo, incluir_sensiveis=tenant.has_role("admin", "rh"))
+        ),
+        clientes=converter(await historico.clientes(alvo)),
+        ciclos=converter(await historico.ciclos(alvo)),
+    )
+
+
 @router.get("/my-history", response_model=HistoricoDaEquipeOut)
 async def meu_historico(tenant: TenantDep, session: SessionDep) -> HistoricoDaEquipeOut:
     """O histórico da própria pessoa (SCR-0021).

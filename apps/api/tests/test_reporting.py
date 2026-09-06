@@ -329,3 +329,54 @@ async def test_historico_de_escopo_vazio_nao_vira_todo_mundo() -> None:
     assert await query.clientes(set()) == []
     assert await query.ciclos(set()) == []
     assert sessao.statements == [], "escopo vazio nao deveria nem consultar"
+
+
+@pytest.mark.asyncio
+async def test_historico_de_uma_pessoa_consulta_so_ela() -> None:
+    """SCR-0037: o recorte entra na consulta, não depois dela.
+
+    Filtrar o resultado daria o mesmo hoje e viraria vazamento no dia em que a consulta
+    ganhasse paginação — a primeira página traria gente de fora e o filtro a esconderia
+    sem que ninguém percebesse que ela veio.
+    """
+    from app.contexts.reporting.queries import TeamHistoryQuery
+
+    sessao = _SessaoQueGravaStatement()
+    tenant = TenantContext(tenant_id=uuid4(), user_id=uuid4(), role="gestor", flags=frozenset())
+    alvo = uuid4()
+
+    await TeamHistoryQuery(sessao, tenant).ciclos({alvo})  # type: ignore[arg-type]
+
+    sql = str(sessao.statements[-1])
+    assert "IN (" in sql.replace("in (", "IN ("), "o id da pessoa precisa entrar no WHERE"
+
+
+def test_escopo_geral_nao_exige_ciclo_nem_pessoa() -> None:
+    """BR-MIGRAR-028: ciclo e pessoa são obrigatórios **exceto** no escopo geral."""
+    validar_escopo_executivo(escopo="general", cycle_id=None, profile_id=None, giver_id=None)
+
+
+@pytest.mark.asyncio
+async def test_executivo_geral_gera_o_retrato_do_escritorio() -> None:
+    """O par do teste acima, do lado do worker.
+
+    Por um tempo a API aceitava `general` com 202 e o job falhava até a DLQ dizendo que
+    exigia ciclo e pessoa: as duas metades da mesma regra discordavam, e nada acusava
+    porque nenhuma tela chegava a pedir o relatório geral.
+    """
+    from worker.jobs.exports import _dados
+
+    job = ExportJob(
+        id=uuid4(),
+        tenant_id=uuid4(),
+        requested_by=uuid4(),
+        kind="executive",
+        format="pdf",
+        filters={"escopo": "general", "cycle_id": None, "profile_id": None},
+        status="pending",
+    )
+
+    cabecalho, linhas = await _dados(_SessaoQueGravaStatement(), job)  # type: ignore[arg-type]
+
+    assert cabecalho[0] == "Pessoa", "o geral é por pessoa do escritório, não por pergunta"
+    assert linhas == []

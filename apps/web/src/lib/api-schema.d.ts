@@ -1642,6 +1642,35 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/reports/history/person/{profile_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Historico De Uma Pessoa
+         * @description O histórico de **uma** pessoa do escopo (SCR-0037).
+         *
+         *     Mesma consulta do histórico da equipe com o conjunto reduzido a um id — e o id só
+         *     passa se já estivesse no escopo. Recortar depois de consultar daria o mesmo resultado
+         *     hoje e viraria vazamento no dia em que alguém trocasse o filtro por paginação.
+         *
+         *     Pessoa fora do escopo é **404**: o erro não confirma que ela existe no escritório.
+         *
+         *     Sensível segue a regra da tela da equipe — só admin/RH —, e não a de `my-history`:
+         *     aqui quem lê é a gestão olhando outra pessoa, não a pessoa lendo sobre si.
+         */
+        get: operations["historico_de_uma_pessoa_api_v1_reports_history_person__profile_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/reports/my-history": {
         parameters: {
             query?: never;
@@ -6853,6 +6882,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LinhaFeedbackLivreOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    historico_de_uma_pessoa_api_v1_reports_history_person__profile_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                profile_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HistoricoDaEquipeOut"];
                 };
             };
             /** @description Validation Error */

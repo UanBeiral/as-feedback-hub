@@ -16,7 +16,10 @@ COPY alembic.ini alembic.ini
 ENV PYTHONPATH=/srv/apps/api
 
 # Roda sem privilégio: um RCE na aplicação não vira root no container.
-RUN useradd --create-home --uid 10001 app && chown -R app:app /srv
+# `data/` existe na imagem, e vazio, para o volume nomeado nascer com o dono certo:
+# Docker copia dono e permissão do diretório da imagem ao criar o volume, e sem isto ele
+# nasceria de root e o processo sem privilégio não conseguiria gravar o relatório.
+RUN mkdir -p /srv/data && useradd --create-home --uid 10001 app && chown -R app:app /srv
 USER app
 
 EXPOSE 8000

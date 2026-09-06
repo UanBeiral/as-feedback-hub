@@ -127,19 +127,43 @@ async def _dados(session: AsyncSession, job: ExportJob) -> tuple[list[str], list
         cycle_id = filtros.get("cycle_id")
         profile_id = filtros.get("profile_id")
         giver_id = filtros.get("giver_id")
-        if not cycle_id or not profile_id:
-            # Escopo geral não tem relatório executivo por pessoa; a validação da API
-            # já barra o caso, e chegar aqui significa job forjado ou spec mudada.
-            raise ExportacaoVaziaError("Relatório executivo exige ciclo e pessoa")
 
-        linhas = await ExecutiveDataQuery(session, contexto).respostas_da_pessoa(
+        # Escopo geral é o escritório inteiro, sem recorte de pessoa — BR-MIGRAR-028 diz
+        # que ciclo e pessoa são obrigatórios **exceto** nele. Este ramo faltava: a API
+        # aceitava `general` com 202 e o job falhava aqui até a DLQ, dizendo que exigia
+        # ciclo e pessoa. As duas metades da mesma regra discordavam.
+        if not profile_id:
+            linhas = await Report360Query(session, contexto).linhas(
+                cycle_id=UUID(cycle_id) if cycle_id else None
+            )
+            return (
+                ["Pessoa", "Departamento", "Recebidos", "Respondidos", "% Conclusão", "Nota média"],
+                [
+                    [
+                        linha.nome,
+                        linha.departamento or "",
+                        linha.recebidos,
+                        linha.respondidos,
+                        linha.percentual,
+                        linha.media_nota if linha.media_nota is not None else "",
+                    ]
+                    for linha in linhas
+                ],
+            )
+
+        if not cycle_id:
+            # Pessoa sem ciclo é o único par que a validação da API não deixa passar;
+            # chegar aqui é job forjado ou spec mudada embaixo.
+            raise ExportacaoVaziaError("Relatório por pessoa exige o ciclo")
+
+        linhas_da_pessoa = await ExecutiveDataQuery(session, contexto).respostas_da_pessoa(
             cycle_id=UUID(cycle_id),
             profile_id=UUID(profile_id),
             giver_id=UUID(giver_id) if giver_id else None,
         )
         return (
             ["Pergunta", "Resposta", "Nota"],
-            [[p, t or "", n if n is not None else ""] for p, t, n in linhas],
+            [[p, t or "", n if n is not None else ""] for p, t, n in linhas_da_pessoa],
         )
 
     raise ExportacaoVaziaError(f"Tipo de exportação desconhecido: {job.kind}")

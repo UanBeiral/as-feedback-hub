@@ -17,6 +17,7 @@
  * ciclo (BR-MIGRAR-009) — foi o legado ter três contas diferentes que motivou a regra.
  */
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { PaginaAutenticada } from "@/components/pagina";
@@ -391,7 +392,15 @@ export default function MinhaEquipe() {
                   <Linha key={membro.profile_id}>
                     <Celula className="font-medium">
                       <span className="flex items-center gap-2">
-                        {membro.full_name}
+                        {/* O nome leva ao histórico da pessoa (SCR-0037): é a pergunta
+                            seguinte a "quanto ela já enviou", e sem o link ela custa
+                            voltar ao menu e filtrar por nome. */}
+                        <Link
+                          href={`/historico/${membro.profile_id}`}
+                          className="text-primary underline-offset-4 hover:underline"
+                        >
+                          {membro.full_name}
+                        </Link>
                         {membro.is_coordinator && <SeloDePapel papel={membro.role} coordenador />}
                       </span>
                     </Celula>

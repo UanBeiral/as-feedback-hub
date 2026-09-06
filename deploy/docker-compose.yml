@@ -57,6 +57,11 @@ services:
       # sobrescreve o `env_file`, que é carregado antes.
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-asfeedback}
       REDIS_URL: redis://redis:6379/0
+    # Arquivo gerado pelo worker e servido pela API (AD-07/AD-09). Sem o volume
+    # compartilhado, o PDF nasce no disco de um container e o outro devolve 500 ao tentar
+    # servi-lo — os dois processos precisam enxergar o mesmo `data/`.
+    volumes:
+      - arquivos:/srv/data
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
@@ -80,6 +85,11 @@ services:
       # container, o Mailpit é alcançado pelo nome do serviço. Só tem efeito quando
       # SMTP_HOST está apontado para ele.
       SMTP_HOST: ${SMTP_HOST:-}
+    # Arquivo gerado pelo worker e servido pela API (AD-07/AD-09). Sem o volume
+    # compartilhado, o PDF nasce no disco de um container e o outro devolve 500 ao tentar
+    # servi-lo — os dois processos precisam enxergar o mesmo `data/`.
+    volumes:
+      - arquivos:/srv/data
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
@@ -145,3 +155,7 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  # Exportações e o logo do escritório. Volume nomeado, e não bind mount: o conteúdo é
+  # do servidor, não do repositório, e um `git clean` não pode levar junto o relatório
+  # que alguém pediu.
+  arquivos:

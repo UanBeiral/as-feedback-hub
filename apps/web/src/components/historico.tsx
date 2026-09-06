@@ -10,6 +10,7 @@
  * custou uma divergência.
  */
 
+import Link from "next/link";
 import { useMemo, useState, type ReactNode } from "react";
 
 import { Botao, Carregando, Cartao, EstadoVazio, Selo } from "@/components/ui";
@@ -41,11 +42,14 @@ export function Historico({
   historico,
   vazio,
   aoMarcarCiente,
+  comLinkParaPessoa,
 }: {
   historico: HistoricoDaEquipe | null;
   vazio: { titulo: string; descricao: string };
   /** Quando existe, o item que ainda não foi lido ganha o botão de ciência. */
   aoMarcarCiente?: (item: ItemDeHistorico) => void | Promise<void>;
+  /** Liga o nome ao histórico daquela pessoa (SCR-0037). Desligado na tela dela. */
+  comLinkParaPessoa?: boolean;
 }) {
   const [aba, setAba] = useState<Aba>("todos");
   const [busca, setBusca] = useState("");
@@ -146,6 +150,7 @@ export function Historico({
                 key={`${item.tipo}-${item.item_id}`}
                 item={item}
                 aoMarcarCiente={aoMarcarCiente}
+                comLinkParaPessoa={comLinkParaPessoa}
               />
             ))}
           </ul>
@@ -158,9 +163,11 @@ export function Historico({
 function ItemDoHistorico({
   item,
   aoMarcarCiente,
+  comLinkParaPessoa,
 }: {
   item: ItemDeHistorico;
   aoMarcarCiente?: (item: ItemDeHistorico) => void | Promise<void>;
+  comLinkParaPessoa?: boolean;
 }) {
   const tipo = item.tipo as keyof typeof TOM_DO_TIPO;
   // Avaliação de cliente não é dirigida a ninguém: é sobre a pessoa, não para ela, e
@@ -172,7 +179,16 @@ function ItemDoHistorico({
       <div className="min-w-0">
         <p className="flex flex-wrap items-center gap-2 text-sm font-medium text-foreground">
           <Selo tom={TOM_DO_TIPO[tipo] ?? "neutro"}>{ROTULO_DO_TIPO[tipo] ?? item.tipo}</Selo>
-          <span>{item.sobre_nome}</span>
+          {comLinkParaPessoa ? (
+            <Link
+              href={`/historico/${item.sobre_id}`}
+              className="text-primary underline-offset-4 hover:underline"
+            >
+              {item.sobre_nome}
+            </Link>
+          ) : (
+            <span>{item.sobre_nome}</span>
+          )}
         </p>
         <p className="mt-1 text-sm text-foreground">{item.titulo}</p>
         {/* Com rotulo, e nao numa frase corrida: elogio e critica sao coisas diferentes

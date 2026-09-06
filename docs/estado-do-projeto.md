@@ -26,10 +26,10 @@ Leitura obrigatória antes de mexer, nesta ordem:
 
 | Parte | Estado |
 |---|---|
-| API (FastAPI) | 5 contextos, 103 rotas, 30 tabelas |
+| API (FastAPI) | 5 contextos, 104 rotas, 30 tabelas |
 | Worker | despacho do outbox + 3 jobs agendados |
-| Front (Next.js) | 29 rotas, client tipado gerado do OpenAPI; fluxo público em wizard |
-| Testes | 382, todos verdes |
+| Front (Next.js) | 32 rotas, client tipado gerado do OpenAPI; fluxo público em wizard |
+| Testes | 385, todos verdes |
 | Migrations | 0001→0008, aplicam do zero |
 | CI | lint + testes + migrations + build do front |
 
@@ -64,11 +64,9 @@ como decidido.
   Cliente Externo, Meu Histórico, Reset de Senha e Dar Feedback.
 - **Os 10 arquivos `.feature` de paridade não rodam.** Os cenários estão cobertos por
   testes de service, mas o roteiro formal da homologação ainda não é executável.
-- **Telas secundárias**: 30 das 43. As que faltam, em ordem de peso: **Emitir Relatório**
-  (SCR-0017 — `POST /reports/executive` existe e nenhuma tela chama), **Novidades**
-  (SCR-0039 — só admin lê comunicado hoje, e a notificação aponta para `/atualizacoes`,
-  que não existe), **Histórico por Pessoa** (SCR-0037) e o **404 próprio** (SCR-0041). A
-  Agenda está fora do corte por decisão (AMB-007, fase 2).
+- **Telas: 42 das 43.** Falta só a **Agenda**, fora do corte por decisão (AMB-007,
+  fase 2) — com ela ficam de fora o callback do Google (SCR-0040) e a agenda conectada
+  (SCR-0045), que só existem para servi-la.
 - **Três pontos do wizard público dependem do cliente, não de código**: qual pergunta era
   a Q6 do legado, qual pergunta alimenta a coluna "Nota Geral" dos relatórios e o que
   fazer com o chip "+ Outro…" do tipo de serviço. Estão em `spec-deviations.md`
@@ -99,11 +97,9 @@ qualquer tela — a maioria das decisões de comportamento do sistema está just
    `docs/reversa/migration/parity_tests/` são o roteiro formal da homologação e hoje não
    rodam. Os cenários estão cobertos por testes de service, mas o cliente vai homologar
    pelo roteiro, não pela suíte.
-3. **Telas que faltam**, em ordem de peso: Emitir Relatório (SCR-0017), Novidades
-   (SCR-0039, junto com o link quebrado da notificação), Histórico por Pessoa (SCR-0037)
-   e o 404 próprio (SCR-0041). A Agenda está fora do corte por decisão (AMB-007).
-   Junto: perguntar ao cliente os três pontos em aberto do wizard público (Q6, origem da
-   "Nota Geral", chip "+ Outro…").
+3. **Perguntar ao cliente os três pontos em aberto do wizard público**: qual era a Q6,
+   qual pergunta alimenta a "Nota Geral" e o que fazer com o chip "+ Outro…". Não é
+   código — é decisão que muda o que a tela pergunta.
 4. **Os três itens do runbook** — dependem de acesso à produção e bloqueiam o cutover,
    não o desenvolvimento. Detalhe abaixo.
 
@@ -132,6 +128,17 @@ de erro que escapa:
   auditoria renderizava **vazio com dados**, sem erro em lugar nenhum.
 - Duas classes do Tailwind em conflito (`w-full` e `w-auto`) são decididas pela ordem no
   CSS gerado, não pela ordem na string — a barra de filtros empilhava por causa disso.
+
+Três só apareceram porque alguém finalmente **usou** o caminho inteiro:
+
+- O relatório executivo em escopo **geral** era aceito pela API com 202 e recusado pelo
+  worker até a DLQ, dizendo que exigia ciclo e pessoa. As duas metades da mesma regra
+  discordavam, e nada acusava porque nenhuma tela chegava a pedir o relatório.
+- O PDF gerado **nascia no disco do worker e a API devolvia 500** ao tentar servi-lo: os
+  dois containers não compartilhavam `data/`. O download de exportação nunca tinha
+  funcionado no compose.
+- E o volume, se criado sem `data/` existir na imagem, nasceria de root — o processo sem
+  privilégio não gravaria nada.
 
 Um veio de ler o código no rastro de outra coisa: `/client-eval/evaluations` devolvia
 **todas as avaliações do escritório para qualquer autenticado** — quem tinha login via
