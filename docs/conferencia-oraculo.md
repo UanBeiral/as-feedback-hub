@@ -126,9 +126,11 @@ Legenda: ✅ tela existe · ⚠️ existe parcialmente · ❌ não implementada
       `feedback/screenshots/caderno-do-ciclo-painel.png` · `caderno-do-ciclo-widget.png`
       Falta o **botão flutuante** presente em todas as telas autenticadas.
 
-- [ ] **SCR-0023 · Modal Dar Feedback Livre** ❌ **não implementada**
+- [x] **SCR-0023 · Modal Dar Feedback Livre** ⚠️ **parcial** — existe em `/minha-equipe`
       `feedback/screenshots/dar-feedback-livre-modal.png` (+ `-2`)
-      A API existe (`POST /free-feedbacks`); a interface, não.
+      O formulário foi feito junto com as ações de #59: três campos, anônimo e sensível.
+      Falta só a entrada pelo banner do Início, que no legado oferecia a ação a todo
+      mundo e não só a quem tem equipe (#8).
 
 ## Cliente e relatórios
 

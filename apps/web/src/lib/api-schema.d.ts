@@ -1613,6 +1613,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/team/{profile_id}/reminder": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send Reminder
+         * @description Cutuca alguém da equipe que ainda deve resposta no ciclo (SCR-0030).
+         *
+         *     `assert_can_view` é o guard: cutucar quem não é da sua equipe seria descobrir, pelo
+         *     erro, que a pessoa existe. Lembrar a si mesmo é recusado — não é uso, é engano.
+         */
+        post: operations["send_reminder_api_v1_team__profile_id__reminder_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -2364,6 +2387,16 @@ export interface components {
             tipo: string;
             /** Titulo */
             titulo: string;
+        };
+        /**
+         * LembreteOut
+         * @description Resposta do lembrete. `pendentes` = 0 significa que não havia o que lembrar.
+         */
+        LembreteOut: {
+            /** Mensagem */
+            mensagem: string;
+            /** Pendentes */
+            pendentes: number;
         };
         /** Linha360Out */
         Linha360Out: {
@@ -6087,6 +6120,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TeamProgressOut"];
+                };
+            };
+        };
+    };
+    send_reminder_api_v1_team__profile_id__reminder_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                profile_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LembreteOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

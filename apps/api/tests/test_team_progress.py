@@ -12,6 +12,8 @@ from datetime import date, timedelta
 from typing import Any
 from uuid import UUID, uuid4
 
+import pytest
+
 from app.contexts.feedback.models import FeedbackCycle
 from app.contexts.feedback.service import TeamProgressService
 from app.contexts.identity.models import Profile
@@ -314,3 +316,92 @@ async def test_sem_ciclo_aberto_o_painel_ainda_conta_pessoas_e_totais() -> None:
     assert painel.total_de_feedbacks == 354
     assert painel.total_enviados == 300
     assert painel.por_departamento == []
+
+
+# ---------------------------------------------------------------- lembrete
+
+
+class FakeOutbox:
+    def __init__(self) -> None:
+        self.enfileiradas: list[tuple[str, dict, str]] = []
+
+    async def enqueue(self, *, topic: str, payload: dict, idempotency_key: str) -> bool:
+        # Idempotência de verdade: a segunda com a mesma chave não entra.
+        if any(chave == idempotency_key for _, _, chave in self.enfileiradas):
+            return False
+        self.enfileiradas.append((topic, payload, idempotency_key))
+        return True
+
+
+class FakeRequestsParaLembrete:
+    def __init__(self, pedidos: list[Any]) -> None:
+        self.pedidos = pedidos
+
+    async def list_para_avaliador(self, giver_id: UUID, *, status=None) -> list[Any]:
+        return [p for p in self.pedidos if p.giver_id == giver_id]
+
+
+def _pedido(giver_id: UUID, cycle_id: UUID):
+    return type("R", (), {"giver_id": giver_id, "cycle_id": cycle_id})()
+
+
+def _lembrete(pedidos: list[Any], ciclos=None):
+    from app.contexts.feedback.service import ReminderService
+
+    outbox = FakeOutbox()
+    ciclo = _ciclo()
+    servico = ReminderService(
+        requests=FakeRequestsParaLembrete(pedidos),  # type: ignore[arg-type]
+        cycles=ciclos if ciclos is not None else FakeCycleRepository([ciclo]),  # type: ignore[arg-type]
+        outbox=outbox,  # type: ignore[arg-type]
+    )
+    return servico, outbox, ciclo
+
+
+async def test_lembrete_so_sai_para_quem_tem_pedido_em_aberto() -> None:
+    """Cutucar quem já respondeu ensina a pessoa a ignorar o sino."""
+    alvo = uuid4()
+    servico, outbox, _ = _lembrete(pedidos=[])
+
+    assert await servico.lembrar(profile_id=alvo) == 0
+    assert outbox.enfileiradas == []
+
+
+async def test_lembrete_enfileira_com_a_contagem_do_ciclo() -> None:
+    alvo = uuid4()
+    servico, outbox, ciclo = _lembrete(pedidos=[])
+    servico._requests = FakeRequestsParaLembrete(  # type: ignore[attr-defined]
+        [_pedido(alvo, ciclo.id), _pedido(alvo, ciclo.id), _pedido(alvo, uuid4())]
+    )
+
+    # Pedido de outro ciclo não entra na conta: o lembrete é sobre o ciclo aberto.
+    assert await servico.lembrar(profile_id=alvo) == 2
+
+    (topico, payload, _) = outbox.enfileiradas[0]
+    assert topico == "feedback.reminder"
+    assert payload["pendentes"] == 2
+    assert payload["profile_id"] == str(alvo)
+
+
+async def test_dois_cliques_no_mesmo_dia_geram_um_aviso_so() -> None:
+    """E amanhã o gestor pode insistir — por isso o dia entra na chave."""
+    alvo = uuid4()
+    servico, outbox, ciclo = _lembrete(pedidos=[])
+    servico._requests = FakeRequestsParaLembrete([_pedido(alvo, ciclo.id)])  # type: ignore[attr-defined]
+
+    await servico.lembrar(profile_id=alvo, hoje=HOJE)
+    await servico.lembrar(profile_id=alvo, hoje=HOJE)
+    assert len(outbox.enfileiradas) == 1
+
+    await servico.lembrar(profile_id=alvo, hoje=HOJE + timedelta(days=1))
+    assert len(outbox.enfileiradas) == 2
+
+
+async def test_sem_ciclo_aberto_o_lembrete_e_recusado() -> None:
+    """Melhor recusar que enfileirar aviso sobre um ciclo que não existe."""
+    from app.core.errors import ValidationError
+
+    servico, _, _ = _lembrete(pedidos=[], ciclos=FakeCycleRepository([]))
+
+    with pytest.raises(ValidationError):
+        await servico.lembrar(profile_id=uuid4())

@@ -21,8 +21,10 @@ import { useEffect, useState } from "react";
 
 import { PaginaAutenticada } from "@/components/pagina";
 import {
+  AreaDeTexto,
   Aviso,
   Botao,
+  Campo,
   Carregando,
   Cartao,
   Celula,
@@ -33,9 +35,159 @@ import {
   SeloDePapel,
   Tabela,
 } from "@/components/ui";
-import { api } from "@/lib/api";
+import { ApiError, api } from "@/lib/api";
 import { ROTULO_DO_STATUS_DE_PESSOA } from "@/lib/formato";
+import { useSessao } from "@/lib/sessao";
 import type { AcompanhamentoDaEquipe, PedidoDeEquipe } from "@/lib/tipos";
+
+/** Ação textual dentro de uma linha de tabela. Botão cheio aqui pesaria a tabela. */
+function AcaoDeLinha({
+  children,
+  onClick,
+  desabilitado,
+  perigo,
+}: {
+  children: React.ReactNode;
+  onClick: () => void;
+  desabilitado?: boolean;
+  perigo?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={desabilitado}
+      className={
+        "text-sm underline-offset-4 hover:underline disabled:cursor-not-allowed " +
+        "disabled:opacity-50 " +
+        (perigo ? "text-destructive" : "text-primary")
+      }
+    >
+      {children}
+    </button>
+  );
+}
+
+/**
+ * Feedback livre para um membro da equipe (a SCR-0023 do legado, que era um modal).
+ *
+ * Os três campos são os do legado — pontos positivos, pontos de melhoria e mensagem —,
+ * e pelo menos um precisa vir preenchido, que é o que a API cobra. Anônimo **não guarda
+ * o autor** (AMB-001): `giver_id` fica nulo no banco, e não escondido na serialização.
+ * Por isso o aviso na tela é categórico: depois de enviar não há como voltar atrás.
+ */
+function FeedbackLivre({
+  para,
+  aoFechar,
+  aoEnviar,
+}: {
+  para: { profile_id: string; full_name: string };
+  aoFechar: () => void;
+  aoEnviar: (texto: string) => void;
+}) {
+  const [positivos, setPositivos] = useState("");
+  const [melhorias, setMelhorias] = useState("");
+  const [mensagem, setMensagem] = useState("");
+  const [anonimo, setAnonimo] = useState(false);
+  const [sensivel, setSensivel] = useState(false);
+  const [enviando, setEnviando] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+
+  const vazio = !positivos.trim() && !melhorias.trim() && !mensagem.trim();
+
+  async function enviar(evento: React.FormEvent) {
+    evento.preventDefault();
+    setErro(null);
+    setEnviando(true);
+    try {
+      await api("/free-feedbacks", {
+        method: "POST",
+        body: {
+          receiver_id: para.profile_id,
+          is_anonymous: anonimo,
+          is_sensitive: sensivel,
+          positives: positivos.trim() || null,
+          improvements: melhorias.trim() || null,
+          message: mensagem.trim() || null,
+        },
+      });
+      aoEnviar(`Feedback enviado para ${para.full_name}.`);
+      aoFechar();
+    } catch (falha) {
+      setErro(falha instanceof ApiError ? falha.message : "Não foi possível enviar agora.");
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  return (
+    <Cartao
+      titulo={`Feedback livre para ${para.full_name}`}
+      descricao="Fora do ciclo, a qualquer momento. Preencha o que fizer sentido."
+      acao={
+        <Botao variante="fantasma" onClick={aoFechar}>
+          Fechar
+        </Botao>
+      }
+    >
+      <form onSubmit={enviar} className="space-y-4">
+        <Campo rotulo="Pontos positivos">
+          <AreaDeTexto
+            autoFocus
+            placeholder="O que essa pessoa fez bem e deveria continuar fazendo."
+            value={positivos}
+            onChange={(e) => setPositivos(e.target.value)}
+          />
+        </Campo>
+        <Campo rotulo="Pontos de melhoria">
+          <AreaDeTexto
+            placeholder="O que ela poderia fazer diferente."
+            value={melhorias}
+            onChange={(e) => setMelhorias(e.target.value)}
+          />
+        </Campo>
+        <Campo rotulo="Mensagem">
+          <AreaDeTexto
+            placeholder="Algo que não cabe nos dois campos acima."
+            value={mensagem}
+            onChange={(e) => setMensagem(e.target.value)}
+          />
+        </Campo>
+
+        <div className="space-y-2">
+          <label className="flex items-center gap-2 text-sm text-foreground">
+            <input
+              type="checkbox"
+              checked={anonimo}
+              onChange={(e) => setAnonimo(e.target.checked)}
+            />
+            Enviar anonimamente
+          </label>
+          <label className="flex items-center gap-2 text-sm text-foreground">
+            <input
+              type="checkbox"
+              checked={sensivel}
+              onChange={(e) => setSensivel(e.target.checked)}
+            />
+            Assunto sensível — só a administração vê
+          </label>
+          {anonimo && (
+            <p className="text-xs text-muted-foreground">
+              Seu nome não é guardado em lugar nenhum, nem para a administração. Depois de
+              enviar, não há como saber que foi você — inclusive para você.
+            </p>
+          )}
+        </div>
+
+        {erro && <Aviso tom="erro">{erro}</Aviso>}
+
+        <Botao tipo="submit" desabilitado={vazio || enviando}>
+          {enviando ? "Enviando…" : "Enviar feedback"}
+        </Botao>
+      </form>
+    </Cartao>
+  );
+}
 
 /** Estado usado quando a chamada falha: a tela diz "vazio", não fica carregando à toa. */
 const SEM_EQUIPE: AcompanhamentoDaEquipe = {
@@ -48,10 +200,21 @@ const SEM_EQUIPE: AcompanhamentoDaEquipe = {
   percentual: 100,
 };
 
+type Membro = AcompanhamentoDaEquipe["membros"][number];
+
 export default function MinhaEquipe() {
+  const { usuario } = useSessao();
   const [equipe, setEquipe] = useState<AcompanhamentoDaEquipe | null>(null);
   const [pedidos, setPedidos] = useState<PedidoDeEquipe[]>([]);
-  const [aviso, setAviso] = useState<string | null>(null);
+  const [aviso, setAviso] = useState<{ tom: "erro" | "sucesso"; texto: string } | null>(null);
+  const [feedbackPara, setFeedbackPara] = useState<Membro | null>(null);
+  const [lembrando, setLembrando] = useState<string | null>(null);
+
+  // Remover da equipe muda a hierarquia, e no sistema novo isso é ato de admin/RH: são
+  // eles que respondem por `PUT /profiles/{id}/manager`. O legado mostrava o X ao
+  // gestor; ampliar essa autorização é decisão do cliente, não consequência de copiar
+  // um ícone (ver #59 em docs/conferencia-resultado.md).
+  const podeRemover = usuario?.role === "admin" || usuario?.role === "rh";
 
   async function carregar() {
     setEquipe(await api<AcompanhamentoDaEquipe>("/team/progress"));
@@ -77,7 +240,54 @@ export default function MinhaEquipe() {
       });
       await carregar();
     } catch {
-      setAviso("Não foi possível concluir agora.");
+      setAviso({ tom: "erro", texto: "Não foi possível concluir agora." });
+    }
+  }
+
+  async function lembrar(membro: Membro) {
+    setAviso(null);
+    setLembrando(membro.profile_id);
+    try {
+      const resposta = await api<{ pendentes: number; mensagem: string }>(
+        `/team/${membro.profile_id}/reminder`,
+        { method: "POST" },
+      );
+      // A API distingue "avisei" de "não havia o que avisar"; a tela repassa a
+      // diferença em vez de dizer "enviado" nos dois casos.
+      setAviso({
+        tom: resposta.pendentes > 0 ? "sucesso" : "erro",
+        texto:
+          resposta.pendentes > 0
+            ? `${membro.full_name} foi lembrado(a) — ${resposta.mensagem}`
+            : `${membro.full_name} está em dia. ${resposta.mensagem}`,
+      });
+    } catch (falha) {
+      setAviso({
+        tom: "erro",
+        texto: falha instanceof ApiError ? falha.message : "Não foi possível lembrar agora.",
+      });
+    } finally {
+      setLembrando(null);
+    }
+  }
+
+  async function removerDaEquipe(membro: Membro) {
+    setAviso(null);
+    try {
+      await api(`/profiles/${membro.profile_id}/manager`, {
+        method: "PUT",
+        body: { manager_id: null },
+      });
+      setAviso({
+        tom: "sucesso",
+        texto: `${membro.full_name} saiu da equipe. A pessoa continua no escritório.`,
+      });
+      await carregar();
+    } catch (falha) {
+      setAviso({
+        tom: "erro",
+        texto: falha instanceof ApiError ? falha.message : "Não foi possível remover agora.",
+      });
     }
   }
 
@@ -91,7 +301,15 @@ export default function MinhaEquipe() {
       }
     >
       <div className="space-y-6">
-        {aviso && <Aviso tom="erro">{aviso}</Aviso>}
+        {aviso && <Aviso tom={aviso.tom}>{aviso.texto}</Aviso>}
+
+        {feedbackPara && (
+          <FeedbackLivre
+            para={feedbackPara}
+            aoFechar={() => setFeedbackPara(null)}
+            aoEnviar={(texto) => setAviso({ tom: "sucesso", texto })}
+          />
+        )}
 
         {pedidos.length > 0 && (
           <Cartao
@@ -133,7 +351,16 @@ export default function MinhaEquipe() {
               )}
 
               <Tabela
-                colunas={["Nome", "Cargo", "Status", "A enviar", "Enviados", "A ler", "Progresso"]}
+                colunas={[
+                  "Nome",
+                  "Cargo",
+                  "Status",
+                  "A enviar",
+                  "Enviados",
+                  "A ler",
+                  "Progresso",
+                  "Ações",
+                ]}
               >
                 {equipe.membros.map((membro) => (
                   <Linha key={membro.profile_id}>
@@ -170,6 +397,29 @@ export default function MinhaEquipe() {
                       ) : (
                         <Progresso valor={membro.percentual} />
                       )}
+                    </Celula>
+                    <Celula>
+                      <span className="flex items-center gap-3 whitespace-nowrap">
+                        <AcaoDeLinha onClick={() => setFeedbackPara(membro)}>
+                          Dar feedback
+                        </AcaoDeLinha>
+                        {/* Lembrar só aparece para quem tem o que responder. Botão que
+                            sempre responde "essa pessoa está em dia" é botão que a
+                            pessoa aprende a não clicar. */}
+                        {membro.pendentes_de_enviar > 0 && (
+                          <AcaoDeLinha
+                            onClick={() => void lembrar(membro)}
+                            desabilitado={lembrando === membro.profile_id}
+                          >
+                            {lembrando === membro.profile_id ? "Lembrando…" : "Lembrar"}
+                          </AcaoDeLinha>
+                        )}
+                        {podeRemover && (
+                          <AcaoDeLinha perigo onClick={() => void removerDaEquipe(membro)}>
+                            Remover
+                          </AcaoDeLinha>
+                        )}
+                      </span>
                     </Celula>
                   </Linha>
                 ))}

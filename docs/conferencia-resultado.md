@@ -17,7 +17,7 @@
 | Conferidas | 17 de 35 |
 | Defeitos próprios encontrados | 5 (um bloqueava a conferência; todos corrigidos) |
 | Divergências contra o oráculo | 76 registradas abaixo |
-| **Já resolvidas** | **14** — a frente das telas de acompanhamento |
+| **Já resolvidas** | **15** — a frente das telas de acompanhamento, mais a SCR-0023 de tabela |
 
 O bloco de **Administração** está fechado (SCR-0003, 0007, 0008, 0009, 0010, 0011, 0012,
 0013, 0015, 0018 e 0024) e o de **Equipe/Feedback** está a meio caminho (SCR-0029, 0030,
@@ -460,15 +460,50 @@ menos de dez linhas, a leitura horizontal acomoda nome longo de departamento sem
 texto, e uma dependência de gráfico é peso que só se paga quando há gráfico de verdade a
 desenhar. **Divergência de forma, deliberada** — o conteúdo é o mesmo.
 
+### #59 — as três ações por membro
+
+Feitas na mesma frente, depois de fechado o resto. Cada uma tinha um problema diferente.
+
+**Dar feedback** não existia em tela nenhuma, embora `POST /free-feedbacks` estivesse
+pronto desde sempre. Ganhou um formulário na própria página, com os três campos do legado
+— pontos positivos, pontos de melhoria e mensagem —, mais anônimo e sensível.
+
+Isso entrega, de passagem, a **SCR-0023** (Modal Dar Feedback Livre), que a conferência
+listava como não implementada. Falta ainda a entrada pelo banner do Início (#8), que é
+onde o legado a oferecia a todo mundo, e não só a quem tem equipe.
+
+O aviso do anônimo é categórico de propósito: `giver_id` fica **nulo no banco**
+(AMB-001), não escondido na serialização. Quem marca a caixa precisa saber que não há
+volta — nem para a administração, nem para quem enviou.
+
+**Enviar lembrete** não tinha endpoint em lugar nenhum, e era o único item do legado
+nessa situação. Agora tem: `POST /team/{profile_id}/reminder` enfileira no outbox e o
+worker vira notificação, com três regras que a spec não trazia escritas.
+
+Só sai para quem tem pedido em aberto — cutucar quem já respondeu ensina a pessoa a
+ignorar o sino, e por isso o botão nem aparece para quem está em dia. A chave de
+idempotência inclui **o dia**, então dois cliques geram um aviso só e amanhã o gestor pode
+insistir; sem o dia na chave, o segundo lembrete da semana sumiria em silêncio. E o
+escopo é conferido por `TeamScopeService.assert_can_view`: cutucar alguém de fora da sua
+equipe revelaria, pelo erro, que a pessoa existe.
+
+Quando não há o que lembrar, a API devolve `pendentes: 0` e a tela diz "está em dia" em
+vez de "enviado" — a diferença entre avisar e não ter o que avisar chega a quem clicou.
+
+**Remover** ficou de fora para gestor e coordenador, **de propósito**. No sistema novo
+tirar alguém da equipe é mexer na hierarquia (`PUT /profiles/{id}/manager`), e isso é ato
+de admin/RH. O legado mostrava o X ao gestor; ampliar essa autorização é decisão do
+cliente, não consequência de copiar um ícone. A ação aparece para quem já tem o poder —
+admin e RH — e some para os demais.
+
 ### O que continua faltando nestas telas
 
-- **#59** — as três ações por membro em Minha equipe. "Dar feedback" depende da SCR-0023,
-  que não existe; "remover" já vive em Usuários; e **enviar lembrete** não tem endpoint em
-  lugar nenhum. É o único item do legado sem correspondente no sistema novo.
 - **#60** — Exportar Excel e Adicionar Membro, que entram na frente de exportação.
 - **#71, #72, #73** — busca, filtros, ordenação e a seção de feedback livre enviado, em
   Meus feedbacks. Também da frente de exportação e filtros.
-- **#8** — o banner "Dar Feedback para alguém", que é a entrada da SCR-0023.
+- **#8** — o banner "Dar Feedback para alguém" no Início. O formulário já existe; falta
+  a porta de entrada para quem não tem equipe.
+- **Decisão do cliente**: o gestor deve poder remover alguém da própria equipe?
 
 ---
 

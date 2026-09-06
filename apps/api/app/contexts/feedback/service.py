@@ -790,6 +790,59 @@ class TeamProgressService:
         )
 
 
+class ReminderService:
+    """Lembrete que o gestor manda para quem ainda deve resposta no ciclo.
+
+    Três decisões que o legado não deixou escritas e valem estar aqui:
+
+    - **Só quem tem o que fazer.** Sem pedido em aberto não há lembrete — cutucar quem
+      já respondeu é o tipo de aviso que ensina a pessoa a ignorar o sino.
+    - **Um por pessoa por dia.** A chave de idempotência inclui a data, então clicar
+      duas vezes não gera dois avisos, e amanhã o gestor pode insistir. Sem o dia na
+      chave, o segundo lembrete da semana seria silenciosamente descartado.
+    - **O escopo é conferido por quem chama** (`TeamScopeService`), como manda R-04:
+      este serviço não decide quem o gestor pode cutucar.
+    """
+
+    def __init__(
+        self,
+        requests: RequestRepository,
+        cycles: CycleRepository,
+        outbox: OutboxService,
+    ) -> None:
+        self._requests = requests
+        self._cycles = cycles
+        self._outbox = outbox
+
+    async def lembrar(self, *, profile_id: UUID, hoje: date | None = None) -> int:
+        """Enfileira o lembrete. Devolve quantos pedidos estão em aberto.
+
+        Zero significa que não havia o que lembrar — e o chamador diz isso à pessoa em
+        vez de fingir que mandou.
+        """
+        abertos = await self._cycles.list_by_status("open")
+        if not abertos:
+            raise ValidationError("Não há ciclo aberto para lembrar.")
+        ciclo = abertos[0]
+
+        pendentes = await self._requests.list_para_avaliador(profile_id)
+        do_ciclo = [r for r in pendentes if r.cycle_id == ciclo.id]
+        if not do_ciclo:
+            return 0
+
+        dia = (hoje or datetime.now(UTC).date()).isoformat()
+        await self._outbox.enqueue(
+            topic="feedback.reminder",
+            payload={
+                "cycle_id": str(ciclo.id),
+                "profile_id": str(profile_id),
+                "pendentes": len(do_ciclo),
+            },
+            idempotency_key=f"feedback.reminder:{ciclo.id}:{profile_id}:{dia}",
+        )
+        return len(do_ciclo)
+
+
 @dataclass(frozen=True, slots=True)
 class ConclusaoDoDepartamento:
     nome: str

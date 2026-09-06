@@ -48,6 +48,7 @@ from app.contexts.feedback.schemas import (
     FormOut,
     FreeFeedbackIn,
     FreeFeedbackOut,
+    LembreteOut,
     MembroDaEquipeOut,
     OpenCycleOut,
     ParDePermissaoOut,
@@ -70,12 +71,14 @@ from app.contexts.feedback.service import (
     FormService,
     FreeFeedbackService,
     PermissionService,
+    ReminderService,
     RequestService,
     TeamProgressService,
 )
 from app.contexts.identity.repository import CoordinatorMemberRepository, ProfileRepository
 from app.contexts.identity.service import TeamScopeService
 from app.core.di import SessionDep, TenantDep, require_role
+from app.core.errors import ValidationError
 from app.core.tenancy import TenantContext
 
 router = APIRouter(tags=["feedback"])
@@ -113,6 +116,14 @@ def get_request_service(session: SessionDep, tenant: TenantDep) -> RequestServic
         questions=QuestionRepository(session, tenant),
         outbox=outbox,
         audit=AuditService(AuditLogRepository(session, tenant), outbox),
+    )
+
+
+def get_reminder_service(session: SessionDep, tenant: TenantDep) -> ReminderService:
+    return ReminderService(
+        requests=RequestRepository(session, tenant),
+        cycles=CycleRepository(session, tenant),
+        outbox=OutboxService(OutboxRepository(session, tenant)),
     )
 
 
@@ -157,6 +168,7 @@ RequestServiceDep = Annotated[RequestService, Depends(get_request_service)]
 ProgressServiceDep = Annotated[CycleProgressService, Depends(get_progress_service)]
 TeamProgressServiceDep = Annotated[TeamProgressService, Depends(get_team_progress_service)]
 TeamScopeDep = Annotated[TeamScopeService, Depends(get_team_scope)]
+ReminderServiceDep = Annotated[ReminderService, Depends(get_reminder_service)]
 DashboardServiceDep = Annotated[DashboardService, Depends(get_dashboard_service)]
 
 
@@ -482,6 +494,32 @@ async def team_progress(
         enviados=acompanhamento.enviados,
         esperados=acompanhamento.esperados,
         percentual=acompanhamento.percentual,
+    )
+
+
+@router.post("/team/{profile_id}/reminder", response_model=LembreteOut)
+async def send_reminder(
+    profile_id: UUID,
+    tenant: TenantDep,
+    scope: TeamScopeDep,
+    service: ReminderServiceDep,
+) -> LembreteOut:
+    """Cutuca alguém da equipe que ainda deve resposta no ciclo (SCR-0030).
+
+    `assert_can_view` é o guard: cutucar quem não é da sua equipe seria descobrir, pelo
+    erro, que a pessoa existe. Lembrar a si mesmo é recusado — não é uso, é engano.
+    """
+    if profile_id == tenant.user_id:
+        raise ValidationError("Você não precisa de lembrete de si mesmo.")
+    await scope.assert_can_view(tenant, profile_id)
+    pendentes = await service.lembrar(profile_id=profile_id)
+    return LembreteOut(
+        pendentes=pendentes,
+        mensagem=(
+            "Lembrete enviado."
+            if pendentes
+            else "Esta pessoa não tem feedback pendente no ciclo — nada a lembrar."
+        ),
     )
 
 

@@ -1908,6 +1908,25 @@
         "title": "ItemDeHistoricoOut",
         "type": "object"
       },
+      "LembreteOut": {
+        "description": "Resposta do lembrete. `pendentes` = 0 significa que não havia o que lembrar.",
+        "properties": {
+          "mensagem": {
+            "title": "Mensagem",
+            "type": "string"
+          },
+          "pendentes": {
+            "title": "Pendentes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "pendentes",
+          "mensagem"
+        ],
+        "title": "LembreteOut",
+        "type": "object"
+      },
       "Linha360Out": {
         "properties": {
           "departamento": {
@@ -8582,6 +8601,55 @@
           }
         ],
         "summary": "Team Progress",
+        "tags": [
+          "feedback"
+        ]
+      }
+    },
+    "/api/v1/team/{profile_id}/reminder": {
+      "post": {
+        "description": "Cutuca alguém da equipe que ainda deve resposta no ciclo (SCR-0030).\n\n`assert_can_view` é o guard: cutucar quem não é da sua equipe seria descobrir, pelo\nerro, que a pessoa existe. Lembrar a si mesmo é recusado — não é uso, é engano.",
+        "operationId": "send_reminder_api_v1_team__profile_id__reminder_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "profile_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Profile Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LembreteOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Send Reminder",
         "tags": [
           "feedback"
         ]

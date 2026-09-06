@@ -115,6 +115,13 @@ class ProgressOut(BaseModel):
     percentual: float
 
 
+class LembreteOut(BaseModel):
+    """Resposta do lembrete. `pendentes` = 0 significa que não havia o que lembrar."""
+
+    pendentes: int
+    mensagem: str
+
+
 class ConclusaoDoDepartamentoOut(BaseModel):
     nome: str
     esperados: int
