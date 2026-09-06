@@ -64,9 +64,11 @@ export default function FaleConosco() {
                 value={formulario.type}
                 onChange={(e) => setFormulario({ ...formulario, type: e.target.value })}
               >
+                {/* As duas do legado, e só elas: o servidor recusa o resto
+                    desde que `type` virou catálogo. "Problema" e "Dúvida" eram opções
+                    daqui que a triagem nunca soube exibir. */}
                 <option value="sugestao">Sugestão</option>
-                <option value="problema">Problema</option>
-                <option value="duvida">Dúvida</option>
+                <option value="critica">Crítica</option>
               </Selecao>
             </Campo>
             <Campo rotulo="Seu nome" obrigatorio>

@@ -19,6 +19,7 @@ from app.contexts.engagement.models import (
     ContactMessage,
     OutboxMessage,
     PlatformUpdate,
+    TenantSetting,
 )
 from app.contexts.engagement.repository import (
     AuditLogRepository,
@@ -254,6 +255,11 @@ class SettingsService:
                 "A configuração mudou desde que você a abriu. Recarregue e revise.",
                 details={"key": key},
             )
+
+
+    async def definir_logo(self, tenant: TenantContext, url: str) -> TenantSetting:
+        """Aponta `logo_url` para o arquivo que a API acabou de gravar."""
+        return await self._settings.definir(key="logo_url", value=url, updated_by=tenant.user_id)
 
 
 class PlatformUpdateService:

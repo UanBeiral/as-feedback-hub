@@ -244,6 +244,20 @@
         "title": "AuditLogOut",
         "type": "object"
       },
+      "Body_upload_logo_api_v1_settings_logo_post": {
+        "properties": {
+          "arquivo": {
+            "contentMediaType": "application/octet-stream",
+            "title": "Arquivo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "arquivo"
+        ],
+        "title": "Body_upload_logo_api_v1_settings_logo_post",
+        "type": "object"
+      },
       "CancelIn": {
         "properties": {
           "justificativa": {
@@ -549,7 +563,7 @@
             "title": "Phone"
           },
           "type": {
-            "minLength": 1,
+            "pattern": "^(sugestao|critica)$",
             "title": "Type",
             "type": "string"
           }
@@ -9524,6 +9538,76 @@
           }
         ],
         "summary": "List Settings",
+        "tags": [
+          "engagement"
+        ]
+      }
+    },
+    "/api/v1/settings/logo": {
+      "get": {
+        "description": "Serve o arquivo subido. Autenticado como o resto — o login não estampa marca.",
+        "operationId": "download_logo_api_v1_settings_logo_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Download Logo",
+        "tags": [
+          "engagement"
+        ]
+      },
+      "post": {
+        "description": "Sobe o logo do escritório e aponta `logo_url` para ele.\n\nO campo continua sendo uma URL no banco — o que muda é que agora existe uma URL para\napontar sem depender de o escritório ter onde hospedar a imagem. Pedir uma URL a\nquem só tem o arquivo era o mesmo que não ter o recurso.\n\nO limite é conferido pelo tamanho **lido**, e não pelo `content-length` do envio:\ncabeçalho é declaração do cliente, e o arquivo é o que chega.",
+        "operationId": "upload_logo_api_v1_settings_logo_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_logo_api_v1_settings_logo_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Upload Logo",
         "tags": [
           "engagement"
         ]

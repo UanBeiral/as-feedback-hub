@@ -1786,6 +1786,37 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/settings/logo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download Logo
+         * @description Serve o arquivo subido. Autenticado como o resto — o login não estampa marca.
+         */
+        get: operations["download_logo_api_v1_settings_logo_get"];
+        put?: never;
+        /**
+         * Upload Logo
+         * @description Sobe o logo do escritório e aponta `logo_url` para ele.
+         *
+         *     O campo continua sendo uma URL no banco — o que muda é que agora existe uma URL para
+         *     apontar sem depender de o escritório ter onde hospedar a imagem. Pedir uma URL a
+         *     quem só tem o arquivo era o mesmo que não ter o recurso.
+         *
+         *     O limite é conferido pelo tamanho **lido**, e não pelo `content-length` do envio:
+         *     cabeçalho é declaração do cliente, e o arquivo é o que chega.
+         */
+        post: operations["upload_logo_api_v1_settings_logo_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/settings/{key}": {
         parameters: {
             query?: never;
@@ -2069,6 +2100,11 @@ export interface components {
             record_id: string | null;
             /** Table Name */
             table_name: string | null;
+        };
+        /** Body_upload_logo_api_v1_settings_logo_post */
+        Body_upload_logo_api_v1_settings_logo_post: {
+            /** Arquivo */
+            arquivo: string;
         };
         /** CancelIn */
         CancelIn: {
@@ -6873,6 +6909,59 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SettingOut"][];
+                };
+            };
+        };
+    };
+    download_logo_api_v1_settings_logo_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    upload_logo_api_v1_settings_logo_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_upload_logo_api_v1_settings_logo_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SettingOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

@@ -302,6 +302,25 @@ class TenantSettingRepository(TenantScopedRepository[TenantSetting]):
         )
         return bool(result.rowcount)
 
+    async def definir(self, *, key: str, value: str, updated_by: UUID) -> TenantSetting:
+        """Grava sem a checagem otimista, e devolve a linha.
+
+        Existe para o valor que a **própria API** acabou de produzir — hoje só a URL do
+        logo recém-subido. Ali não há edição concorrente a proteger: o carimbo que o
+        cliente leu não diz nada sobre um arquivo que ele mandou depois, e recusar por
+        conflito deixaria o arquivo no disco e a configuração apontando para o anterior.
+        """
+        stmt = (
+            pg_insert(TenantSetting)
+            .values(tenant_id=self.tenant_id, key=key, value=value, updated_by=updated_by)
+            .on_conflict_do_update(
+                constraint="uq_tenant_settings_chave",
+                set_={"value": value, "updated_by": updated_by, "updated_at": datetime.now(UTC)},
+            )
+            .returning(TenantSetting)
+        )
+        return (await self._session.execute(stmt)).scalar_one()
+
 
 class PlatformUpdateRepository(TenantScopedRepository[PlatformUpdate]):
     model = PlatformUpdate

@@ -9,10 +9,12 @@ papel; o que é configuração ou triagem do escritório é de admin/RH.
 from __future__ import annotations
 
 from datetime import UTC, date, datetime, timedelta
+from pathlib import Path
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, File, Query, UploadFile, status
+from fastapi.responses import FileResponse
 
 from app.contexts.engagement.repository import (
     AuditLogRepository,
@@ -43,7 +45,9 @@ from app.contexts.engagement.service import (
     SettingsService,
 )
 from app.contexts.identity.repository import ProfileRepository
+from app.core.config import get_settings
 from app.core.di import SessionDep, TenantDep, require_role
+from app.core.errors import NotFoundError, ValidationError
 from app.core.tenancy import TenantContext
 
 router = APIRouter(tags=["engagement"])
@@ -117,6 +121,68 @@ async def update_setting(
         value=payload.value,
         expected_updated_at=payload.expected_updated_at,
     )
+
+
+# Só o que o wizard público e o cabeçalho sabem desenhar. SVG entra porque o logo de
+# escritório costuma vir vetorial; JPEG fica de fora porque logo com fundo branco em
+# cabeçalho escuro é o defeito que o formato garante.
+TIPOS_DE_LOGO = {"image/png": ".png", "image/svg+xml": ".svg"}
+LIMITE_DO_LOGO = 2 * 1024 * 1024
+
+
+def _arquivo_do_logo(tenant_id: UUID, extensao: str) -> Path:
+    return Path(get_settings().media_dir) / str(tenant_id) / f"logo{extensao}"
+
+
+@router.post("/settings/logo", response_model=SettingOut)
+async def upload_logo(
+    tenant: AdminDep,
+    service: SettingsServiceDep,
+    arquivo: Annotated[UploadFile, File()],
+) -> SettingOut:
+    """Sobe o logo do escritório e aponta `logo_url` para ele.
+
+    O campo continua sendo uma URL no banco — o que muda é que agora existe uma URL para
+    apontar sem depender de o escritório ter onde hospedar a imagem. Pedir uma URL a
+    quem só tem o arquivo era o mesmo que não ter o recurso.
+
+    O limite é conferido pelo tamanho **lido**, e não pelo `content-length` do envio:
+    cabeçalho é declaração do cliente, e o arquivo é o que chega.
+    """
+    extensao = TIPOS_DE_LOGO.get(arquivo.content_type or "")
+    if extensao is None:
+        raise ValidationError("O logo precisa ser PNG ou SVG")
+
+    conteudo = await arquivo.read(LIMITE_DO_LOGO + 1)
+    if len(conteudo) > LIMITE_DO_LOGO:
+        raise ValidationError("O logo precisa ter no máximo 2 MB")
+
+    destino = _arquivo_do_logo(tenant.tenant_id, extensao)
+    destino.parent.mkdir(parents=True, exist_ok=True)
+    # Um logo por tenant, e o anterior sai junto: guardar versões antigas de uma imagem
+    # que ninguém vai consultar é lixo que cresce sozinho.
+    for antigo in destino.parent.glob("logo.*"):
+        antigo.unlink()
+    destino.write_bytes(conteudo)
+
+    linha = await service.definir_logo(tenant, "/api/v1/settings/logo")
+    return SettingOut(
+        key=linha.key,
+        value=linha.value,
+        updated_at=linha.updated_at,
+        updated_by=linha.updated_by,
+        persisted=True,
+    )
+
+
+@router.get("/settings/logo")
+async def download_logo(tenant: TenantDep) -> FileResponse:
+    """Serve o arquivo subido. Autenticado como o resto — o login não estampa marca."""
+    for extensao in TIPOS_DE_LOGO.values():
+        caminho = _arquivo_do_logo(tenant.tenant_id, extensao)
+        if caminho.exists():
+            return FileResponse(caminho)
+    raise NotFoundError("Nenhum logo enviado")
 
 
 # ---------------------------------------------------------------- comunicados

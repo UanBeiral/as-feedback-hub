@@ -53,6 +53,10 @@ class Settings(BaseSettings):
 
     # Exportações (AD-07/AD-09): arquivos em disco da VPS, um diretório por tenant.
     export_dir: str = "data/exports"
+    # Imagens do escritório (hoje só o logo). Separado de `export_dir` porque a vida dos
+    # dois é diferente: exportação é descartável e o logo é permanente, e um `rm -rf`
+    # de limpeza no lugar errado apagaria a marca do cliente junto com os relatórios.
+    media_dir: str = "data/media"
 
     # Worker (AD-04/AD-05). O intervalo só vale para fila vazia: com trabalho, os
     # lotes se emendam sem espera.

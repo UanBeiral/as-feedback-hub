@@ -28,7 +28,7 @@ import { ApiError, api } from "@/lib/api";
 import { formatarDataHora } from "@/lib/formato";
 import type { MensagemDeContato } from "@/lib/tipos";
 
-/** Os dois tipos que o oráculo mostra. Fora deles, o valor cru — o schema é livre. */
+/** O catálogo, igual ao do servidor. `type` deixou de ser texto livre. */
 const ROTULO_DO_TIPO: Record<string, string> = {
   sugestao: "Sugestão",
   critica: "Crítica",
@@ -94,10 +94,10 @@ export default function AdminContatos() {
       [m.contact_name, m.email, m.message, m.company].some((campo) => contemTexto(campo, busca)),
   );
 
-  // Só os tipos que aparecem na lista: `contact_messages.type` é texto livre no schema
-  // (ver #44 em docs/conferencia-resultado.md), então não há catálogo de onde tirar as
-  // opções — e oferecer um filtro que não devolve nada é pior que não oferecer.
-  const tiposPresentes = [...new Set((mensagens ?? []).map((m) => m.type))].sort();
+  // O catálogo inteiro, e não só o que já apareceu na caixa: um filtro montado a partir
+  // das linhas existentes some quando a caixa esvazia e volta quando alguém escreve — e
+  // quem procura "Crítica" e não acha a opção conclui que o filtro não existe.
+  const tiposPresentes = Object.keys(ROTULO_DO_TIPO);
 
   function exportar() {
     exportarCsv(

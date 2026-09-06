@@ -169,6 +169,25 @@ export async function apiVoid(caminho: string, opcoes: Opcoes = {}): Promise<voi
   if (!resposta.ok) throw await erroDe(resposta);
 }
 
+/**
+ * Envio de arquivo (`multipart/form-data`).
+ *
+ * Não passa por `executar` porque ali o `content-type` é fixado em JSON, e num
+ * multipart o cabeçalho tem de trazer o `boundary` que o browser gera — escrevê-lo à
+ * mão faz o servidor não achar nenhum campo. A renovação de sessão fica de fora pelo
+ * mesmo motivo de sempre: `FormData` não se lê duas vezes, e repetir o envio exigiria
+ * remontá-lo.
+ */
+export async function apiUpload<T>(caminho: string, dados: FormData): Promise<T> {
+  const resposta = await fetch(`/api/v1${caminho}`, {
+    method: "POST",
+    headers: sessao.access ? { authorization: `Bearer ${sessao.access}` } : {},
+    body: dados,
+  });
+  if (!resposta.ok) throw await erroDe(resposta);
+  return (await resposta.json()) as T;
+}
+
 /** Download de arquivo gerado pelo worker (AD-07): precisa do Bearer, então não é <a>. */
 export async function apiBlob(caminho: string): Promise<Blob> {
   const resposta = await executar(caminho, {}, false);

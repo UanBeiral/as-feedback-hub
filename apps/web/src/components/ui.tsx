@@ -187,11 +187,15 @@ export function Campo({
   rotulo,
   children,
   dica,
+  ajuda,
   obrigatorio,
 }: {
   rotulo: string;
   children: ReactNode;
+  /** Texto sempre visível abaixo do controle. */
   dica?: string;
+  /** O ⓘ ao lado do rótulo: explica o que o campo faz, sem ocupar linha. */
+  ajuda?: string;
   obrigatorio?: boolean;
 }) {
   return (
@@ -199,6 +203,16 @@ export function Campo({
       <span className="mb-1.5 block text-sm font-medium text-foreground">
         {rotulo}
         {obrigatorio && <span className="ml-1 text-destructive">*</span>}
+        {ajuda && (
+          <span
+            title={ajuda}
+            aria-label={ajuda}
+            role="note"
+            className="ml-1.5 cursor-help text-muted-foreground"
+          >
+            ⓘ
+          </span>
+        )}
       </span>
       {children}
       {dica && <span className="mt-1 block text-xs text-muted-foreground">{dica}</span>}
