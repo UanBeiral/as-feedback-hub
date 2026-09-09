@@ -2,6 +2,7 @@
 
 > Escrito em 02/09/2026, ao fim da sessão que construiu o sistema.
 > Atualizado em 06/09/2026, quando a fila de implementação esvaziou.
+> Atualizado em 09/09/2026, depois da conferência complementar e das 27 divergências dela.
 > Serve para quem chegar depois (pessoa ou agente) entender em uma leitura o que existe,
 > o que falta e por que certas coisas são do jeito que são.
 
@@ -28,8 +29,8 @@ Leitura obrigatória antes de mexer, nesta ordem:
 |---|---|
 | API (FastAPI) | 5 contextos, 104 rotas, 30 tabelas |
 | Worker | despacho do outbox + 3 jobs agendados |
-| Front (Next.js) | 31 telas mais o 404, client tipado gerado do OpenAPI |
-| Testes | 385, todos verdes |
+| Front (Next.js) | 32 telas mais o 404 e o widget do caderno, client tipado gerado do OpenAPI |
+| Testes | 387, todos verdes |
 | Migrations | 0001→0008, aplicam do zero |
 | CI | lint + testes + migrations + build do front |
 
@@ -58,6 +59,27 @@ exigisse.
 
 Vale ler antes de mexer em qualquer tela: a maior parte das decisões de comportamento do
 sistema está justificada lá, e não no código.
+
+**Conferência complementar, 09/09/2026.** Quatro telas tinham a caixa desmarcada e nenhuma
+seção no resultado: Minha Equipe e Histórico da Equipe na variante admin, Emitir
+Relatório e o Caderno do Ciclo. Conferidas por código e depois rodando, renderam **27
+divergências e 4 defeitos próprios** (BUG-09 a BUG-12), todos corrigidos. Das 27, 21
+foram implementadas, 5 já estavam aceitas e 1 virou desvio deliberado (DEV-A14: o
+relatório "Geral do Ciclo" aceita sair sem ciclo, porque BR-MIGRAR-028 dispensa). O que
+mudou de mais visível:
+
+- o **Caderno do Ciclo** é um painel que abre por cima da tela, em qualquer página, com
+  o ciclo aberto automático, Ctrl+Enter e ditado por voz — antes o botão só navegava;
+- **Emitir Relatório** virou tela própria com entrada no menu, com os dois modos do
+  legado (detalhado em várias páginas, resumo em uma folha) e e-mail pré-preenchido;
+- o **histórico da equipe** mostra quem escreveu o feedback livre e lista o 360 em todos
+  os status, com os filtros do legado;
+- **Minha Equipe** recuperou o "+ Adicionar Membro" como modal, direto para a
+  administração e como pedido para gestores.
+
+A conferência também mostrou que a stack local estava dois commits atrás do repositório
+— a seção "Emitir relatório" não aparecia porque a imagem do web era anterior ao commit.
+Rebuild resolve; vale checar a data da imagem antes de concluir que algo não existe.
 
 ### Depois dela
 
@@ -102,8 +124,9 @@ Três buracos que a conferência não cobria, porque não eram divergência com 
 
 Em ordem de valor, para quem for continuar. Cada item diz o que fazer e onde olhar.
 
-**A fila de implementação esvaziou em 06/09/2026.** O que sobrou não é código: é
-decisão do cliente, acesso à produção, ou roteiro de homologação. Quem chegar agora não
+**A fila de implementação esvaziou em 06/09/2026, e continuou vazia depois da conferência
+complementar de 09/09.** O que sobrou não é código: é decisão do cliente, acesso à
+produção, ou roteiro de homologação. Quem chegar agora não
 tem uma tela para escrever — tem quatro conversas para ter.
 
 1. **Escolher e verificar o provedor de email em produção.** O código está pronto
@@ -168,6 +191,13 @@ E dois vieram da conferência, que é outra forma de rodar: o histórico da equi
 feedback **sensível**, que a rota de recebidos esconde do destinatário desde sempre, e
 `can_view_team_history` decidia o menu sem que a rota a exigisse — quem soubesse a URL
 entrava. Nenhum teste podia pegá-los, porque os dois estavam consistentes consigo mesmos.
+
+E quatro vieram da conferência complementar de 09/09: a administração, que vê todo mundo,
+era a única "pessoa fora da equipe" e podia pedir a própria inclusão; o botão flutuante
+cobria o rodapé de Minha Equipe; o "Sobre quem" do caderno listava quem estava anotando;
+e responder um feedback que a API devolve 404 ficava em "Carregando…" para sempre. Os
+três primeiros só existem com dado de verdade e um papel específico; o último, só quando
+o id está errado. Nenhum teste os cobria.
 
 Por isso os smokes contra o banco real existem, e por isso vale rodá-los antes de
 qualquer entrega grande.
