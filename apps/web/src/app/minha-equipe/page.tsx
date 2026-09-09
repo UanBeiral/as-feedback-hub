@@ -18,7 +18,7 @@
  */
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { PaginaAutenticada } from "@/components/pagina";
 import {
@@ -46,6 +46,7 @@ import { exportarCsv } from "@/lib/exportar";
 import { ROTULO_DO_STATUS_DE_PESSOA } from "@/lib/formato";
 import { useTabela } from "@/lib/tabela";
 import { FeedbackLivre } from "@/components/feedback-livre";
+import { useSessao } from "@/lib/sessao";
 import type { AcompanhamentoDaEquipe, PedidoDeEquipe, Perfil } from "@/lib/tipos";
 
 /** Ação textual dentro de uma linha de tabela. Botão cheio aqui pesaria a tabela. */
@@ -90,6 +91,7 @@ const SEM_EQUIPE: AcompanhamentoDaEquipe = {
 type Membro = AcompanhamentoDaEquipe["membros"][number];
 
 export default function MinhaEquipe() {
+  const { usuario } = useSessao();
   const [equipe, setEquipe] = useState<AcompanhamentoDaEquipe | null>(null);
   const [pedidos, setPedidos] = useState<PedidoDeEquipe[]>([]);
   const [aviso, setAviso] = useState<{ tom: "erro" | "sucesso"; texto: string } | null>(null);
@@ -99,15 +101,24 @@ export default function MinhaEquipe() {
   const [foraDaEquipe, setForaDaEquipe] = useState<Perfil[]>([]);
 
 
-  async function carregar() {
+  const meuId = usuario?.profile_id;
+
+  const carregar = useCallback(async () => {
     const acompanhamento = await api<AcompanhamentoDaEquipe>("/team/progress");
     setEquipe(acompanhamento);
     try {
       // Só quem já não está na equipe entra no seletor: oferecer quem já está seria
-      // pedir uma inclusão que a administração recusaria.
+      // pedir uma inclusão que a administração recusaria. Quem está olhando também
+      // sai: o escopo não o lista como membro, e sem esta linha a administração — que
+      // vê todo mundo — via só a si mesma no seletor (BUG-09). Inativos idem: pedir a
+      // inclusão de quem foi desligado é um pedido que só termina em recusa.
       const todos = await api<Perfil[]>("/profiles");
       const jaTenho = new Set(acompanhamento.membros.map((m) => m.profile_id));
-      setForaDaEquipe(todos.filter((p) => !jaTenho.has(p.id)));
+      setForaDaEquipe(
+        todos.filter(
+          (p) => !jaTenho.has(p.id) && p.id !== meuId && p.status === "active",
+        ),
+      );
     } catch {
       // Sem `/profiles` (gestor comum) não há como listar candidatos, e o cartão some.
       setForaDaEquipe([]);
@@ -119,11 +130,11 @@ export default function MinhaEquipe() {
       // deve estragar a tela de equipe.
       setPedidos([]);
     }
-  }
+  }, [meuId]);
 
   useEffect(() => {
     carregar().catch(() => setEquipe(SEM_EQUIPE));
-  }, []);
+  }, [carregar]);
 
   async function decidir(id: string, acao: "approve" | "reject") {
     setAviso(null);

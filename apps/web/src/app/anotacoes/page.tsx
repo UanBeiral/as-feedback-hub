@@ -25,9 +25,11 @@ import {
 } from "@/components/ui";
 import { ApiError, api, apiVoid } from "@/lib/api";
 import { formatarDataHora } from "@/lib/formato";
+import { useSessao } from "@/lib/sessao";
 import type { AnotacaoDeCiclo, Ciclo, Perfil } from "@/lib/tipos";
 
 export default function Anotacoes() {
+  const { usuario } = useSessao();
   const [anotacoes, setAnotacoes] = useState<AnotacaoDeCiclo[] | null>(null);
   const [ciclos, setCiclos] = useState<Ciclo[]>([]);
   const [equipe, setEquipe] = useState<Perfil[]>([]);
@@ -75,6 +77,10 @@ export default function Anotacoes() {
   }
 
   const nomePor = new Map(equipe.map((membro) => [membro.id, membro.full_name]));
+  // `/auth/my-team` inclui quem pede, porque o escopo serve também ao próprio
+  // histórico. Anotação é sobre outra pessoa: quem escreve sai do "Sobre quem"
+  // (BUG-11). `nomePor` fica com a lista inteira, para nomear qualquer nota antiga.
+  const anotaveis = equipe.filter((membro) => membro.id !== usuario?.profile_id);
   const nomeDoCiclo = new Map(ciclos.map((ciclo) => [ciclo.id, ciclo.name]));
 
   return (
@@ -109,7 +115,7 @@ export default function Anotacoes() {
                   onChange={(e) => setNova({ ...nova, about_user_id: e.target.value })}
                 >
                   <option value="">Selecione</option>
-                  {equipe.map((membro) => (
+                  {anotaveis.map((membro) => (
                     <option key={membro.id} value={membro.id}>
                       {membro.full_name}
                     </option>

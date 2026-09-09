@@ -72,10 +72,10 @@ Legenda: ✅ tela existe · ⚠️ existe parcialmente · ❌ não implementada
 
 ## Equipe
 
-- [ ] **SCR-0005 · Minha Equipe (admin)** ✅ `/minha-equipe`
+- [x] **SCR-0005 · Minha Equipe (admin)** ✅ `/minha-equipe` — **conferida por código em 09/09/2026**, 6 divergências (#91 a #96)
       `admin/screenshots/minha-equipe.png` · `minha-equipe-modal-adicionar-membro.png`
 
-- [ ] **SCR-0006 · Histórico da Equipe (admin)** ✅ `/historico-equipe`
+- [x] **SCR-0006 · Histórico da Equipe (admin)** ✅ `/historico-equipe` — **conferida por código em 09/09/2026**, 6 divergências (#97 a #102)
       `admin/screenshots/historico-equipe.png` (+ `-2`)
       *Atenção*: confira as **três seções** (livre, clientes, 360) e os filtros.
 
@@ -125,7 +125,7 @@ Legenda: ✅ tela existe · ⚠️ existe parcialmente · ❌ não implementada
       Mesmo componente do histórico da equipe com escopo de um, mais a ação de dar
       ciência — que é a única coisa que existe aqui e não lá.
 
-- [ ] **SCR-0022 · Caderno do Ciclo** ⚠️ parcial — `/anotacoes` cobre o conteúdo
+- [x] **SCR-0022 · Caderno do Ciclo** ⚠️ parcial — `/anotacoes` cobre o conteúdo — **conferida por código em 09/09/2026**, 7 divergências (#111 a #117); o botão existe desde 06/09, mas navega em vez de abrir sobre a tela
       `feedback/screenshots/caderno-do-ciclo-painel.png` · `caderno-do-ciclo-widget.png`
       Falta o **botão flutuante** presente em todas as telas autenticadas.
 
@@ -145,7 +145,7 @@ Legenda: ✅ tela existe · ⚠️ existe parcialmente · ❌ não implementada
       `reports/screenshots/relatorios-dados-filtros.png` (+ `-2`)
       *Atenção*: confira os limites de linha (preview 50, tabela 100) e os filtros.
 
-- [ ] **SCR-0017 · Emitir Relatório** ⚠️ parcial — `/relatorios` (seção Exportações)
+- [x] **SCR-0017 · Emitir Relatório** ⚠️ parcial — `/relatorios` (seção Exportações) — **conferida por código em 09/09/2026**, 8 divergências (#103 a #110)
       `reports/screenshots/emitir-relatorio.png`
       O legado tinha tela própria; aqui é uma seção. Confira se os campos de escopo do
       relatório executivo estão todos presentes.
@@ -179,7 +179,7 @@ Legenda: ✅ tela existe · ⚠️ existe parcialmente · ❌ não implementada
 | | |
 |---|---|
 | Telas literais a conferir | 18 (uma, a Agenda, está fora do corte) |
-| Conferidas | 18 — todas |
+| Conferidas | 18 — todas; as 4 que estavam sem seção no resultado (SCR-0005, 0006, 0017, 0022) foram conferidas por código e depois rodando em 09/09/2026, 27 divergências (#91 a #117) e 3 defeitos próprios (BUG-09 a BUG-11) |
 | Resultado | [`conferencia-resultado.md`](conferencia-resultado.md) — 90 divergências e 8 defeitos próprios |
 | Resolvidas | 87 implementadas, 3 registradas como desvio deliberado (#2, #43, #67) |
 | Defeitos próprios | 8, todos corrigidos |

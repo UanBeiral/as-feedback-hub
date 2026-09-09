@@ -14,10 +14,10 @@
 
 | | |
 |---|---|
-| Conferidas | 17 de 35 |
-| Defeitos próprios encontrados | 5 (um bloqueava a conferência; todos corrigidos) |
-| Divergências contra o oráculo | 76 registradas abaixo |
-| **Já resolvidas** | **40** — acompanhamento (15), exportação/filtros (12), as decisões do cliente (8) e as telas que não existiam (5) |
+| Conferidas | 18 de 18 literais em 06/09 (ver o resumo do roteiro) + 4 que estavam sem seção, conferidas por código em 09/09 |
+| Defeitos próprios encontrados | 8 (um bloqueava a conferência; todos corrigidos) |
+| Divergências contra o oráculo | 117 registradas abaixo (90 até 06/09 + 27 em 09/09) |
+| **Já resolvidas** | **87 implementadas + 3 desvios deliberados** até 06/09; as 27 de 09/09 estão abertas (5 já aceitas por decisão anterior) |
 
 O bloco de **Administração** está fechado (SCR-0003, 0007, 0008, 0009, 0010, 0011, 0012,
 0013, 0015, 0018 e 0024) e o de **Equipe/Feedback** está a meio caminho (SCR-0029, 0030,
@@ -1016,3 +1016,188 @@ O que os testes não pegam, conferido contra a stack local com o seed de demonst
 | Fale Conosco: tipo `duvida` | 422; `critica` → 201 |
 | Editar ciclo aberto | 422, "Só rascunho pode ser editado" |
 | Editar rascunho | 200 |
+
+## Conferência complementar — 09/09/2026
+
+Quatro telas literais tinham a caixa desmarcada no roteiro e nenhuma seção aqui:
+SCR-0005, SCR-0006, SCR-0017 e SCR-0022. Conferidas **por leitura do código do sistema
+novo contra os screenshots do oráculo**, não contra a stack rodando — a sessão não tinha
+como autenticar no ambiente local. O que depende de dado renderizado (contagem, badge com
+valor real) fica marcado para checar rodando.
+
+Numeração continua de onde parou: #91 em diante.
+
+## SCR-0005 · Minha Equipe (Admin)
+
+Rota `/minha-equipe` (legado `/admin/equipe`) · oráculo `admin/screenshots/minha-equipe.png`
+e `minha-equipe-modal-adicionar-membro.png` · código `apps/web/src/app/minha-equipe/page.tsx`
+
+É a mesma tela da variante do gestor (SCR-0030), já conferida: as colunas de
+acompanhamento, o rodapé, o selo de status e as três ações por membro foram restaurados
+no lote de 06/09 (#58 a #63). O que segue é só o que muda para a administração.
+
+| # | Divergência | Peso |
+|---|---|---|
+| 91 | **"+ Adicionar Membro"** abre no legado um modal com busca por nome, lista com checkbox e cargo, "N selecionados" e inclusão direta. No novo é um cartão "Incluir alguém na equipe" com **um** select e o fluxo de **pedido** (`POST /team-requests`) — para o admin, que no legado incluía direto, é um passo a mais que ele mesmo aprova | ação |
+| 92 | Para a administração, o escopo é "todos" (BR-MIGRAR-017), então `foraDaEquipe` fica vazio e o cartão de inclusão **nem aparece**. O legado mostrava a equipe direta do admin (1 membro no oráculo) e permitia adicionar. Confirmar rodando com `admin@` do seed | conteúdo — checar rodando |
+| 93 | **"Exportar Excel"** (`.xlsx`) virou "Exportar CSV" com contagem. Já aceito como padrão da frente de exportação (#16, #20, #60), registrado aqui só para a variante admin | ação — aceito |
+| 94 | Cabeçalhos das colunas: legado **"Pendentes de Enviar" / "Pendentes de Leitura"** com ícone de ajuda (tooltip) em cada um; novo **"A enviar" / "A ler"** sem tooltip. O modo literal pede o texto do legado, ou pelo menos a explicação que o tooltip trazia | texto |
+| 95 | Remoção: legado usa o **X vermelho** na coluna Ações; novo usa o texto "Remover" com `window.confirm`. Equivalente, e o confirm explica o que acontece — divergência de forma aceitável | posicionamento |
+| 96 | Descrição sob o título: o oráculo admin **não tem** descrição; o novo mostra "Acompanhe o progresso dos membros…" quando há ciclo (texto herdado da variante gestor, #64) | texto |
+
+Saída: #93 e #95 aceitas como estão. #94 é troca de rótulo. #91/#92 dependem de uma
+decisão que já estava na fila ("o gestor pode adicionar direto?"): para o **admin** a
+resposta do legado era sim, e o novo hoje não oferece caminho nenhum.
+
+## SCR-0006 · Histórico da Equipe (Admin)
+
+Rota `/historico-equipe` · oráculo `admin/screenshots/historico-equipe.png` (+ `-2`) ·
+código `apps/web/src/app/historico-equipe/page.tsx` e `components/historico.tsx`
+
+Mesmo componente da variante gestor (SCR-0032). #65 (partes rotuladas), #66 (Ciente em …
+por …) e #68 (busca e ordenação por data) estão resolvidas; #69 (abas em vez de seções
+colapsáveis) e #67 ("Ver Detalhes", desvio deliberado) seguem como registradas. Restam
+filtros que a conferência do gestor não listou:
+
+| # | Divergência | Peso |
+|---|---|---|
+| 97 | Feedback livre no legado mostra **"Para: X · De: Y"**; o novo mostra só a pessoa sobre quem é (`sobre_nome`). O autor do feedback livre não anônimo não aparece, e a API (`ItemDeHistorico`) não o devolve | conteúdo |
+| 98 | Seção 360 do legado tem filtro **Status**, toggle **Cancelados (Ocultos/Visíveis)**, período **De/Até** e ordenação **A-Z**; no novo há só busca e ordenação por data, iguais para as três abas | ação |
+| 99 | Seção de feedback livre do legado tem select de **status** ("Todos") ao lado da busca; ausente no novo | ação |
+| 100 | Descrição: legado "Visualize todos os feedbacks enviados e recebidos pela sua equipe em ciclos anteriores e no ciclo atual."; novo "Feedback livre, avaliações de clientes e ciclos 360 — dentro do seu escopo." | texto |
+| 101 | Filtro global **"Exibir: Todos os tipos"** do legado equivale à aba "Todos (N)" — aceito, é a mesma #69 | posicionamento — aceito |
+| 102 | Estado vazio: legado "Nenhum histórico encontrado." por seção; novo "Nenhum histórico encontrado" com descrição, um só para a aba. Equivalente | texto — aceito |
+
+Saída: #97 é a que pesa — o admin lê o histórico para saber **quem** escreveu, e o 360 é
+anônimo por regra, mas o feedback livre assinado não. #98/#99 são a mesma frente de
+filtros que fechou #15, #32 e #42 (`lib/tabela.ts`). #100 é troca de texto.
+
+## SCR-0017 · Emitir Relatório
+
+Rota `/relatorios` (seção "Emitir relatório executivo"; legado `/admin/relatorio-feedback`,
+tela própria com entrada de menu) · oráculo `reports/screenshots/emitir-relatorio.png` ·
+código `apps/web/src/app/relatorios/executivo.tsx`
+
+| # | Divergência | Peso |
+|---|---|---|
+| 103 | Falta o campo **Modo**: "Detalhado (múltiplas páginas)" (Capa + Resumo + Síntese + Detalhamento + Devolutiva) e "Resumo (1 folha)" (Condensado em 1 página A4). O novo gera um formato só, e `POST /reports/executive` não recebe modo | conteúdo — é uma escolha do relatório que o cliente usa |
+| 104 | Rótulos do **Escopo**: legado "Individual Completo" / "Feedback Específico" / "Geral do Ciclo" com as explicações "Todos os feedbacks de uma pessoa em um ciclo" / "Um feedback específico de um avaliador" / "Consolidado de todos os colaboradores"; novo "Por pessoa" / "Específico" / "Geral" com textos próprios. O modo literal pede os do legado | texto |
+| 105 | No escopo **Geral**, o legado ainda pede **Ciclo** ("Geral do Ciclo" = consolidado de um ciclo); o novo esconde o campo Ciclo e manda `cycle_id: null`. Confirmar o que o servidor faz sem ciclo no escopo geral — se agrega todos os ciclos, o relatório muda de significado | conteúdo — checar rodando |
+| 106 | **"Email do relatório"** no legado vem **pré-preenchido com o e-mail do colaborador** selecionado ("Pré-preenchido com o email do colaborador quando houver um selecionado."). No novo é sempre vazio, e `Colega` não traz e-mail | ação |
+| 107 | Dois botões no legado, **"Baixar PDF"** e **"Enviar por email"** (o segundo só habilita com e-mail); um no novo, "Gerar PDF", que faz os dois conforme o campo esteja preenchido. O download síncrono virou job (DEV-002, aceito); a junção dos botões é consequência | ação — aceito por DEV-002 |
+| 108 | Falta o cartão informativo **"Sobre os relatórios"** abaixo do formulário | conteúdo |
+| 109 | Título "Relatório de Feedback" e descrição "Gere relatórios executivos profissionais para impressão ou PDF." não existem — a seção chama "Emitir relatório executivo" e a entrada de menu "Emitir Relatório" sumiu (a tela virou seção de `/relatorios`) | texto / posicionamento — estrutural, já sinalizado como "parcial" no roteiro |
+| 110 | Rótulo "Colaborador" → "Pessoa avaliada" | texto |
+
+Saída: #103 é a única que muda o que o cliente recebe — o resumo de uma folha é um
+produto distinto do detalhado. #105 precisa de conferência rodando. As demais são texto e
+prefill.
+
+## SCR-0022 · Caderno do Ciclo (widget)
+
+Oráculo `feedback/screenshots/caderno-do-ciclo-painel.png` e `caderno-do-ciclo-widget.png`
+· legado `src/components/CycleNoteDrawer.tsx` e `GlobalCycleNotes.tsx` · código
+`apps/web/src/components/shell.tsx` (botão) e `apps/web/src/app/anotacoes/page.tsx`
+
+O roteiro dizia "falta o botão flutuante"; o botão entrou em 06/09. Mas o que ele faz
+diverge do legado:
+
+| # | Divergência | Peso |
+|---|---|---|
+| 111 | No legado o botão flutuante abre o caderno **por cima da tela atual** (painel lateral ou widget compacto), sem sair de onde a pessoa está — "a anotação nasce no meio de outra coisa", como o próprio comentário do `shell.tsx` diz. No novo o botão é um **link para `/anotacoes`**: navega para fora, e a pessoa perde a tela (o formulário de feedback, o relatório) que motivou a nota | ação — é o miolo do widget |
+| 112 | Legado usa **o ciclo ativo automaticamente** (cabeçalho "360 Feedback - Segunda Quinzena (agosto/2026)"); o novo exige escolher **Ciclo** num select obrigatório antes de anotar | ação |
+| 113 | Falta **"Gravar Áudio"** com transcrição (Web Speech API, Chrome/Edge). O schema novo já tem `is_audio_transcription` e a tela mostra "· ditada", mas nada grava | ação |
+| 114 | Falta o atalho **Ctrl+Enter** para salvar | ação |
+| 115 | Ícone: legado usa o livro no botão flutuante e no título; novo usa ✎. Rótulo "Anotar sobre alguém" é só de leitor de tela | posicionamento |
+| 116 | Textos: legado "Sobre quem?", placeholder "Anote observações, rascunhos ou informações relevantes para o ciclo…", vazio "Nenhuma anotação ainda." + "💡 Anote ao longo do ciclo para facilitar o preenchimento dos feedbacks!"; novo "Sobre quem" (sem ?), placeholder "Conduziu bem a audiência de conciliação…", vazio "Nenhuma anotação ainda" + "Anotar durante o ciclo evita depender da memória na hora de avaliar." | texto |
+| 117 | Legado esconde o botão quando **não há ciclo ativo**; o novo esconde quando não há equipe (`temEquipe`). Critérios diferentes — os dois fazem sentido, mas o do legado evita abrir um caderno sem ciclo para anotar | conteúdo |
+
+Saída: #111 e #112 são as que definem o widget — sem elas o botão é um atalho de menu.
+#113 é funcionalidade que o legado tinha e que o schema novo já prevê. #114 a #117 são
+forma e texto.
+
+### Resumo desta rodada
+
+| | |
+|---|---|
+| Telas conferidas | 4 (SCR-0005, 0006, 0017, 0022) |
+| Divergências | 27 (#91 a #117) |
+| Já aceitas por decisão anterior | 5 (#93, #95, #101, #102, #107) |
+| Precisam de conferência rodando | 2 (#92, #105) |
+| Mudam o que o cliente recebe | #103 (modo do relatório), #111/#112 (caderno sobre a tela), #97 (autor do feedback livre) |
+
+## Verificado rodando — 09/09/2026
+
+Conferência das 4 telas contra a stack local, com o tenant `demo` recriado do zero
+(`seed_demo.py --recriar`) e login como `admin@bragaduarte.com.br`. Fecha os dois itens
+"checar rodando" da rodada por código e acrescenta o que só aparece com dado de verdade.
+
+| O quê | Resultado |
+|---|---|
+| SCR-0005 tabela | 7 membros, colunas A enviar / Enviados / A ler / Progresso, selo "Ativo", "fora do ciclo" para quem não tem pedido, rodapé "1 de 6 feedbacks enviados (16.7%)" — bate com o oráculo em conteúdo |
+| SCR-0005 #92 | **Confirmada, pior do que a leitura do código dizia.** Como o admin vê todo mundo, a única pessoa "fora da equipe" é **ela mesma**: o select "Pessoa" oferece só "Helena Braga — Sócia-administradora". Virou BUG-09 |
+| SCR-0005 rodapé | "Total de membros na equipe: 7" fica **encoberto pelo botão flutuante** do caderno em 1366px de largura (o número não se lê) — BUG-10 |
+| SCR-0006 | 6 itens (2 livres, 2 clientes, 2 de 360) no escopo do admin, inclusive o anônimo sobre o Rafael. #97 **confirmada**: o livre do Diego mostra só "Diego Ramos", sem "De: Marina Duarte" |
+| SCR-0017 | **A seção "Emitir relatório executivo" não existia na stack rodando**: a imagem `deploy-web` era das 13:55 de 06/09, e o commit `2779ff2` que criou `executivo.tsx` é das 15:26. Não é defeito de código: é a stack que estava dois commits atrás. Imagem reconstruída e container recriado em 09/09; depois disso a seção aparece com Escopo (Geral / Por pessoa / Específico), e-mail opcional e "Gerar PDF" |
+| SCR-0017 #105 | `validar_escopo_executivo` dispensa ciclo no escopo `general` de propósito ("exceto no escopo geral"). O legado chamava esse escopo de **"Geral do Ciclo"** e exigia o ciclo. **Confirmada rodando**: "Gerar PDF" no escopo Geral sem ciclo devolveu 202, o worker gerou `executive-….pdf` e a lista mostra `executive · PDF · done`. É divergência de regra, não só de tela: sem ciclo o relatório geral consolida todos os ciclos |
+| SCR-0022 | Clicar no botão flutuante em `/` **navega para `/anotacoes`** (#111 confirmada). "Ciclo" obrigatório com "Selecione" (#112 confirmada). "Sobre quem" lista **a própria Helena Braga** entre as opções — BUG-11 |
+
+### BUG-09 — o admin pode pedir a própria inclusão na própria equipe *corrigido*
+
+`/minha-equipe`, como admin: o cartão "Incluir alguém na equipe" calcula quem está fora
+da equipe subtraindo os membros do escopo de `/profiles`. Para o admin o escopo é todo
+mundo (BR-MIGRAR-017), então sobra só quem está olhando. O select oferece a própria
+pessoa, e "Pedir inclusão" cria um `team-request` que o mesmo admin aprova. Duas saídas
+possíveis: esconder o cartão para quem tem escopo total, ou fazer dele a inclusão direta
+do legado (#91). Nas duas, a própria pessoa nunca entra na lista.
+
+### BUG-10 — o botão flutuante do caderno cobre o rodapé de Minha equipe *corrigido*
+
+Em 1366×~600 o "Total de membros na equipe: N" termina exatamente sob o botão fixo em
+`bottom-6 right-6`. O número fica ilegível. Vale para qualquer tela com texto alinhado
+à direita no fim da página.
+
+### BUG-11 — "Sobre quem" do caderno inclui quem está anotando *corrigido*
+
+`/anotacoes`: o select vem de `/auth/my-team`, que para o admin devolve todo mundo,
+inclusive ela. Anotação sobre si mesma não é caso de uso do caderno (o legado usa a
+equipe, sem o autor).
+
+### Correções de 09/09/2026
+
+- **BUG-09**: `minha-equipe/page.tsx` tira quem está olhando e os inativos do seletor de
+  inclusão. Para o admin, que já vê todo mundo, o cartão simplesmente não aparece.
+  Verificado rodando: a página abre direto em "Membros".
+- **BUG-10**: `shell.tsx` troca `py-6` por `pb-24 pt-6` no `<main>`, folga para o botão
+  fixo. Verificado rodando: "Total de membros na equipe: 7" legível no fim da página.
+- **BUG-11**: `anotacoes/page.tsx` filtra o autor do "Sobre quem" (`anotaveis`), mantendo
+  a lista inteira em `nomePor` para nomear notas antigas. Verificado rodando: 7 nomes, sem
+  Helena Braga.
+
+## Checagem geral — 09/09/2026
+
+Varredura completa depois das correções, com a stack local reconstruída no commit atual:
+
+| O quê | Resultado |
+|---|---|
+| `pytest` (dentro do container da API, banco `test`) | **385 passed** em 5.7s |
+| `ruff check apps/api apps/worker` (com o `ruff.toml` da raiz) | All checks passed |
+| `npm run typecheck` / `npm run lint` (web) | limpos, 0 avisos |
+| 31 telas autenticadas como admin | todas carregam; **toda chamada à API termina em 200** depois do refresh; **zero erros de console** |
+| Rotas dinâmicas: histórico por pessoa, avaliação de cliente, avaliação pública por token | carregam com dado real; id/token inválido cai em mensagem própria |
+| 404 | página própria, com link para o início |
+
+### BUG-12 — responder feedback ficava em "Carregando…" para sempre *corrigido*
+
+`/meus-feedbacks/{id}` com um id que a API responde 404 (pedido de outra pessoa, ou
+inexistente): o `catch` gravava a mensagem de erro, mas o render só saía de
+"Carregando…" quando `detalhe` existia — e ele nunca existia. As outras duas páginas de
+detalhe (`/historico/{id}`, `/avaliacoes-clientes/{id}`) já tratavam o caso. Corrigido com
+um estado `naoEncontrado` que mostra o aviso e o link de volta.
+
+### O que a varredura não cobre
+
+Ações com efeito (enviar feedback, aprovar pedido, editar ciclo) foram exercitadas só pelos
+385 testes de service e pelas rodadas anteriores de "Verificado rodando", não nesta
+varredura de navegação. A paridade de conteúdo das 27 divergências (#91 a #117) segue
+como fila de trabalho, não como erro.

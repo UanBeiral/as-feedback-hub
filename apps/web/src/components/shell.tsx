@@ -187,7 +187,10 @@ export function Shell({ children }: { children: React.ReactNode }) {
           </div>
         </header>
 
-        <main className="flex-1 px-6 py-6">{children}</main>
+        {/* `pb-24`, e não `py-6`: o botão flutuante do caderno ocupa o canto inferior
+            direito, e sem essa folga o último texto alinhado à direita — o "Total de
+            membros na equipe" de Minha equipe — termina embaixo dele (BUG-10). */}
+        <main className="flex-1 px-6 pb-24 pt-6">{children}</main>
       </div>
 
       {/* O botão flutuante do caderno de ciclo (SCR-0022). Fica em toda tela autenticada

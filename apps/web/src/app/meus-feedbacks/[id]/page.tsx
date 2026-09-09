@@ -11,6 +11,7 @@
  *   front é como as duas versões passam a discordar.
  */
 
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
@@ -36,6 +37,7 @@ export default function ResponderFeedback() {
   const [respostas, setRespostas] = useState<Record<string, Resposta>>({});
   const [mensagem, setMensagem] = useState<{ tom: "erro" | "sucesso"; texto: string } | null>(null);
   const [salvando, setSalvando] = useState(false);
+  const [naoEncontrado, setNaoEncontrado] = useState(false);
 
   useEffect(() => {
     api<RequisicaoDetalhada>(`/requests/${parametros.id}`)
@@ -54,7 +56,13 @@ export default function ResponderFeedback() {
           ),
         );
       })
-      .catch(() => setMensagem({ tom: "erro", texto: "Feedback não encontrado." }));
+      .catch(() => {
+        // `detalhe` continua `null`, e o render abaixo trata `null` como "carregando":
+        // sem esta marca a página ficava em "Carregando…" para sempre quando a API
+        // devolvia 404 — id errado, ou pedido que não é de quem está olhando (BUG-12).
+        setNaoEncontrado(true);
+        setMensagem({ tom: "erro", texto: "Feedback não encontrado." });
+      });
   }, [parametros.id]);
 
   const corpo = useCallback(() => {
@@ -103,7 +111,16 @@ export default function ResponderFeedback() {
       descricao="Suas respostas ficam visíveis para quem recebe o feedback."
     >
       {detalhe === null ? (
-        <Carregando />
+        naoEncontrado ? (
+          <div className="space-y-4">
+            {mensagem && <Aviso tom={mensagem.tom}>{mensagem.texto}</Aviso>}
+            <Link href="/meus-feedbacks" className="text-sm text-primary underline-offset-4 hover:underline">
+              ← Voltar para meus feedbacks
+            </Link>
+          </div>
+        ) : (
+          <Carregando />
+        )
       ) : (
         <div className="space-y-4">
           {mensagem && <Aviso tom={mensagem.tom}>{mensagem.texto}</Aviso>}
