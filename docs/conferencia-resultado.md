@@ -17,7 +17,7 @@
 | Conferidas | 18 de 18 literais em 06/09 (ver o resumo do roteiro) + 4 que estavam sem seção, conferidas por código em 09/09 |
 | Defeitos próprios encontrados | 8 (um bloqueava a conferência; todos corrigidos) |
 | Divergências contra o oráculo | 117 registradas abaixo (90 até 06/09 + 27 em 09/09) |
-| **Já resolvidas** | **87 implementadas + 3 desvios deliberados** até 06/09; as 27 de 09/09 estão abertas (5 já aceitas por decisão anterior) |
+| **Já resolvidas** | **87 implementadas + 3 desvios deliberados** até 06/09; das 27 de 09/09, 5 já aceitas, 21 implementadas e 1 desvio deliberado (#105 → DEV-A14) |
 
 O bloco de **Administração** está fechado (SCR-0003, 0007, 0008, 0009, 0010, 0011, 0012,
 0013, 0015, 0018 e 0024) e o de **Equipe/Feedback** está a meio caminho (SCR-0029, 0030,
@@ -1201,3 +1201,93 @@ Ações com efeito (enviar feedback, aprovar pedido, editar ciclo) foram exercit
 385 testes de service e pelas rodadas anteriores de "Verificado rodando", não nesta
 varredura de navegação. A paridade de conteúdo das 27 divergências (#91 a #117) segue
 como fila de trabalho, não como erro.
+
+## Resolvidas — as 27 da conferência complementar (09/09/2026)
+
+Das 27 (#91 a #117), 5 já estavam aceitas (#93, #95, #101, #102, #107). As outras 22
+saíram assim: **21 implementadas** e **1 registrada como desvio deliberado** (#105, ver
+`spec-deviations.md` § DEV-A14).
+
+### SCR-0005 · Minha Equipe (Admin)
+
+- **#91 / #92** — voltou o **"+ Adicionar Membro"** do legado: modal com busca por nome,
+  lista com checkbox e cargo, contador "N selecionados", Cancelar/Adicionar. Para a
+  administração a inclusão é **direta** (`PUT /profiles/{id}/manager`), e a lista de
+  candidatos é quem não responde diretamente a ela — o escopo de "vê todo mundo"
+  (BR-MIGRAR-017) continua valendo para a tabela. Para gestor e coordenador o mesmo
+  modal vira **pedido** (`POST /team-requests`), porque puxar alguém muda a hierarquia de
+  outra pessoa. O cartão "Incluir alguém na equipe" foi embora.
+- **#94** — cabeçalhos **"Pendentes de Enviar"** e **"Pendentes de Leitura"**, com o
+  tooltip de ajuda em cada coluna (`Coluna.ajuda` → `title` no `th`).
+- **#96** — a administração fica sem descrição sob o título, como no oráculo; a do
+  gestor continua. Título com maiúsculas ("Minha Equipe").
+- O botão de exportar subiu para o cabeçalho, ao lado de "+ Adicionar Membro", na
+  posição do legado (#93 continua CSV).
+
+### SCR-0006 · Histórico da Equipe (Admin)
+
+- **#97** — feedback livre mostra **"Para: X · De: Y"**. A API ganhou `autor_nome` no
+  item (outer join no `giver_id`; anônimo sai como "De: anônimo", porque não há autor no
+  banco — AMB-001). O 360 continua sem autor, de propósito.
+- **#98** — o 360 da equipe agora lista **todos os status** (pendente, rascunho, enviado,
+  abdicado, cancelado) com selo, e ganhou os filtros do legado: **Status**, toggle
+  **Cancelados (Ocultos/Visíveis)** — ocultos por padrão —, período **De/Até** e
+  ordenação **A-Z**. A API passou a devolver `status` no item; `todos_os_status=True`
+  só no histórico da equipe e no de uma pessoa. O "Meu histórico" fica só com o enviado.
+- **#99** — feedback livre ganhou o select de status: Todos / Com ciência / Sem ciência.
+- **#100** — descrição: "Visualize todos os feedbacks enviados e recebidos pela sua
+  equipe em ciclos anteriores e no ciclo atual."
+- As abas usam os rótulos do "Exibir" do legado: Todos os tipos / Feedback Livre /
+  Avaliações de Clientes / 360° — Ciclos de Feedback.
+
+### SCR-0017 · Emitir Relatório
+
+- **#109** — tela própria em **`/relatorios/emitir`**, com entrada **"Emitir relatório"**
+  no menu, título "Relatório de Feedback" e a descrição do legado. A seção saiu de
+  `/relatorios`, que ficou só com os dados e "Minhas exportações".
+- **#103** — campo **Modo**: "Detalhado (múltiplas páginas)" e "Resumo (1 folha)", com as
+  explicações do legado. Vai como `modo` em `POST /reports/executive`, e o worker gera
+  layouts distintos: o detalhado tem capa, página de resumo e detalhamento; o resumo é
+  uma A4 com fonte menor, cortado no que cabe e com aviso do que ficou de fora.
+- **#104** — Escopo com os rótulos e explicações do legado: "Individual Completo",
+  "Feedback Específico", "Geral do Ciclo".
+- **#105** — ver DEV-A14. O campo Ciclo aparece também no escopo geral, opcional.
+- **#106** — "Email do relatório" **pré-preenchido com o e-mail do colaborador** quando a
+  lista de perfis está disponível (administração e RH; `/colleagues` não expõe e-mail de
+  propósito). Digitar outro e-mail desliga o prefill.
+- **#107** — voltaram os dois botões, **"Baixar PDF"** e **"Enviar por email"** (o segundo
+  só habilita com e-mail). Os dois registram job no worker (DEV-002).
+- **#108** — cartão **"Sobre os relatórios"** com os textos de Detalhado e Resumo.
+- **#110** — rótulo "Colaborador".
+
+### SCR-0022 · Caderno do Ciclo
+
+- **#111** — o botão flutuante abre o caderno **por cima da tela** (`components/caderno.tsx`),
+  em qualquer página autenticada, sem navegar. Painel com cabeçalho, nome do ciclo,
+  "Sobre quem?", área de texto, ações e a lista de anotações da pessoa neste ciclo.
+- **#112** — usa o **ciclo aberto automaticamente** (`GET /cycles?status=open`).
+- **#113** — **"Gravar Áudio"** com transcrição pela Web Speech API (`pt-BR`); a nota sai
+  com `is_audio_transcription` e o 🎙️ na lista. Fora de Chrome/Edge o botão fica
+  desabilitado dizendo por quê.
+- **#114** — **Ctrl+Enter** salva.
+- **#115** — ícone do livro no botão e no título.
+- **#116** — textos do legado: "Sobre quem?", o placeholder, "Nenhuma anotação ainda." e
+  "💡 Anote ao longo do ciclo para facilitar o preenchimento dos feedbacks!". Também na
+  página `/anotacoes`.
+- **#117** — o botão só existe **enquanto há ciclo aberto** (e para quem tem equipe).
+
+### Verificado rodando — as 27, em 09/09/2026
+
+| O quê | Resultado |
+|---|---|
+| Minha Equipe (admin) | título "Minha Equipe", sem descrição, "+ Adicionar Membro" no cabeçalho; modal com busca, 7 candidatos com cargo e checkbox, "0 selecionados", Cancelar/Adicionar; cabeçalhos "Pendentes de Enviar" / "Pendentes de Leitura" com tooltip |
+| Histórico da equipe (admin) | 12 itens (2 livres, 2 clientes, 8 de 360 com selo de status); "Para: Diego Ramos · De: Marina Duarte" e "Para: Rafael Antunes · De: anônimo"; filtros de ciência, status, cancelados, De/Até, A-Z e Data presentes |
+| Emitir relatório | tela própria em `/relatorios/emitir` com entrada no menu; Modo, Escopo com os rótulos do legado, Colaborador, Ciclo, e-mail **pré-preenchido** (`coord@…` ao escolher Rafael), "Baixar PDF" + "Enviar por email", cartão "Sobre os relatórios" |
+| PDF nos dois modos | Bruna / 2º semestre: `modo=summary` gerou **1 página**; `modo=detailed` gerou **3 páginas** (capa, resumo, detalhamento) |
+| Caderno do Ciclo | botão flutuante abre o painel sobre `/relatorios/emitir` sem navegar; cabeçalho "2º semestre" (ciclo aberto automático); "Sobre quem?" sem a própria admin; nota salva com **Ctrl+Enter** (`POST /cycle-notes` 201) e listada com data e "Apagar" |
+| API | 387 testes (2 novos: todos os status do 360 e autor do livre), ruff limpo; `openapi.json` e o client TS regenerados |
+
+Achado de dado, não de código: o executivo "Individual Completo" de Rafael Antunes no 2º
+semestre falha no worker com "O filtro selecionado não devolveu nenhuma linha" (o pedido
+recebido por ele nesse ciclo ainda não foi respondido). O job vai para a DLQ após as
+tentativas, como desenhado (AMB-006).

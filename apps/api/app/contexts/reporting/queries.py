@@ -355,6 +355,13 @@ class ItemDeHistorico:
     # As mesmas informacoes de `detalhe`, mas separadas pelo rotulo que tinham no
     # formulario. `detalhe` fica para busca e exportacao, onde uma linha so serve.
     partes: list[ParteDoHistorico] = field(default_factory=list)
+    # Quem escreveu, quando isso é público: feedback livre assinado mostra "De: …", como
+    # no legado. Nulo no anônimo (não há autor no banco, AMB-001), no 360 (o avaliador
+    # não sai da API de propósito) e na avaliação de cliente (o autor é o cliente).
+    autor_nome: str | None = None
+    # Status do registro de origem, para os filtros do histórico: no 360 é o do request
+    # (pendente, rascunho, enviado, abdicado, cancelado); nos outros tipos fica nulo.
+    status: str | None = None
 
 
 class TeamHistoryQuery(TenantScopedRepository[FeedbackRequest]):
@@ -383,6 +390,7 @@ class TeamHistoryQuery(TenantScopedRepository[FeedbackRequest]):
         if not visiveis:
             return []
         leitor = aliased(Profile)
+        autor = aliased(Profile)
         stmt = (
             select(
                 FreeFeedback.id,
@@ -395,10 +403,14 @@ class TeamHistoryQuery(TenantScopedRepository[FeedbackRequest]):
                 FreeFeedback.message,
                 FreeFeedback.read_at,
                 leitor.full_name,
+                autor.full_name,
             )
             .select_from(FreeFeedback)
             .join(Profile, Profile.id == FreeFeedback.receiver_id)
             .outerjoin(leitor, leitor.id == FreeFeedback.read_by)
+            # `giver_id` é nulo no anônimo, então o outer join já devolve `None` sem
+            # precisar de `case`: o anonimato está no dado, não na serialização.
+            .outerjoin(autor, autor.id == FreeFeedback.giver_id)
             .where(
                 FreeFeedback.tenant_id == self.tenant_id,
                 FreeFeedback.receiver_id.in_(visiveis),
@@ -425,6 +437,7 @@ class TeamHistoryQuery(TenantScopedRepository[FeedbackRequest]):
                 ),
                 lido_em=lido,
                 lido_por=leitor_nome,
+                autor_nome=None if anonimo else autor_nome,
             )
             for (
                 item_id,
@@ -437,6 +450,7 @@ class TeamHistoryQuery(TenantScopedRepository[FeedbackRequest]):
                 mensagem,
                 lido,
                 leitor_nome,
+                autor_nome,
             ) in linhas
         ]
 
@@ -484,20 +498,35 @@ class TeamHistoryQuery(TenantScopedRepository[FeedbackRequest]):
         ]
 
     async def ciclos(
-        self, visiveis: set[UUID], *, limite: int = LIMITE_TABELA
+        self,
+        visiveis: set[UUID],
+        *,
+        todos_os_status: bool = False,
+        limite: int = LIMITE_TABELA,
     ) -> list[ItemDeHistorico]:
+        """Requests 360 recebidos por quem está no escopo.
+
+        `todos_os_status` é o que o histórico da equipe pede: o legado listava pendente,
+        rascunho, enviado e abdicado, com filtro de status e um toggle para os
+        cancelados. O histórico da própria pessoa fica só com o enviado — pedido em
+        rascunho sobre mim é trabalho de outra pessoa, não histórico meu.
+        """
         if not visiveis:
             return []
         leitor = aliased(Profile)
+        # Sem `submitted_at` no que não foi enviado, a data é a de criação: item sem
+        # data iria para o fim da lista nas duas ordenações.
+        quando = func.coalesce(FeedbackRequest.submitted_at, FeedbackRequest.created_at)
         stmt = (
             select(
                 FeedbackRequest.id,
-                FeedbackRequest.submitted_at,
+                quando,
                 Profile.id,
                 Profile.full_name,
                 FeedbackCycle.name,
                 FeedbackRequest.read_at,
                 leitor.full_name,
+                FeedbackRequest.status,
             )
             .select_from(FeedbackRequest)
             .join(Profile, Profile.id == FeedbackRequest.receiver_id)
@@ -506,17 +535,18 @@ class TeamHistoryQuery(TenantScopedRepository[FeedbackRequest]):
             .where(
                 FeedbackRequest.tenant_id == self.tenant_id,
                 FeedbackRequest.receiver_id.in_(visiveis),
-                FeedbackRequest.status == "submitted",
             )
-            .order_by(FeedbackRequest.submitted_at.desc())
+            .order_by(quando.desc())
             .limit(limite)
         )
+        if not todos_os_status:
+            stmt = stmt.where(FeedbackRequest.status == "submitted")
         linhas = (await self._session.execute(stmt)).all()
         return [
             ItemDeHistorico(
                 tipo="ciclo",
                 item_id=item_id,
-                quando=quando,
+                quando=data,
                 sobre_id=pid,
                 sobre_nome=nome,
                 titulo=f"Feedback 360 — {ciclo}",
@@ -524,8 +554,9 @@ class TeamHistoryQuery(TenantScopedRepository[FeedbackRequest]):
                 detalhe=None,
                 lido_em=lido,
                 lido_por=leitor_nome,
+                status=situacao,
             )
-            for item_id, quando, pid, nome, ciclo, lido, leitor_nome in linhas
+            for item_id, data, pid, nome, ciclo, lido, leitor_nome, situacao in linhas
         ]
 
 

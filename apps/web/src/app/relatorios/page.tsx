@@ -37,7 +37,6 @@ import { ApiError, api, apiBlob } from "@/lib/api";
 import { formatarDataHora } from "@/lib/formato";
 import type {
   Ciclo,
-  Colega,
   Departamento,
   JobDeExportacao,
   Linha360,
@@ -47,7 +46,6 @@ import type {
 } from "@/lib/tipos";
 
 import { AbaDeRelatorio, type ColunaDeRelatorio } from "./aba";
-import { EmitirRelatorio } from "./executivo";
 
 type Aba = "360" | "clientes" | "livres" | "engajamento";
 
@@ -138,7 +136,6 @@ export default function Relatorios() {
   const [exportacoes, setExportacoes] = useState<JobDeExportacao[]>([]);
   const [ciclos, setCiclos] = useState<Ciclo[]>([]);
   const [departamentos, setDepartamentos] = useState<Departamento[]>([]);
-  const [pessoas, setPessoas] = useState<Colega[]>([]);
   const [mensagem, setMensagem] = useState<{ tom: "erro" | "sucesso"; texto: string } | null>(null);
 
   const [ciclo, setCiclo] = useState("");
@@ -158,11 +155,6 @@ export default function Relatorios() {
     api<Departamento[]>("/departments")
       .then(setDepartamentos)
       .catch(() => setDepartamentos([]));
-    // `/colleagues` e não `/profiles`: a lista de nomes basta para o seletor, e a rota de
-    // admin recusaria quem tem `can_generate_reports` sem ser admin.
-    api<Colega[]>("/colleagues")
-      .then(setPessoas)
-      .catch(() => setPessoas([]));
     api<LinhaDeEngajamento[]>("/reports/engagement")
       .then(setEngajamento)
       .catch(() => setEngajamento([]));
@@ -375,8 +367,6 @@ export default function Relatorios() {
             ]}
           />
         )}
-
-        <EmitirRelatorio ciclos={ciclos} pessoas={pessoas} />
 
         <Cartao
           titulo="Minhas exportações"

@@ -27,16 +27,16 @@ import {
   BarraDeFiltros,
   Botao,
   BotaoDeExportar,
-  Campo,
   Carregando,
   Cartao,
   Celula,
   ContadorDeResultados,
+  Entrada,
   EstadoVazio,
   FiltroSelecao,
   Linha,
+  Modal,
   Progresso,
-  Selecao,
   Selo,
   SeloDePapel,
   Tabela,
@@ -46,7 +46,7 @@ import { exportarCsv } from "@/lib/exportar";
 import { ROTULO_DO_STATUS_DE_PESSOA } from "@/lib/formato";
 import { useTabela } from "@/lib/tabela";
 import { FeedbackLivre } from "@/components/feedback-livre";
-import { useSessao } from "@/lib/sessao";
+import { temPapel, useSessao } from "@/lib/sessao";
 import type { AcompanhamentoDaEquipe, PedidoDeEquipe, Perfil } from "@/lib/tipos";
 
 /** Ação textual dentro de uma linha de tabela. Botão cheio aqui pesaria a tabela. */
@@ -97,26 +97,35 @@ export default function MinhaEquipe() {
   const [aviso, setAviso] = useState<{ tom: "erro" | "sucesso"; texto: string } | null>(null);
   const [feedbackPara, setFeedbackPara] = useState<Membro | null>(null);
   const [lembrando, setLembrando] = useState<string | null>(null);
-  const [aIncluir, setAIncluir] = useState("");
   const [foraDaEquipe, setForaDaEquipe] = useState<Perfil[]>([]);
+  const [modalAberto, setModalAberto] = useState(false);
+  const [buscaNoModal, setBuscaNoModal] = useState("");
+  const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
+  const [incluindo, setIncluindo] = useState(false);
 
 
   const meuId = usuario?.profile_id;
+  // A administração inclui direto, como no legado; gestor e coordenador pedem, porque
+  // puxar alguém para a própria equipe muda a hierarquia de outra pessoa.
+  const incluiDireto = temPapel(usuario, "admin", "rh");
 
   const carregar = useCallback(async () => {
     const acompanhamento = await api<AcompanhamentoDaEquipe>("/team/progress");
     setEquipe(acompanhamento);
     try {
-      // Só quem já não está na equipe entra no seletor: oferecer quem já está seria
-      // pedir uma inclusão que a administração recusaria. Quem está olhando também
-      // sai: o escopo não o lista como membro, e sem esta linha a administração — que
-      // vê todo mundo — via só a si mesma no seletor (BUG-09). Inativos idem: pedir a
-      // inclusão de quem foi desligado é um pedido que só termina em recusa.
+      // Quem pode entrar na equipe. Para a administração, que vê todo mundo no escopo
+      // (BR-MIGRAR-017), "equipe" no sentido do legado é quem responde diretamente a
+      // ela: candidato é quem tem outro gestor, ou nenhum. Para os demais, é quem não
+      // está no escopo. Quem está olhando nunca entra (BUG-09), nem os inativos: incluir
+      // quem foi desligado é um vínculo que só termina em recusa.
       const todos = await api<Perfil[]>("/profiles");
       const jaTenho = new Set(acompanhamento.membros.map((m) => m.profile_id));
       setForaDaEquipe(
         todos.filter(
-          (p) => !jaTenho.has(p.id) && p.id !== meuId && p.status === "active",
+          (p) =>
+            p.id !== meuId &&
+            p.status === "active" &&
+            (incluiDireto ? p.manager_id !== meuId : !jaTenho.has(p.id)),
         ),
       );
     } catch {
@@ -130,7 +139,7 @@ export default function MinhaEquipe() {
       // deve estragar a tela de equipe.
       setPedidos([]);
     }
-  }, [meuId]);
+  }, [meuId, incluiDireto]);
 
   useEffect(() => {
     carregar().catch(() => setEquipe(SEM_EQUIPE));
@@ -212,31 +221,58 @@ export default function MinhaEquipe() {
     );
   }
 
-  async function pedirInclusao(evento: React.FormEvent) {
-    evento.preventDefault();
+  function alternarSelecionado(id: string) {
+    setSelecionados((atual) => {
+      const proximo = new Set(atual);
+      if (proximo.has(id)) proximo.delete(id);
+      else proximo.add(id);
+      return proximo;
+    });
+  }
+
+  async function adicionarMembros() {
+    if (selecionados.size === 0) return;
     setAviso(null);
+    setIncluindo(true);
     try {
-      // Pedido, e não inclusão direta. Puxar alguém para a sua equipe muda a hierarquia
-      // de outra pessoa: no legado o "+ Adicionar Membro" fazia isso em silêncio, e aqui
-      // o fluxo de `team-requests` — que já existia — avisa os dois lados e deixa a
-      // decisão com quem administra.
-      await api("/team-requests", {
-        method: "POST",
-        body: { requested_member_id: aIncluir },
-      });
-      setAIncluir("");
+      for (const id of selecionados) {
+        if (incluiDireto) {
+          // Inclusão direta: o vínculo é a administração que faz, como no legado. O
+          // servidor recusa ciclo na hierarquia (A→B→A).
+          await api(`/profiles/${id}/manager`, { method: "PUT", body: { manager_id: meuId } });
+        } else {
+          // Pedido, e não inclusão. Puxar alguém para a sua equipe muda a hierarquia de
+          // outra pessoa: o fluxo de `team-requests` avisa os dois lados e deixa a
+          // decisão com quem administra.
+          await api("/team-requests", { method: "POST", body: { requested_member_id: id } });
+        }
+      }
+      const quantos = selecionados.size;
+      setSelecionados(new Set());
+      setBuscaNoModal("");
+      setModalAberto(false);
       setAviso({
         tom: "sucesso",
-        texto: "Pedido enviado. A administração decide, e os dois lados são avisados.",
+        texto: incluiDireto
+          ? `${quantos} pessoa(s) adicionada(s) à equipe.`
+          : `${quantos} pedido(s) enviado(s). A administração decide, e os dois lados são avisados.`,
       });
       await carregar();
     } catch (falha) {
       setAviso({
         tom: "erro",
-        texto: falha instanceof ApiError ? falha.message : "Não foi possível pedir agora.",
+        texto: falha instanceof ApiError ? falha.message : "Não foi possível adicionar agora.",
       });
+    } finally {
+      setIncluindo(false);
     }
   }
+
+  const candidatos = foraDaEquipe.filter((p) =>
+    buscaNoModal.trim()
+      ? `${p.full_name} ${p.job_title ?? ""}`.toLowerCase().includes(buscaNoModal.toLowerCase())
+      : true,
+  );
 
   async function removerDaEquipe(membro: Membro) {
     setAviso(null);
@@ -273,15 +309,86 @@ export default function MinhaEquipe() {
 
   return (
     <PaginaAutenticada
-      titulo="Minha equipe"
+      titulo="Minha Equipe"
+      // A administração não tem descrição no legado; o gestor tem a do recorte do ciclo.
       descricao={
-        equipe?.cycle_name
-          ? `Acompanhe o progresso dos membros da sua equipe no ciclo ${equipe.cycle_name}. Feedbacks livres e de clientes são exibidos em outras seções.`
-          : "Quem está no seu escopo — subordinados diretos e, se você coordena, também os membros coordenados."
+        incluiDireto
+          ? undefined
+          : equipe?.cycle_name
+            ? `Acompanhe o progresso dos membros da sua equipe no ciclo ${equipe.cycle_name}. Feedbacks livres e de clientes são exibidos em outras seções.`
+            : "Quem está no seu escopo — subordinados diretos e, se você coordena, também os membros coordenados."
+      }
+      acao={
+        // O exportar fica na barra da tabela, com a contagem, como nas outras telas.
+        <Botao onClick={() => setModalAberto(true)}>+ Adicionar Membro</Botao>
       }
     >
       <div className="space-y-6">
         {aviso && <Aviso tom={aviso.tom}>{aviso.texto}</Aviso>}
+
+        {modalAberto && (
+          <Modal
+            titulo="Adicionar Membro"
+            descricao={
+              incluiDireto
+                ? "Selecione usuários para adicionar à equipe."
+                : "Selecione usuários. Vira um pedido: a administração decide, e os dois lados são avisados."
+            }
+            aoFechar={() => setModalAberto(false)}
+            rodape={
+              <>
+                <span className="text-sm text-muted-foreground">
+                  {selecionados.size} selecionados
+                </span>
+                <span className="flex gap-2">
+                  <Botao variante="secundario" onClick={() => setModalAberto(false)}>
+                    Cancelar
+                  </Botao>
+                  <Botao
+                    onClick={() => void adicionarMembros()}
+                    desabilitado={selecionados.size === 0 || incluindo}
+                  >
+                    {incluindo ? "Adicionando…" : "Adicionar"}
+                  </Botao>
+                </span>
+              </>
+            }
+          >
+            <Entrada
+              type="search"
+              autoFocus
+              value={buscaNoModal}
+              placeholder="Buscar por nome..."
+              onChange={(e) => setBuscaNoModal(e.target.value)}
+              className="mb-3"
+            />
+            {candidatos.length === 0 ? (
+              <EstadoVazio
+                titulo={buscaNoModal ? "Ninguém com esse nome" : "Ninguém para adicionar"}
+                descricao="A lista traz as pessoas ativas que ainda não estão na sua equipe."
+              />
+            ) : (
+              <ul className="divide-y divide-border rounded-md border border-border">
+                {candidatos.map((pessoa) => (
+                  <li key={pessoa.id}>
+                    <label className="flex cursor-pointer items-center gap-3 px-3 py-2 hover:bg-muted">
+                      <input
+                        type="checkbox"
+                        checked={selecionados.has(pessoa.id)}
+                        onChange={() => alternarSelecionado(pessoa.id)}
+                        className="h-4 w-4 rounded border-input"
+                      />
+                      <span className="text-sm font-medium text-foreground">{pessoa.full_name}</span>
+                      {pessoa.job_title && (
+                        <span className="text-xs text-muted-foreground">{pessoa.job_title}</span>
+                      )}
+                    </label>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Modal>
+        )}
 
         {feedbackPara && (
           <FeedbackLivre
@@ -311,34 +418,6 @@ export default function MinhaEquipe() {
                 </li>
               ))}
             </ul>
-          </Cartao>
-        )}
-
-        {foraDaEquipe.length > 0 && (
-          <Cartao
-            titulo="Incluir alguém na equipe"
-            descricao="Vira um pedido: a administração decide, e os dois lados são avisados."
-          >
-            <form onSubmit={pedirInclusao} className="flex flex-wrap items-end gap-3">
-              <div className="min-w-64 flex-1">
-                <Campo rotulo="Pessoa" obrigatorio>
-                  <Selecao
-                    required
-                    value={aIncluir}
-                    onChange={(e) => setAIncluir(e.target.value)}
-                  >
-                    <option value="">Selecione</option>
-                    {foraDaEquipe.map((pessoa) => (
-                      <option key={pessoa.id} value={pessoa.id}>
-                        {pessoa.full_name}
-                        {pessoa.job_title ? ` — ${pessoa.job_title}` : ""}
-                      </option>
-                    ))}
-                  </Selecao>
-                </Campo>
-              </div>
-              <Botao tipo="submit">Pedir inclusão</Botao>
-            </form>
           </Cartao>
         )}
 
@@ -391,11 +470,27 @@ export default function MinhaEquipe() {
                 colunas={[
                   { rotulo: "Nome", campo: "nome" },
                   { rotulo: "Cargo", campo: "cargo" },
-                  { rotulo: "Status", campo: "status" },
-                  { rotulo: "A enviar", campo: "aEnviar" },
-                  { rotulo: "Enviados", campo: "enviados" },
-                  { rotulo: "A ler", campo: "aLer" },
-                  { rotulo: "Progresso", campo: "progresso" },
+                  { rotulo: "Status", campo: "status", ajuda: "Situação do cadastro da pessoa" },
+                  {
+                    rotulo: "Pendentes de Enviar",
+                    campo: "aEnviar",
+                    ajuda: "Feedbacks que a pessoa ainda precisa escrever neste ciclo",
+                  },
+                  {
+                    rotulo: "Enviados",
+                    campo: "enviados",
+                    ajuda: "Feedbacks que a pessoa já enviou neste ciclo",
+                  },
+                  {
+                    rotulo: "Pendentes de Leitura",
+                    campo: "aLer",
+                    ajuda: "Feedbacks recebidos que a pessoa ainda não leu",
+                  },
+                  {
+                    rotulo: "Progresso",
+                    campo: "progresso",
+                    ajuda: "Enviados sobre o total esperado da pessoa no ciclo",
+                  },
                   "Ações",
                 ]}
               >

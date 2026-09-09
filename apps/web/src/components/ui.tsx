@@ -251,7 +251,7 @@ export type Ordenacao = {
  * Uma coluna. Passe `string` para coluna simples, ou `{ rotulo, campo }` para a coluna
  * ser clicável — `campo` é o que volta em `aoOrdenar`.
  */
-export type Coluna = string | { rotulo: string; campo: string };
+export type Coluna = string | { rotulo: string; campo: string; ajuda?: string };
 
 export function Tabela({
   colunas,
@@ -274,11 +274,15 @@ export function Tabela({
             {colunas.map((coluna) => {
               const rotulo = typeof coluna === "string" ? coluna : coluna.rotulo;
               const campo = typeof coluna === "string" ? null : coluna.campo;
+              const ajuda = typeof coluna === "string" ? undefined : coluna.ajuda;
               const ativa = campo !== null && ordenacao?.campo === campo;
 
               return (
                 <th
                   key={rotulo}
+                  // `title` é o tooltip de ajuda do legado ("Pendentes de Enviar ⓘ"):
+                  // explica a coluna sem gastar uma linha de cabeçalho.
+                  title={ajuda}
                   className="px-3 py-2 font-medium text-muted-foreground"
                   // `aria-sort` é atributo da célula de cabeçalho, não do botão dentro
                   // dela: é o `th` que o leitor de tela anuncia como coluna ordenada.
@@ -628,6 +632,67 @@ export function EstadoVazio({ titulo, descricao }: { titulo: string; descricao?:
     <div className="rounded-lg border border-dashed border-border px-4 py-10 text-center">
       <p className="text-sm font-medium text-foreground">{titulo}</p>
       {descricao && <p className="mt-1 text-sm text-muted-foreground">{descricao}</p>}
+    </div>
+  );
+}
+
+/**
+ * Diálogo modal. Fecha no Esc, no X e no clique fora do conteúdo.
+ *
+ * O foco vai para o conteúdo ao abrir para o leitor de tela anunciar o título; não há
+ * armadilha de foco porque o overlay cobre a página e nada atrás dele recebe clique.
+ */
+export function Modal({
+  titulo,
+  descricao,
+  aoFechar,
+  rodape,
+  children,
+}: {
+  titulo: string;
+  descricao?: string;
+  aoFechar: () => void;
+  rodape?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4"
+      onClick={aoFechar}
+      onKeyDown={(evento) => {
+        if (evento.key === "Escape") aoFechar();
+      }}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={titulo}
+        tabIndex={-1}
+        autoFocus
+        onClick={(evento) => evento.stopPropagation()}
+        className="flex max-h-[min(90vh,640px)] w-full max-w-lg flex-col rounded-lg border border-border bg-card shadow-xl"
+      >
+        <header className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
+          <div>
+            <h2 className="text-base font-semibold text-card-foreground">{titulo}</h2>
+            {descricao && <p className="mt-1 text-sm text-muted-foreground">{descricao}</p>}
+          </div>
+          <button
+            type="button"
+            onClick={aoFechar}
+            aria-label="Fechar"
+            className="rounded-md px-2 text-lg leading-none text-muted-foreground hover:bg-muted"
+          >
+            ×
+          </button>
+        </header>
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">{children}</div>
+        {rodape && (
+          <footer className="flex items-center justify-between gap-3 border-t border-border px-5 py-3">
+            {rodape}
+          </footer>
+        )}
+      </div>
     </div>
   );
 }

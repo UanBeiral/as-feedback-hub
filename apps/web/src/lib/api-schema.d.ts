@@ -2775,6 +2775,11 @@ export interface components {
             escopo: string;
             /** Giver Id */
             giver_id?: string | null;
+            /**
+             * Modo
+             * @default detailed
+             */
+            modo: string;
             /** Profile Id */
             profile_id?: string | null;
         };
@@ -2975,6 +2980,8 @@ export interface components {
         };
         /** ItemDeHistoricoOut */
         ItemDeHistoricoOut: {
+            /** Autor Nome */
+            autor_nome?: string | null;
             /** Detalhe */
             detalhe: string | null;
             /**
@@ -3000,6 +3007,8 @@ export interface components {
             sobre_id: string;
             /** Sobre Nome */
             sobre_nome: string;
+            /** Status */
+            status?: string | null;
             /** Tipo */
             tipo: string;
             /** Titulo */

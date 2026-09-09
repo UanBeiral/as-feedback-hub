@@ -108,7 +108,7 @@ export default function Anotacoes() {
                   ))}
                 </Selecao>
               </Campo>
-              <Campo rotulo="Sobre quem" obrigatorio>
+              <Campo rotulo="Sobre quem?" obrigatorio>
                 <Selecao
                   required
                   value={nova.about_user_id}
@@ -129,7 +129,7 @@ export default function Anotacoes() {
                 required
                 value={nova.content}
                 onChange={(e) => setNova({ ...nova, content: e.target.value })}
-                placeholder="Conduziu bem a audiência de conciliação…"
+                placeholder="Anote observações, rascunhos ou informações relevantes para o ciclo..."
               />
             </Campo>
 
@@ -150,8 +150,8 @@ export default function Anotacoes() {
             <Carregando />
           ) : anotacoes.length === 0 ? (
             <EstadoVazio
-              titulo="Nenhuma anotação ainda"
-              descricao="Anotar durante o ciclo evita depender da memória na hora de avaliar."
+              titulo="Nenhuma anotação ainda."
+              descricao="💡 Anote ao longo do ciclo para facilitar o preenchimento dos feedbacks!"
             />
           ) : (
             <ul className="divide-y divide-border">

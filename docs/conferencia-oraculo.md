@@ -185,7 +185,7 @@ Legenda: ✅ tela existe · ⚠️ existe parcialmente · ❌ não implementada
 | Defeitos próprios | 8, todos corrigidos |
 | Telas que nasceram da conferência | SCR-0021 (Meu Histórico), SCR-0027/0031 (Feedbacks Pendentes), SCR-0038 (Reset de Senha), SCR-0043 (Editor de Perguntas) |
 | Ainda ausentes | SCR-0023 só como entrada pelo banner do Início (#8); o formulário existe em `/minha-equipe` |
-| Parciais | SCR-0022 (Caderno do Ciclo) — falta o botão flutuante |
+| Parciais | nenhuma — SCR-0022 virou o widget sobre a tela e SCR-0017 ganhou tela própria em 09/09/2026 |
 | Divergência estrutural | nenhuma em aberto |
 
 As **8 telas modernizadas** (SCR-0036 a SCR-0044) não entram nesta conferência: por

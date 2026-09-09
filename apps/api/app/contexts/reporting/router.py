@@ -213,7 +213,7 @@ async def historico_da_equipe(
             await historico.livre(visiveis, incluir_sensiveis=tenant.has_role("admin", "rh"))
         ),
         clientes=converter(await historico.clientes(visiveis)),
-        ciclos=converter(await historico.ciclos(visiveis)),
+        ciclos=converter(await historico.ciclos(visiveis, todos_os_status=True)),
     )
 
 
@@ -250,7 +250,7 @@ async def historico_de_uma_pessoa(
             await historico.livre(alvo, incluir_sensiveis=tenant.has_role("admin", "rh"))
         ),
         clientes=converter(await historico.clientes(alvo)),
-        ciclos=converter(await historico.ciclos(alvo)),
+        ciclos=converter(await historico.ciclos(alvo, todos_os_status=True)),
     )
 
 
@@ -373,6 +373,7 @@ async def relatorio_executivo(
         formato="pdf",
         filtros={
             "escopo": payload.escopo,
+            "modo": payload.modo,
             "cycle_id": str(payload.cycle_id) if payload.cycle_id else None,
             "profile_id": str(payload.profile_id) if payload.profile_id else None,
             "giver_id": str(payload.giver_id) if payload.giver_id else None,

@@ -21,6 +21,7 @@ import { api } from "@/lib/api";
 import { temCapacidade, temPapel, toggleLigado, useSessao } from "@/lib/sessao";
 import type { FeedNotificacoes } from "@/lib/tipos";
 
+import { Caderno } from "./caderno";
 import { SeloDePapel } from "./ui";
 
 type ItemDeMenu = {
@@ -75,6 +76,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
     },
     { href: "/avaliacoes-clientes", rotulo: "Avaliações de clientes", visivel: true },
     { href: "/relatorios", rotulo: "Relatórios", visivel: podeRelatorios },
+    { href: "/relatorios/emitir", rotulo: "Emitir relatório", visivel: podeRelatorios },
     { href: "/notificacoes", rotulo: "Notificações", visivel: true },
     { href: "/atualizacoes", rotulo: "Novidades", visivel: true },
 
@@ -107,7 +109,12 @@ export function Shell({ children }: { children: React.ReactNode }) {
           {itens
             .filter((item) => item.visivel)
             .map((item) => {
-              const ativo = caminho === item.href || caminho.startsWith(`${item.href}/`);
+              // Prefixo só vale quando nenhum outro item é a rota exata: sem isso
+              // "Relatórios" acenderia junto com "Emitir relatório".
+              const ativo =
+                caminho === item.href ||
+                (caminho.startsWith(`${item.href}/`) &&
+                  !itens.some((outro) => outro.href === caminho));
               return (
                 <Link
                   key={item.href}
@@ -193,25 +200,9 @@ export function Shell({ children }: { children: React.ReactNode }) {
         <main className="flex-1 px-6 pb-24 pt-6">{children}</main>
       </div>
 
-      {/* O botão flutuante do caderno de ciclo (SCR-0022). Fica em toda tela autenticada
-          porque a anotação nasce no meio de outra coisa — numa reunião, lendo um
-          relatório — e um caderno que exige navegar até ele é um caderno que ninguém
-          abre. Some na própria tela de anotações, onde seria um atalho para onde a
-          pessoa já está. */}
-      {temEquipe && caminho !== "/anotacoes" && (
-        <Link
-          href="/anotacoes"
-          title="Anotar sobre alguém"
-          className={
-            "fixed bottom-6 right-6 z-20 flex h-12 w-12 items-center justify-center " +
-            "rounded-full bg-primary text-xl text-primary-foreground shadow-lg " +
-            "transition hover:brightness-110"
-          }
-        >
-          <span aria-hidden="true">✎</span>
-          <span className="sr-only">Anotar sobre alguém</span>
-        </Link>
-      )}
+      {/* O Caderno do Ciclo (SCR-0022): abre por cima da tela, em qualquer página
+          autenticada, para quem tem equipe e enquanto houver ciclo aberto. */}
+      <Caderno visivel={temEquipe} />
     </div>
   );
 }

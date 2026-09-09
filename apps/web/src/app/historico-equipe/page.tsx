@@ -35,7 +35,7 @@ export default function HistoricoDaEquipePagina() {
   return (
     <PaginaAutenticada
       titulo="Histórico da equipe"
-      descricao="Feedback livre, avaliações de clientes e ciclos 360 — dentro do seu escopo."
+      descricao="Visualize todos os feedbacks enviados e recebidos pela sua equipe em ciclos anteriores e no ciclo atual."
     >
       <Historico
         historico={historico}

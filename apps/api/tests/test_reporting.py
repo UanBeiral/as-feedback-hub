@@ -332,6 +332,41 @@ async def test_historico_de_escopo_vazio_nao_vira_todo_mundo() -> None:
 
 
 @pytest.mark.asyncio
+async def test_historico_da_equipe_lista_todos_os_status_do_360() -> None:
+    """SCR-0006 (#98): o legado listava pendente, rascunho, enviado e abdicado no 360 da
+    equipe, com filtro de status e toggle de cancelados. O histórico da própria pessoa
+    continua só com o enviado."""
+    from app.contexts.reporting.queries import TeamHistoryQuery
+
+    sessao = _SessaoQueGravaStatement()
+    tenant = TenantContext(tenant_id=uuid4(), user_id=uuid4(), role="gestor", flags=frozenset())
+    query = TeamHistoryQuery(sessao, tenant)  # type: ignore[arg-type]
+
+    await query.ciclos({uuid4()})
+    assert "status" in str(sessao.statements[-1]).split("WHERE", 1)[-1]
+
+    await query.ciclos({uuid4()}, todos_os_status=True)
+    where = str(sessao.statements[-1]).split("WHERE", 1)[-1]
+    assert "feedback_requests.status =" not in where, "com todos_os_status nada filtra o status"
+
+
+@pytest.mark.asyncio
+async def test_historico_livre_traz_o_autor_quando_assinado() -> None:
+    """SCR-0006 (#97): "Para: X · De: Y" exige o autor na consulta — por outer join,
+    para o anônimo (giver nulo, AMB-001) sair como nulo e não sumir da lista."""
+    from app.contexts.reporting.queries import TeamHistoryQuery
+
+    sessao = _SessaoQueGravaStatement()
+    tenant = TenantContext(tenant_id=uuid4(), user_id=uuid4(), role="gestor", flags=frozenset())
+
+    await TeamHistoryQuery(sessao, tenant).livre({uuid4()})  # type: ignore[arg-type]
+
+    sql = str(sessao.statements[-1])
+    assert "giver_id" in sql
+    assert sql.count("LEFT OUTER JOIN profiles") >= 2, "leitor e autor, os dois opcionais"
+
+
+@pytest.mark.asyncio
 async def test_historico_de_uma_pessoa_consulta_so_ela() -> None:
     """SCR-0037: o recorte entra na consulta, não depois dela.
 

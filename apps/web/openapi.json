@@ -1581,6 +1581,12 @@
             ],
             "title": "Giver Id"
           },
+          "modo": {
+            "default": "detailed",
+            "pattern": "^(detailed|summary)$",
+            "title": "Modo",
+            "type": "string"
+          },
           "profile_id": {
             "anyOf": [
               {
@@ -2160,6 +2166,17 @@
       },
       "ItemDeHistoricoOut": {
         "properties": {
+          "autor_nome": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Autor Nome"
+          },
           "detalhe": {
             "anyOf": [
               {
@@ -2227,6 +2244,17 @@
           "sobre_nome": {
             "title": "Sobre Nome",
             "type": "string"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
           },
           "tipo": {
             "title": "Tipo",

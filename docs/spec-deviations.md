@@ -176,6 +176,20 @@
 - **Ação na spec**: decidir se "Outro" vira uma `service_tag` de catálogo (custo zero,
   resolve hoje) ou se o modelo ganha texto livre por avaliação.
 
+## DEV-A14 — o relatório executivo "Geral do Ciclo" aceita sair sem ciclo
+
+- **Legado**: o escopo "Geral do Ciclo" exigia escolher o ciclo (`AdminRelatorioFeedback.tsx`).
+- **Spec**: BR-MIGRAR-028 diz que ciclo e pessoa são obrigatórios **exceto** no escopo
+  geral, e `test_escopo_geral_dispensa_ciclo_e_pessoa` fixa isso.
+- **Código**: `validar_escopo_executivo` deixa o geral passar sem ciclo; o worker então
+  consolida todos os ciclos (retrato do escritório). A tela mostra o campo Ciclo também
+  no escopo geral, mas opcional: em branco consolida tudo, escolhido recorta.
+- **Motivo**: a spec vence o legado, e o retrato sem recorte é útil — foi o que a
+  conferência #105 achou rodando. Manter a exigência do legado tiraria uma capacidade
+  que a regra migrada dá de propósito.
+- **Ação na spec**: nenhuma. Se o cliente quiser o ciclo obrigatório no geral, é uma
+  linha na validação e um teste a inverter.
+
 ## Pendências abertas do gate R-06
 
 Corrigidas nesta rodada: B1 (revogação desfeita pelo rollback), B2 (PAR-08 `@critico`),

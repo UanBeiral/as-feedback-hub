@@ -53,6 +53,9 @@ class ExecutiveReportIn(BaseModel):
     """
 
     escopo: str = Field(pattern="^(general|person|specific)$")
+    # Os dois modos do legado: "detailed" (capa + resumo + detalhamento, várias páginas)
+    # e "summary" (1 folha A4). O worker é quem muda o layout; aqui só se registra.
+    modo: str = Field(default="detailed", pattern="^(detailed|summary)$")
     cycle_id: UUID | None = None
     profile_id: UUID | None = None
     giver_id: UUID | None = None
@@ -116,6 +119,8 @@ class ItemDeHistoricoOut(BaseModel):
     lido_em: datetime | None
     lido_por: str | None = None
     partes: list[ParteDoHistoricoOut] = []
+    autor_nome: str | None = None
+    status: str | None = None
 
 
 class HistoricoDaEquipeOut(BaseModel):

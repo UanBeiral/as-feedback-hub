@@ -224,6 +224,119 @@ def _gerar_pdf(
     )
 
 
+def _gerar_pdf_executivo(
+    caminho: Path,
+    titulo: str,
+    subtitulo: str,
+    cabecalho: list[str],
+    linhas: list[list[object]],
+    *,
+    modo: str,
+) -> None:
+    """O relatório executivo nos dois modos do legado.
+
+    `detailed` é o de várias páginas: capa, resumo com os números consolidados e o
+    detalhamento em tabela. `summary` é a folha única para reunião rápida e
+    arquivamento — sem capa, fonte menor, e o detalhamento cortado no que cabe em uma
+    A4, com aviso de quantas linhas ficaram de fora. Um PDF só para os dois modos
+    faria o resumo virar um detalhado com menos páginas, que não é o que o legado
+    entregava.
+    """
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import getSampleStyleSheet
+    from reportlab.platypus import (
+        PageBreak,
+        Paragraph,
+        SimpleDocTemplate,
+        Spacer,
+        Table,
+        TableStyle,
+    )
+
+    documento = SimpleDocTemplate(str(caminho), pagesize=A4, title=titulo)
+    estilos = getSampleStyleSheet()
+    gerado_em = f"Gerado em {datetime.now(UTC):%d/%m/%Y %H:%M} UTC"
+
+    def tabela(dados: list[list[object]], fonte: int) -> Table:
+        t = Table([cabecalho] + [[str(c) for c in linha] for linha in dados], repeatRows=1)
+        t.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1f2937")),
+                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                    ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#9ca3af")),
+                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                    ("FONTSIZE", (0, 0), (-1, -1), fonte),
+                ]
+            )
+        )
+        return t
+
+    # O resumo consolidado: quantas linhas e, quando há coluna de nota, a média dela.
+    # É o "resumo com selo" do legado reduzido ao que o dado atual sustenta.
+    notas = [
+        float(linha[-1])
+        for linha in linhas
+        if cabecalho[-1].lower().startswith("nota") and str(linha[-1]).strip() not in ("", "—")
+    ]
+    resumo = [f"{len(linhas)} linha(s) no detalhamento."]
+    if notas:
+        resumo.append(f"Nota média: {sum(notas) / len(notas):.2f}.")
+
+    if modo == "summary":
+        # Uma folha: o que passar do que cabe fica anotado, não empurrado para a página 2.
+        limite = 28
+        documento.build(
+            [
+                Paragraph(titulo, estilos["Heading1"]),
+                Paragraph(subtitulo, estilos["Normal"]),
+                Paragraph(gerado_em, estilos["Normal"]),
+                Spacer(1, 8),
+                Paragraph(" ".join(resumo), estilos["Normal"]),
+                Spacer(1, 8),
+                tabela(linhas[:limite], 7),
+                *(
+                    [
+                        Paragraph(
+                            f"… e mais {len(linhas) - limite} linha(s) no modo detalhado.",
+                            estilos["Italic"],
+                        )
+                    ]
+                    if len(linhas) > limite
+                    else []
+                ),
+            ]
+        )
+        return
+
+    documento.build(
+        [
+            Spacer(1, 180),
+            Paragraph(titulo, estilos["Title"]),
+            Paragraph(subtitulo, estilos["Heading2"]),
+            Paragraph(gerado_em, estilos["Normal"]),
+            PageBreak(),
+            Paragraph("Resumo", estilos["Heading1"]),
+            *[Paragraph(texto, estilos["Normal"]) for texto in resumo],
+            PageBreak(),
+            Paragraph("Detalhamento", estilos["Heading1"]),
+            Spacer(1, 8),
+            tabela(linhas, 8),
+        ]
+    )
+
+
+def _subtitulo_executivo(filtros: dict[str, object]) -> str:
+    escopo = str(filtros.get("escopo") or "general")
+    nomes = {
+        "general": "Geral do Ciclo — consolidado de todos os colaboradores",
+        "person": "Individual Completo — todos os feedbacks de uma pessoa em um ciclo",
+        "specific": "Feedback Específico — um feedback específico de um avaliador",
+    }
+    return nomes.get(escopo, escopo)
+
+
 async def processar_exportacao(
     session: AsyncSession, mensagem: OutboxMessage, email: EmailAdapter
 ) -> None:
@@ -253,6 +366,16 @@ async def processar_exportacao(
 
     if job.format == "xlsx":
         _gerar_xlsx(caminho, cabecalho, linhas)
+    elif job.kind == "executive":
+        filtros = job.filters or {}
+        _gerar_pdf_executivo(
+            caminho,
+            titulo,
+            _subtitulo_executivo(filtros),
+            cabecalho,
+            linhas,
+            modo=str(filtros.get("modo") or "detailed"),
+        )
     else:
         _gerar_pdf(caminho, titulo, cabecalho, linhas)
 
